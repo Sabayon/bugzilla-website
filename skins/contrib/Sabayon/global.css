@@ -31,30 +31,6 @@
 /* global (end) */
 
 /* header (begin) */
-    #header form, #header form input,
-    #footer form, #footer form input
-    {
-        font-size: 95%;
-        display: inline;
-    }
-
-    #header .links {
-        border-left: 1px solid silver;
-        border-right: 1px solid silver;
-        border-bottom: 1px solid silver;
-        -moz-border-radius-bottomleft: 5px;
-        -moz-border-radius-bottomright: 5px;
-        padding: 0.5em;
-    }
-
-    #lang_links_container {
-        float: right;
-    }
-    #lang_links_container .links {
-        border: none;
-        padding: .5em;
-    }
-
     .lang_current {
         font-weight: bold;
     }
