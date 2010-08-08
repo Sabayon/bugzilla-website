@@ -16,3 +16,4 @@ skins/contrib/Dusk
 FABIO-NOTES
 *.bak
 update_bugzilla_to_latest_stable.sh
+.cvsignore

@@ -16,33 +16,21 @@
   # Rights Reserved.
   #
   # Contributor(s): Gervase Markham <gerv@gerv.net>
-  #                 Svetlana Harisova <light@rathedg.com>
   #%]
-
 [%# INTERFACE:
-  # This template has no interface. However, you must fulfill the interface to
-  # global/useful-links.html.tmpl.
-  #%]
+  # This template has no interface.
+  #
+  # Form variables from a bug submission (i.e. the fields on a template from
+  # enter_bug.cgi) can be access via Bugzilla.cgi.param. It can be used to
+  # pull out various custom fields and format an initial Description entry
+  # from them.
+  #%]  
+[% USE Bugzilla %]
+[% cgi = Bugzilla.cgi %]
+Action Type: [% cgi.param("actiontype") IF cgi.param("actiontype") %]
+Package Name: [% cgi.param("realName") IF cgi.param("realName") %]
+Portage Name: [% cgi.param("genCat") IF cgi.param("genCat") %]/[% cgi.param("packName") IF cgi.param("packName") %]
+Package Version: [% cgi.param("reqVer") IF cgi.param("reqVer") %] 
 
-[% INCLUDE "global/help.html.tmpl" %]
-
-</div>
-
-[%# Migration note: below this point, this file corresponds to the old Param
-  # 'footerhtml'
-  #%]
-
-<div id="footer">
-[%# Migration note: useful-links.html.tmpl corresponds to %commandmenu% %]
-
-           [% PROCESS "global/useful-links.html.tmpl" %]
-
-<div id="copyright">
-	<p>Powered by <a href="http://bugzilla.org">Bugzilla</a>. Copyright Sabayon Foundation 2010, All other trademarks are the property of their respective owners. Some rights reserved.</p>
-</div>
-
-</div>
-
-</body>
-</html>
-
+Users Notes:
+[%+ cgi.param("comment") IF cgi.param("comment") %]

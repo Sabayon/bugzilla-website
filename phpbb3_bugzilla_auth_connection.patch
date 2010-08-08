@@ -1,0 +1,229 @@
+diff -Nurp Bugzilla.orig/Auth/Verify/DB.pm Bugzilla/Auth/Verify/DB.pm
+--- Bugzilla.orig/Auth/Verify/DB.pm	2009-04-26 18:01:07.000000000 +0000
++++ Bugzilla/Auth/Verify/DB.pm	2009-04-27 14:49:24.000000000 +0000
+@@ -28,27 +28,201 @@
+ #                 Erik Stambaugh <erik@dasbistro.com>
+ 
+ package Bugzilla::Auth::Verify::DB;
+-use strict;
++#use strict;
++use warnings;
+ use base qw(Bugzilla::Auth::Verify);
+ 
+ use Bugzilla::Constants;
+ use Bugzilla::Token;
+ use Bugzilla::Util;
+ use Bugzilla::User;
++use Digest::MD5 qw[md5_hex md5];
++use MIME::Base64;
++use List::Util qw[min];
++
++my $itoa64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
++
++sub _get_random_number {
++    my $myrand = 0;
++    my $low_n = 100000;
++    my $high_n = 999999;
++
++    while ($myrand < $low_n || $myrand > $high_n) {
++        $myrand = $low_n + int( rand($high_n - $low_n + 1) );
++    }
++
++    return $myrand;
++}
++
++sub _get_password_hash {
++    my $password = shift;
++
++    my $myrandom = _get_random_number;
++
++    my $myhash = _hash_crypt_private($password, _hash_gensalt_private($myrandom));
++
++    return $myhash  if length($myhash) eq 34;
++
++    my $m = md5_hex $myhash;
++}
++
++sub _hash_gensalt_private {
++    my $myinput = shift;
++    my $iteration_count_log2 = shift || 6;
++
++    $iteration_count_log2 = 8 if $iteration_count_log2 < 4 || $iteration_count_log2 > 31;
++
++    my $myoutput = '$H$';
++    $myoutput .= substr($itoa64, min($iteration_count_log2 + 5, 30), 1);
++    $myoutput .= _hash_encode64($myinput, 6);
++
++    return $myoutput;
++}
++
++sub _hash_crypt_private {
++    my ($password, $setting) = @_;
++
++    my $myoutput = '*';
++
++    # Check for correct hash
++    return $myoutput unless $setting =~ m/^\$H\$/;
++
++    # Note: could be a subtle difference in behaviour on the next line
++    my $count_log2 = index($itoa64, substr($setting, 3, 1));
++    if ($count_log2 eq -1) {
++        $count_log2 = 0;
++    }
++
++    if (($count_log2 < 7) || ($count_log2 > 30)) {
++        return $myoutput;
++    }
++
++    my $count = 1 << $count_log2;
++    my $salt = substr($setting, 4, 8);
++
++    if (length($salt) != 8) {
++        return $myoutput;
++    }
++
++    my $myhash = md5($salt . $password);
++    $myhash = md5($myhash . $password) while ($count--);
++
++    $myoutput = substr $setting, 0, 12;
++    $myoutput .= _hash_encode64($myhash, 16);
++    # $myoutput = substr($myoutput, 0, length($myoutput) - 2);
++
++    return $myoutput;
++
++}
++
++sub _hash_encode64 {
++    my $myinput = shift;
++    my $count = shift;
++
++    my $myoutput = '';
++    my $i = 0;
++    while ($i < $count) {
++
++        my $value = ord(substr($myinput, $i, 1));
++
++        $i += 1;
++        $myoutput .= substr($itoa64, $value & 0x3f, 1);
++        if ($i < $count) {
++            $value |= ord(substr($myinput, $i, 1)) << 8;
++        }
++        $myoutput .= substr($itoa64, ($value >> 6) & 0x3f, 1);
++        if ($i >= $count) {
++            last;
++        }
++        $i += 1;
++
++        if ($i < $count) {
++            $value |= ord(substr($myinput, $i, 1)) << 16;
++        }
++
++        $myoutput .= substr($itoa64, ($value >> 12) & 0x3f, 1);
++        if ($i >= $count) {
++            last;
++        }
++        $i += 1;
++
++        $myoutput .= substr($itoa64, ($value >> 18) & 0x3f, 1);
++
++    }
++
++    return $myoutput;
++}
++
++sub phpbb3_check_credentials {
++
++    my $password = shift;
++    my $myhash = shift;
++
++    if (_hash_crypt_private($password, $myhash) eq $myhash) {
++        return 1;
++    }
++    return 0;
++
++}
+ 
+ sub check_credentials {
+     my ($self, $login_data) = @_;
+     my $dbh = Bugzilla->dbh;
+ 
+     my $username = $login_data->{username};
++    my $password = $login_data->{password};
+     my $user_id  = login_to_id($username);
++    my $user_phpbb_login_ok = 0;
++    my $phpbb3_password_encrypted = '';
++    my $phpbb3_username = '';
++    my $phpbb3_email = '';
++
++    trick_taint($username);
++    trick_taint($password);
++
++    # if username is an email, look for email, otherwise look for username
++    if (validate_email_syntax($username)) {
++
++        ($phpbb3_password_encrypted, $phpbb3_username) = $dbh->selectrow_array(
++            "SELECT phpbb3.phpbb_users.user_password,phpbb3.phpbb_users.username " .
++            "FROM phpbb3.phpbb_users WHERE phpbb3.phpbb_users.user_email = ?",
++            undef, $username );
++        $phpbb3_email = $username;
++
++    } else {
++
++        ($phpbb3_password_encrypted, $phpbb3_email) = $dbh->selectrow_array(
++            "SELECT phpbb3.phpbb_users.user_password,phpbb3.phpbb_users.user_email " .
++            "FROM phpbb3.phpbb_users WHERE phpbb3.phpbb_users.username = ?",
++            undef, $username );
++        $phpbb3_username = $username;
++        $username = $phpbb3_email;
++        $user_id  = login_to_id($username);
++
++    }
++
++    if ($phpbb3_password_encrypted) {
++        # user email is found, we need to verify it against the provided
++        # password
++        my $phpbb3_valid = phpbb3_check_credentials($password, $phpbb3_password_encrypted);
++
++        if (($phpbb3_valid) && (!$user_id)) {
++            # create bugzilla user since it doesn't seem to exist
++            $user_id = Bugzilla::User->create({
++                login_name => $username,
++                realname   => $phpbb3_username,
++                cryptpassword => $password});
++            $user_phpbb_login_ok = 1;
++        } elsif (($phpbb3_valid) && ($user_id)) {
++            $user_phpbb_login_ok = 1;
++        }
++
++    }
+ 
+     return { failure => AUTH_NO_SUCH_USER } unless $user_id;
+ 
+     $login_data->{bz_username} = $username;
+-    my $password = $login_data->{password};
+ 
+-    trick_taint($username);
+     my ($real_password_crypted) = $dbh->selectrow_array(
+         "SELECT cryptpassword FROM profiles WHERE userid = ?",
+         undef, $user_id);
+@@ -63,7 +237,7 @@ sub check_credentials {
+     my $entered_password_crypted = crypt($password, $real_password_crypted);
+  
+     return { failure => AUTH_LOGINFAILED }
+-        if $entered_password_crypted ne $real_password_crypted;
++        if (($entered_password_crypted ne $real_password_crypted) && ($user_phpbb_login_ok eq 0));
+ 
+     # The user's credentials are okay, so delete any outstanding
+     # password tokens they may have generated.
+diff -Nurp Bugzilla.orig/Constants.pm Bugzilla/Constants.pm
+--- Bugzilla.orig/Constants.pm	2009-04-27 14:38:32.000000000 +0000
++++ Bugzilla/Constants.pm	2009-04-27 14:39:05.000000000 +0000
+@@ -214,7 +214,7 @@ use constant AUTH_NO_SUCH_USER  => 5;
+ 
+ # The minimum and maximum lengths a password must have.
+ use constant USER_PASSWORD_MIN_LENGTH => 3;
+-use constant USER_PASSWORD_MAX_LENGTH => 16;
++use constant USER_PASSWORD_MAX_LENGTH => 64;
+ 
+ use constant LOGIN_OPTIONAL => 0;
+ use constant LOGIN_NORMAL => 1;

@@ -78,6 +78,9 @@
       # "Selectable" skin file sets may be either preferred or alternate.
       # Exactly one is preferred, determined by the "skin" user preference.
       #%]
+    [%# CSS cascade - Sabayon Header %]
+     <link rel="stylesheet" href="http://wiki.sabayonlinux.org/skins/sabayon/navbar.css" type="text/css" />
+
     [% IF user.settings.skin.value != 'standard' %]
       [% user_skin = user.settings.skin.value %]
     [% END %]
@@ -262,6 +265,27 @@
                  [% ' ' %][% class FILTER css_class_quote %]
                [% END %]">
 
+	<div id="sabnavbar"><!-- Sabayon Linux global navigation bar  (thanks Arch Linux guys! ) -->
+        <div id="sabnavbarlogo">
+                <p><a accesskey="z" title="Visit the main page [z]" href="/" id="logo"></a></p>
+        </div>
+        <div id="sabnavbarmenu">
+               <ul id="sabnavbarlist">
+                        <li id="anb-home"><a href="http://www.sabayon.org/">Home</a></li>
+			<li id="anb-blog"><a href="http://planet.sabayon.org/">Planet</a></li>
+			<li id="anb-irc"><a href="http://www.sabayon.org/chat">Web Chat</a></li>
+			<li id="anb-packages"><a href="http://www.sabayon.org/packages/">Packages</a></li>
+			<li id="anb-gitweb"><a href="http://gitweb.sabayon.org/">Git</a></li>
+			<li id="anb-forums"><a href="http://forum.sabayon.org/">Forum</a></li>
+			<li id="anb-wiki"><a href="http://wiki.sabayon.org/">Wiki</a></li>
+			<li id="anb-bugs"><a href="http://bugs.sabayon.org/">Bugs</a></li>
+			<li id="anb-download"><a href="http://www.sabayon.org/download/">Download</a></li>
+		</ul>
+
+        </div>
+</div>
+
+
 [%# Migration note: the following file corresponds to the old Param
   # 'bannerhtml'
   #%]
@@ -276,12 +300,6 @@
       <p>[% terms.Bugzilla %]
       [% " &ndash; $header" IF header %]</p>
     </td>
-
-  [% IF subheader %]
-    <td id="subtitle">
-      <p class="subheader">[% subheader %]</p>
-    </td>
-  [% END %]
 
   [% IF header_addl_info %]
     <td id="information">
