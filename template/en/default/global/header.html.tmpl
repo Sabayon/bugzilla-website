@@ -80,9 +80,10 @@
       # Exactly one is preferred, determined by the "skin" user preference.
       #%]
     [%# CSS cascade - Sabayon Header %]
-    <link rel="stylesheet" href="http://static.sabayon.org/site/css/reset-min.css" type="text/css" />
-    <link rel="stylesheet" href="http://static.sabayon.org/site/css/global.css" type="text/css" />
-    <link rel="stylesheet" href="http://static.sabayon.org/site/css/global_menu.css" type="text/css" />
+	<link rel="stylesheet" href="http://static.sabayon.org/site/css/reset-min.css" type="text/css" />
+	<link rel="stylesheet" href="http://static.sabayon.org/site/css/global.css" type="text/css" />
+	<link rel="stylesheet" href="http://static.sabayon.org/site/css/globa_menu.css" type="text/css" />
+	<link rel="stylesheet" href="http://static.sabayon.org/site/css/global_styles.css" type="text/css" />
 
     [% IF user.settings.skin.value != 'standard' %]
       [% user_skin = user.settings.skin.value %]
@@ -273,6 +274,8 @@
 [%# Migration note: the following file corresponds to the old Param
   # 'bannerhtml'
   #%]
+<div id="mid_wrapper">
+	<div class="inside">
 
 <div id="header">
 
