@@ -1,0 +1,79 @@
+/*
+ * Custom rules for global.css.
+ * The rules you put here override rules in that stylesheet.
+ */
+
+body {
+Background-color: #222;
+font-family:'Deju Vu Sans',Verdana,sans-serif,Helvetica,Arial,Geneva;
+}
+
+#titles {
+background-color: #00B0FF;
+color: #FFF;
+border:1px solid #00B0FF;
+}
+
+#titles a {
+color:#FFFFFF;
+}
+
+#header .links {
+background-color: #000;
+color: #FFF;
+border:1px solid #00B0FF;
+}
+
+/* Footer */
+#footer {
+background:none repeat scroll 0 0 #000;
+border:1px solid #00B0FF;
+color: #555;
+}
+
+#footer a {
+color: #555;
+}
+
+
+/* generic (begin) */
+    :link {
+        color: #007EB8;
+    }
+
+    :visited {
+        color: #007EB8;
+    }
+
+    :link:hover, :visited:hover {
+        color: #00A2EB;
+    }
+
+    :link:active, :link:active {
+        color: #000;
+    }
+
+    .clickable_area {
+        cursor: pointer;
+    }
+
+a:link,a:link:hover {
+	color: #6169c0;
+	}
+
+a:visited {
+	color: #3d4a68;
+}
+
+/* generic (end) */
+
+#bugzilla-body {
+    background: #fffff;
+    color: black;
+    border: 1px solid #00B0FF;
+}
+
+.bz_row_odd {
+    background-color: #C8EAF9;
+};
+

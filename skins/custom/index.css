@@ -1,0 +1,14 @@
+/*
+ * Custom rules for index.css.
+ * The rules you put here override rules in that stylesheet.
+ */
+#page-index
+    {
+        padding: 0em;
+    }
+
+
+#page-index h3 {
+	padding: 0em;
+	margin: 0em;
+}

@@ -1,0 +1,16 @@
+/*
+ * Custom rules for show_bug.css.
+ * The rules you put here override rules in that stylesheet.
+ */
+
+.bz_alias_short_desc_container {
+	-moz-border-radius: 0em;
+	background-color: none;
+	font-weight: none;
+	border: 1px solid #CCC;
+	background: #CCDDEE;
+}
+
+.bz_bug .edit_form {
+	width: inherit;
+}
