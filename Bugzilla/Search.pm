@@ -302,7 +302,14 @@ sub init {
         my @legal_statuses =
           map {$_->name} @{Bugzilla::Field->new({name => 'bug_status'})->legal_values};
 
-        if (scalar(@bug_statuses) == scalar(@legal_statuses)
+        # Filter out any statuses that have been removed completely that are still 
+        # being used by the client
+        my @valid_statuses;
+        foreach my $status (@bug_statuses) {
+            push(@valid_statuses, $status) if grep($_ eq $status, @legal_statuses);
+        }
+        
+        if (scalar(@valid_statuses) == scalar(@legal_statuses)
             || $bug_statuses[0] eq "__all__")
         {
             $params->delete('bug_status');
@@ -314,6 +321,9 @@ sub init {
         elsif ($bug_statuses[0] eq "__closed__") {
             $params->param('bug_status', grep(!is_open_state($_), 
                                               @legal_statuses));
+        }
+        else {
+            $params->param('bug_status', @valid_statuses);
         }
     }
     
@@ -388,8 +398,8 @@ sub init {
         }
     }
 
-    my $chfieldfrom = trim(lc($params->param('chfieldfrom'))) || '';
-    my $chfieldto = trim(lc($params->param('chfieldto'))) || '';
+    my $chfieldfrom = trim(lc($params->param('chfieldfrom') || ''));
+    my $chfieldto = trim(lc($params->param('chfieldto') || ''));
     $chfieldfrom = '' if ($chfieldfrom eq 'now');
     $chfieldto = '' if ($chfieldto eq 'now');
     my @chfield = $params->param('chfield');
@@ -637,7 +647,8 @@ sub init {
         "^component,(?!changed)" => \&_component_nonchanged,
         "^product,(?!changed)" => \&_product_nonchanged,
         "^classification,(?!changed)" => \&_classification_nonchanged,
-        "^keywords,(?:equals|notequals|anyexact|anyword|allwords|nowords)" => \&_keywords_exact,
+        "^keywords,(?:equals|anyexact|anyword|allwords)" => \&_keywords_exact,
+        "^keywords,(?:notequals|notregexp|notsubstring|nowords|nowordssubstr)" => \&_multiselect_negative,
         "^keywords,(?!changed)" => \&_keywords_nonchanged,
         "^dependson,(?!changed)" => \&_dependson_nonchanged,
         "^blocked,(?!changed)" => \&_blocked_nonchanged,
@@ -791,6 +802,12 @@ sub init {
     # get a list of field names to verify the user-submitted chart fields against
     %chartfields = @{$dbh->selectcol_arrayref(
         q{SELECT name, id FROM fielddefs}, { Columns=>[1,2] })};
+
+    if (!$user->is_timetracker) {
+        foreach my $tt_field (TIMETRACKING_FIELDS) {
+            delete $chartfields{$tt_field};
+        }
+    }
 
     $row = 0;
     for ($chart=-1 ;
@@ -1181,8 +1198,7 @@ sub BuildOrderBy {
 sub split_order_term {
     my $fragment = shift;
     $fragment =~ /^(.+?)(?:\s+(ASC|DESC))?$/i;
-    my ($column_name, $direction) = (lc($1), uc($2));
-    $direction ||= "";
+    my ($column_name, $direction) = (lc($1), uc($2 || ''));
     return wantarray ? ($column_name, $direction) : $column_name;
 }
 
@@ -1225,7 +1241,8 @@ sub _contact_exact_group {
     $$v =~ m/%group\\.([^%]+)%/;
     my $group = $1;
     my $groupid = Bugzilla::Group::ValidateGroupName( $group, ($user));
-    $groupid || ThrowUserError('invalid_group_name',{name => $group});
+    ($groupid && $user->in_group_id($groupid))
+      || ThrowUserError('invalid_group_name',{name => $group});
     my @childgroups = @{Bugzilla::Group->flatten_group_membership($groupid)};
     my $table = "user_group_map_$$chartid";
     push (@$supptables, "LEFT JOIN user_group_map AS $table " .
@@ -1297,7 +1314,8 @@ sub _cc_exact_group {
     $$v =~ m/%group\\.([^%]+)%/;
     my $group = $1;
     my $groupid = Bugzilla::Group::ValidateGroupName( $group, ($user));
-    $groupid || ThrowUserError('invalid_group_name',{name => $group});
+    ($groupid && $user->in_group_id($groupid))
+      || ThrowUserError('invalid_group_name',{name => $group});
     my @childgroups = @{Bugzilla::Group->flatten_group_membership($groupid)};
     my $chartseq = $$chartid;
     if ($$chartid eq "") {
@@ -1876,7 +1894,7 @@ sub _keywords_exact {
     my %func_args = @_;
     my ($chartid, $v, $ff, $f, $t, $term, $supptables) =
         @func_args{qw(chartid v ff f t term supptables)};
-    
+
     my @list;
     my $table = "keywords_$$chartid";
     foreach my $value (split(/[\s,]+/, $$v)) {
@@ -2024,8 +2042,16 @@ sub _multiselect_negative {
         nowordssubstr => 'anywordssubstr',
     );
 
-    my $table = "bug_$$f";
-    $$ff = "$table.value";
+    my $table;
+    if ($$f eq 'keywords') {
+        $table = "keywords LEFT JOIN keyworddefs"
+                 . " ON keywords.keywordid = keyworddefs.id";
+        $$ff = "keyworddefs.name";
+    }
+    else {
+        $table = "bug_$$f";
+        $$ff = "$table.value";
+    }
     
     $$funcsbykey{",".$map{$$t}}($self, %func_args);
     $$term = "bugs.bug_id NOT IN (SELECT bug_id FROM $table WHERE $$term)";
