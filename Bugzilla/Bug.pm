@@ -883,7 +883,8 @@ sub update {
     # back, this change will *not* be rolled back. As we expect rollbacks
     # to be extremely rare, that is OK for us.
     $self->_sync_fulltext()
-        if $self->{added_comments} || $changes->{short_desc};
+        if $self->{added_comments} || $changes->{short_desc}
+           || $self->{comment_isprivate};
 
     # Remove obsolete internal variables.
     delete $self->{'_old_assigned_to'};
@@ -1549,7 +1550,9 @@ sub _check_resolution {
     ThrowUserError('resolution_not_allowed') if $self->status->is_open;
     
     # Check noresolveonopenblockers.
-    if (Bugzilla->params->{"noresolveonopenblockers"} && $resolution eq 'FIXED')
+    if (Bugzilla->params->{"noresolveonopenblockers"}
+        && $resolution eq 'FIXED'
+        && (!$self->resolution || $resolution ne $self->resolution))
     {
         my @dependencies = CountOpenDependencies($self->id);
         if (@dependencies) {
@@ -3178,7 +3181,10 @@ sub GetBugActivity {
 
         if ($activity_visible) {
             # Check for the results of an old Bugzilla data corruption bug
-            $incomplete_data = 1 if ($added =~ /^\?/ || $removed =~ /^\?/);
+            if (($added eq '?' && $removed eq '?')
+                || ($added =~ /^\? / || $removed =~ /^\? /)) {
+                $incomplete_data = 1;
+            }
 
             # An operation, done by 'who' at time 'when', has a number of
             # 'changes' associated with it.
@@ -3261,12 +3267,6 @@ sub map_fields {
         my $field_name = FIELD_MAP->{$field} || $field;
         $field_values{$field_name} = $params->{$field};
     }
-
-    # This protects the WebService Bug.search method.
-    unless (Bugzilla->user->is_timetracker) {
-        delete @field_values{qw(estimated_time remaining_time deadline)};
-    }
-    
     return \%field_values;
 }
 

@@ -1883,6 +1883,12 @@ sub _remove_spaces_and_commas_from_flagtypes {
 
 sub _setup_usebuggroups_backward_compatibility {
     my $dbh = Bugzilla->dbh;
+
+    # Don't run this on newer Bugzillas. This is a reliable test because
+    # the longdescs table existed in 2.16 (which had usebuggroups)
+    # but not in 2.18, and this code happens between 2.16 and 2.18.
+    return if $dbh->bz_column_info('longdescs', 'already_wrapped');
+
     # 2002-11-24 - bugreport@peshkin.net - bug 147275
     #
     # If group_control_map is empty, backward-compatibility
@@ -1890,6 +1896,7 @@ sub _setup_usebuggroups_backward_compatibility {
     my ($maps_exist) = $dbh->selectrow_array(
         "SELECT DISTINCT 1 FROM group_control_map");
     if (!$maps_exist) {
+        print "Converting old usebuggroups controls...\n";
         # Initially populate group_control_map.
         # First, get all the existing products and their groups.
         my $sth = $dbh->prepare("SELECT groups.id, products.id, groups.name,
@@ -3161,12 +3168,21 @@ sub _populate_bugs_fulltext {
         # If there are no bugs in the bugs table, there's nothing to populate.
         return if !@$bug_ids;
 
+        my $command = "INSERT";
         my $where = "";
         if ($fulltext) {
             print "Updating bugs_fulltext...\n";
             $where = "WHERE " . $dbh->sql_in('bugs.bug_id', $bug_ids);
-            $dbh->do("DELETE FROM bugs_fulltext WHERE " 
-                     . $dbh->sql_in('bug_id', $bug_ids));
+            # It turns out that doing a REPLACE INTO is up to 10x faster
+            # than any other possible method of updating the table, in MySQL,
+            # which matters a LOT for large installations.
+            if ($dbh->isa('Bugzilla::DB::Mysql')) {
+                $command = "REPLACE";
+            }
+            else {
+                $dbh->do("DELETE FROM bugs_fulltext WHERE " 
+                         . $dbh->sql_in('bug_id', $bug_ids));
+            }
         }
         else {
             print "Populating bugs_fulltext...";
@@ -3174,7 +3190,7 @@ sub _populate_bugs_fulltext {
         }
         my $newline = $dbh->quote("\n");
         $dbh->do(
-            q{INSERT INTO bugs_fulltext (bug_id, short_desc, comments, 
+         qq{$command INTO bugs_fulltext (bug_id, short_desc, comments, 
                                          comments_noprivate)
                    SELECT bugs.bug_id, bugs.short_desc, }
                  . $dbh->sql_group_concat('longdescs.thetext', $newline)
