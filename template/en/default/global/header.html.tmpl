@@ -62,7 +62,7 @@
 <html>
   <head>
     [% Hook.process("start") %]
-    <title>[% title %]</title>
+    <title>[% title %] | Sabayon Bugzilla</title>
 
 [%# Migration note: contents of the old Param 'headerhtml' would go here %]
 
@@ -278,20 +278,16 @@
 
 [% INCLUDE global/banner.html.tmpl %]
 
-<table border="0" cellspacing="0" cellpadding="0" id="titles">
-<tr>
-    <td id="title">
-      <p>[% terms.Bugzilla %]
-      [% " &ndash; $header" IF header %]</p>
-    </td>
+<span id="title">
+	<p>[% terms.Bugzilla %]
+	[% " &ndash; $header" IF header %]</p>
+</span>
 
-  [% IF header_addl_info %]
-    <td id="information">
-      <p class="header_addl_info">[% header_addl_info %]</p>
-    </td>
-  [% END %]
-</tr>
-</table>
+[% IF header_addl_info %]
+	<span id="information">
+		<p class="header_addl_info">[% header_addl_info %]</p>
+	</span>
+[% END %]
 
 <table id="lang_links_container" cellpadding="0" cellspacing="0"
        class="bz_default_hidden"><tr><td>
