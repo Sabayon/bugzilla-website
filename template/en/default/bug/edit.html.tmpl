@@ -141,6 +141,14 @@
 
 <form name="changeform" method="post" action="process_bug.cgi">
 
+  [%# *** Additional Comments *** %]
+  <div id="comments">
+    [% PROCESS bug/comments.html.tmpl
+      comments = bug.comments
+      mode = user.id ? "edit" : "show"
+    %]
+  </div>
+
   <input type="hidden" name="delta_ts" value="[% bug.delta_ts %]">
   <input type="hidden" name="longdesclength" value="[% bug.comments.size %]">
   <input type="hidden" name="id" value="[% bug.bug_id %]">
@@ -232,14 +240,6 @@
     [% PROCESS section_restrict_visibility %]
   </td>
   </tr></table>
-
-  [%# *** Additional Comments *** %]
-  <div id="comments">
-    [% PROCESS bug/comments.html.tmpl
-      comments = bug.comments
-      mode = user.id ? "edit" : "show"
-    %]
-  </div>
 
 </form>
 
