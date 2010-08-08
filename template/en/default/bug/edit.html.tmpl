@@ -141,6 +141,13 @@
 
 <form name="changeform" method="post" action="process_bug.cgi">
 
+  <input type="hidden" name="delta_ts" value="[% bug.delta_ts %]">
+  <input type="hidden" name="longdesclength" value="[% bug.comments.size %]">
+  <input type="hidden" name="id" value="[% bug.bug_id %]">
+  <input type="hidden" name="token" value="[% issue_hash_token([bug.id, bug.delta_ts]) FILTER html %]">
+
+  [% PROCESS section_title %]
+
   [%# *** Additional Comments *** %]
   <div id="comments">
     [% PROCESS bug/comments.html.tmpl
@@ -149,12 +156,28 @@
     %]
   </div>
 
-  <input type="hidden" name="delta_ts" value="[% bug.delta_ts %]">
-  <input type="hidden" name="longdesclength" value="[% bug.comments.size %]">
-  <input type="hidden" name="id" value="[% bug.bug_id %]">
-  <input type="hidden" name="token" value="[% issue_hash_token([bug.id, bug.delta_ts]) FILTER html %]">
+  <table id="bz_big_form_parts" cellspacing="0" cellpadding="0"><tr>
+  <td>
+    [% IF user.is_timetracker %]
+      [% PROCESS section_timetracking %]
+    [% END %]
 
-  [% PROCESS section_title %]
+    [%# *** Attachments *** %]
+
+    [% PROCESS attachment/list.html.tmpl
+               attachments = bug.attachments
+               bugid       = bug.bug_id
+               num_attachment_flag_types = bug.num_attachment_flag_types
+               show_attachment_flags = bug.show_attachment_flags
+    %]
+
+    [% PROCESS comment_box %]
+  </td>
+  <td>
+    [% PROCESS section_restrict_visibility %]
+  </td>
+  </tr></table>
+
   <table class="edit_form">
     <tr>
       [%# 1st Column %]
@@ -218,28 +241,6 @@
       </td>
     </tr>
   </table>
-
-  <table id="bz_big_form_parts" cellspacing="0" cellpadding="0"><tr>
-  <td>
-    [% IF user.is_timetracker %]
-      [% PROCESS section_timetracking %]
-    [% END %]
-
-    [%# *** Attachments *** %]
-
-    [% PROCESS attachment/list.html.tmpl
-               attachments = bug.attachments
-               bugid       = bug.bug_id
-               num_attachment_flag_types = bug.num_attachment_flag_types
-               show_attachment_flags = bug.show_attachment_flags
-    %]
-
-    [% PROCESS comment_box %]
-  </td>
-  <td>
-    [% PROCESS section_restrict_visibility %]
-  </td>
-  </tr></table>
 
 </form>
 
@@ -1152,7 +1153,7 @@
   [% IF user.id %]
     <div class="knob-buttons">
       <input type="submit" value="Save Changes" 
-             id="commit[% id FILTER css_class_quote %]">
+<!--              id="commit[% id FILTER css_class_quote %]"> -->
       [% IF bug.user.canmove %]
         <input type="submit" name="action" id="action[% id FILTER css_class_quote %]" value="[% Param("move-button-text") %]">
       [% END %]
