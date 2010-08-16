@@ -103,15 +103,15 @@
 		line-height: 4em;
 	}
 
-	#searchbox input #quicksearch_top {
+	#searchbox input#quicksearch_top {
 		border: 1px solid #666;
 		background-color: #222;
-		height: 19px;
+		height: 16px;
 		color: #FFF;
-		padding: 1px 0 0 0;
+		padding: 2px 0 0 0;
 	}
 	
-	#searchbox input #find_top {
+	#searchbox input#find_top {
 		border: 1px solid #666;
 		background-color: #222;
 		height: 20px;
