@@ -176,7 +176,18 @@
   <td>
     [% PROCESS section_restrict_visibility %]
   </td>
-  </tr></table>
+ </tr>
+  [%# *** Summary *** %]
+ <tr>
+  <td>
+    <label accesskey="s" for="short_desc"><u>S</u>ummary</label>:
+  </td>
+  <td>
+     [% PROCESS input inputname => "short_desc" size => "80" colspan => 2
+                          maxlength => 255 spellcheck => "true" no_td => 1 %]
+  </td>
+ </tr>
+</table>
 
   <table class="edit_form">
     <tr>
@@ -293,17 +304,7 @@
                                   && bug.alias %]
           </td>
         </tr>
-        [% END %] 
-        [%# *** Summary *** %]
-        <tr>
-          <td>
-            <label accesskey="s" for="short_desc"><u>S</u>ummary</label>:
-          </td>
-          <td>
-            [% PROCESS input inputname => "short_desc" size => "80" colspan => 2
-                             maxlength => 255 spellcheck => "true" no_td => 1 %]
-          </td>
-        </tr>
+        [% END %]
       </table>
     </div>
   </div>
@@ -1153,7 +1154,7 @@
   [% IF user.id %]
     <div class="knob-buttons">
       <input type="submit" value="Save Changes" 
-<!--              id="commit[% id FILTER css_class_quote %]"> -->
+             id="commit[% id FILTER css_class_quote %]">
       [% IF bug.user.canmove %]
         <input type="submit" name="action" id="action[% id FILTER css_class_quote %]" value="[% Param("move-button-text") %]">
       [% END %]
