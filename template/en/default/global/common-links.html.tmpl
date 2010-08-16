@@ -24,27 +24,11 @@
 
 <ul class="links">
   <li><a href="./">Home</a></li>
-  <li><span class="separator">| </span><a href="enter_bug.cgi">New</a></li>
-  <li><span class="separator">| </span><a href="describecomponents.cgi">Browse</a></li>
-  <li><span class="separator">| </span><a href="query.cgi">Search</a></li>
-
-  <li class="form">
-    <span class="separator">| </span>
-    <form action="buglist.cgi" method="get"
-        onsubmit="if (this.quicksearch.value == '')
-                  { alert('Please enter one or more search terms first.');
-                    return false; } return true;">
-    <input class="txt" type="text" id="quicksearch[% qs_suffix FILTER html %]" name="quicksearch">
-    <input class="btn" type="submit" value="Search" 
-           id="find[% qs_suffix FILTER html %]">
-    [%-# Work around FF bug: keep this on one line %]</form>
-  <a href="page.cgi?id=quicksearch.html" title="Quicksearch Help">[?]</a></li>
-
-  <li><span class="separator">| </span><a href="report.cgi">Reports</a></li>
-
+  <li><a href="enter_bug.cgi">New</a></li>
+  <li><a href="describecomponents.cgi">Browse</a></li>
+  <li><a href="query.cgi">Search</a></li>
   <li>
     [% IF Param('shutdownhtml') || Bugzilla.has_flags %]
-      <span class="separator">| </span>
       [% IF user.id %]
         <a href="request.cgi?requester=[% user.login FILTER url_quote %]&amp;requestee=
                  [% user.login FILTER url_quote %]&amp;do_union=1&amp;group=type&amp;action=queue">My Requests</a>
@@ -55,19 +39,18 @@
   [%-# Work around FF bug: keep this on one line %]</li>
 
   [% IF user.login %]
-    <li><span class="separator">| </span><a href="userprefs.cgi">Preferences</a></li>
+    <a href="userprefs.cgi">Preferences</a></li>
     [% IF user.in_group('tweakparams') || user.in_group('editusers') || user.can_bless
           || (Param('useclassification') && user.in_group('editclassifications'))
           || user.in_group('editcomponents') || user.in_group('admin') || user.in_group('creategroups')
           || user.in_group('editkeywords') || user.in_group('bz_canusewhines')
           || user.get_products_by_permission("editcomponents").size %]
-      <li><span class="separator">| </span><a href="admin.cgi">Administration</a></li>
+      <li><a href="admin.cgi">Administration</a></li>
     [% END %]
 
     [% PROCESS link_to_documentation %]
 
     <li>
-      <span class="separator">| </span>
       [% IF user.authorizer.can_logout %]
         <a href="index.cgi?logout=1">Log&nbsp;out</a>
       [% ELSE %]
@@ -104,6 +87,18 @@
     [% END %]
   [% END %]
 </ul>
+
+<div id="searchbox" class="form">
+	<form action="buglist.cgi" method="get"
+	    onsubmit="if (this.quicksearch.value == '')
+	              { alert('Please enter one or more search terms first.');
+	                return false; } return true;">
+		<input class="txt" type="text" id="quicksearch[% qs_suffix FILTER html %]" name="quicksearch">
+		<input class="btn" type="submit" value="Search" 
+		       id="find[% qs_suffix FILTER html %]">
+	</form>
+</div>
+
 
 [% Hook.process("link-row") %]
 [% BLOCK link_to_documentation %]

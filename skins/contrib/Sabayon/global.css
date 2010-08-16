@@ -31,6 +31,12 @@
 /* global (end) */
 
 /* header (begin) */
+	h1.title {
+		font-size: 2em;
+		color: white;
+		margin: 1em 0pt;
+	}
+
     .lang_current {
         font-weight: bold;
     }
