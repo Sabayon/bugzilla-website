@@ -71,7 +71,6 @@
     [% IF Param('createemailregexp')
           && user.authorizer.user_can_create_account %]
       <li id="new_account_container[% qs_suffix FILTER html %]">
-        <span class="separator">| </span>
         <a href="createaccount.cgi">New&nbsp;Account</a>
       </li>
     [% END %]
@@ -94,7 +93,7 @@
 	              { alert('Please enter one or more search terms first.');
 	                return false; } return true;">
 		<input class="txt" type="text" id="quicksearch[% qs_suffix FILTER html %]" name="quicksearch">
-		<input class="btn" type="submit" value="Search" 
+		<input class="btn" type="submit" value="Search"
 		       id="find[% qs_suffix FILTER html %]">
 	</form>
 </div>
@@ -104,7 +103,6 @@
 [% BLOCK link_to_documentation %]
     [% IF doc_section && Param('docs_urlbase') %]
       <li>
-        <span class="separator">| </span>
         <a href="[% docs_urlbase _ doc_section FILTER html %]" target="_blank">Help</a>
       </li>
     [% END %]

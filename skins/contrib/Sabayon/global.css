@@ -74,13 +74,41 @@
         margin: 0;
         padding: 0;
         list-style-type: none;
+		float: left;
     }
 
     ul.links li {
         display: inline;
         white-space: nowrap;
     }
+
+    ul.links li a,
+	ul.links li a:active,
+	ul.links li a:link,
+	ul.links li a:visited {
+		color: #EEE;
+		text-decoration: none;
+	}
+
+	ul.links li a:hover {
+		text-decoration: underline;
+	}
+
 /* link lists (end) */
+
+/* searchbox (begin)   */
+	#searchbox {
+		float: right;
+	}
+
+	#searchbox input {
+		border: 1px solid #666;
+		background-color: #222;
+		height: 20px;
+		color: #FFF;
+		padding: 0;
+	}
+/* searchbox (end) */
 
 /* tabs (begin) */
     .tabs td {
