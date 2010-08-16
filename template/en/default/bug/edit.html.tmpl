@@ -139,6 +139,107 @@
   //-->
   </script>
 
+<div style="float: right;">
+  <table style="background-color: #edf2f2; -moz-border-radius: 5px;
+          padding:2px; margin: 0em; margin-top: 1em; margin-bottom: 1em; clear: both;">
+    <tr>
+      <td>
+        <b>Product:</b>
+      </td>
+      <td>
+        <a href="browse.cgi?product=[% bug.product FILTER url_quote %]">[% bug.product FILTER html %]</a>
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        <b>Component:</b>
+      </td>
+      <td>
+        [% bug.component FILTER html %]
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        <b>Version:</b>
+      </td>
+      <td>
+        [% bug.version FILTER html %]
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        <b>Status:</b>
+      </td>
+      <td>
+        [% bug.bug_status FILTER html %]
+      </td>
+    </tr>
+
+    [% IF bug.bug_status == "RESOLVED" %]
+      <tr>
+        <td>
+          <b>Resolution:</b>
+        </td>
+        <td>
+          [% bug.resolution FILTER html %]
+          [% IF bug.dup_id && bug.resolution == "DUPLICATE" %]
+            of [%+ "bug ${bug.dup_id}" FILTER bug_link(bug.dup_id) %]
+          [% END %]
+        </td>
+        </td>
+      </tr>
+    [% ELSE %]
+      <tr>
+        <td>
+          <b>Priority:</b>
+        </td>
+        <td>
+          [% bug.priority FILTER html %]
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <b>Severity:</b>
+        </td>
+        <td>
+          [% bug.bug_severity FILTER html %]
+        </td>
+      </tr>
+      [% IF bug.target_milestone != "---" %]
+      <tr>
+        <td>
+          <b>Target:</b>
+        </td>
+        <td>
+          [% bug.target_milestone FILTER html %]
+        </td>
+      </tr>
+      [% END %]
+    [% END %]
+
+    [% IF use_votes %]
+    [% IF bug.bug_status == "CLOSED" || bug.bug_status == "RESOLVED" %]
+    [% ELSE %]
+    <tr>
+      <td>
+        <b>Votes:</b>
+      </td>
+      <td>
+        <a href="votes.cgi?action=show_bug&amp;bug_id=[% bug.bug_id %]">
+          [% bug.votes FILTER html %]
+        </a>
+        (<a href="votes.cgi?action=show_user&amp;bug_id=[% bug.bug_id %]">
+        vote</a>)
+      </td>
+    </tr>
+    [% END %]
+    [% END %]
+  </table>
+</div>
+
 <form name="changeform" method="post" action="process_bug.cgi">
 
   <input type="hidden" name="delta_ts" value="[% bug.delta_ts %]">
