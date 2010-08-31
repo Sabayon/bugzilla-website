@@ -201,12 +201,6 @@ div#docslinks {
      width: 50em;
 }
 
-.bz_comment_user, .bz_comment_time, .bz_comment_number, 
-.bz_private_checkbox, .bz_comment_actions
-{
-    margin: 0 .5em;
-}
-
 .bz_comment_actions, .bz_comment_number, .bz_private_checkbox {
     float: right;
 }
@@ -229,10 +223,30 @@ div#docslinks {
 }
 
 .bz_comment_head, .bz_first_comment_head {
-    padding-top: .1em;
-    padding-bottom: .1em;
-    padding-left: .5em;
-    background-color: #e0e0e0;
+	background-color:#083671;
+	font-size:1.2em;
+	margin:0.5em 0 0;
+	padding:0.4em;
+	color: #DDD;
+	-moz-border-radius: 0.2em;
+	-webkit-border-radius: 0.2em;
+	border-radius: 0.2em;
+}
+
+.bz_comment_head a:visited,
+.bz_comment_head a:active,
+.bz_comment_head a:link,
+.bz_first_comment_head a:visited,
+.bz_first_comment_head a:active,
+.bz_first_comment_head a:visible {
+	font-size:1.2em;
+	color: #DDD;
+	text-decoration: underline;
+}
+
+.bz_comment_head a:hover,
+.bz_first_comment_head a:hover {
+	color: #FFF;
 }
 
 .bz_comment_user_images img {
