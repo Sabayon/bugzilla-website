@@ -201,8 +201,18 @@ div#docslinks {
      width: 50em;
 }
 
-.bz_comment_actions, .bz_comment_number, .bz_private_checkbox {
+.bz_comment_actions, .bz_private_checkbox, .bz_comment_time {
     float: right;
+	margin: 0 0.5em;
+}
+
+.bz_comment_number {
+	float: left;
+	margin: 0 1em 0 0;
+}
+
+.bz_comment_number:after{
+	content: " - "
 }
 
 .bz_collapse_expand_comments {
