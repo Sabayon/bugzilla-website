@@ -249,7 +249,14 @@
 
   [% PROCESS section_title %]
 
-  [% PROCESS comment_box %]
+  [%# *** Additional Comments *** %]
+  <div id="comments">
+    [% PROCESS bug/comments.html.tmpl
+      comments = bug.comments
+      mode = user.id ? "edit" : "show"
+    %]
+  </div>
+
   <table class="edit_form">
     <tr>
       [%# 1st Column %]
@@ -328,19 +335,13 @@
                num_attachment_flag_types = bug.num_attachment_flag_types
                show_attachment_flags = bug.show_attachment_flags
     %]
+
+	[% PROCESS comment_box %]
   </td>
   <td>
     [% PROCESS section_restrict_visibility %]
   </td>
   </tr></table>
-
-  [%# *** Additional Comments *** %]
-  <div id="comments">
-    [% PROCESS bug/comments.html.tmpl
-      comments = bug.comments
-      mode = user.id ? "edit" : "show"
-    %]
-  </div>
 
 </form>
 
