@@ -8,10 +8,13 @@
 }
 
 .bz_bug .edit_form {
-  width: 100%;
+  width: 99%;
 }
 .bz_bug .edit_form table {
   width: 100%;
+}
+.bz_show_bug_column {
+  width: 50%;
 }
 .bz_bug .edit_form .text_input {
   width: 100%;
