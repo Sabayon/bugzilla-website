@@ -249,47 +249,7 @@
 
   [% PROCESS section_title %]
 
-  [%# *** Additional Comments *** %]
-  <div id="comments">
-    [% PROCESS bug/comments.html.tmpl
-      comments = bug.comments
-      mode = user.id ? "edit" : "show"
-    %]
-  </div>
-
-  <table id="bz_big_form_parts" cellspacing="0" cellpadding="0"><tr>
-  <td>
-    [% IF user.is_timetracker %]
-      [% PROCESS section_timetracking %]
-    [% END %]
-
-    [%# *** Attachments *** %]
-
-    [% PROCESS attachment/list.html.tmpl
-               attachments = bug.attachments
-               bugid       = bug.bug_id
-               num_attachment_flag_types = bug.num_attachment_flag_types
-               show_attachment_flags = bug.show_attachment_flags
-    %]
-
-    [% PROCESS comment_box %]
-  </td>
-  <td>
-    [% PROCESS section_restrict_visibility %]
-  </td>
- </tr>
-  [%# *** Summary *** %]
- <tr>
-  <td>
-    <label accesskey="s" for="short_desc"><u>S</u>ummary</label>:
-  </td>
-  <td>
-     [% PROCESS input inputname => "short_desc" size => "80" colspan => 2
-                          maxlength => 255 spellcheck => "true" no_td => 1 %]
-  </td>
- </tr>
-</table>
-
+  [% PROCESS comment_box %]
   <table class="edit_form">
     <tr>
       [%# 1st Column %]
@@ -354,6 +314,34 @@
     </tr>
   </table>
 
+  <table id="bz_big_form_parts" cellspacing="0" cellpadding="0"><tr>
+  <td>
+    [% IF user.is_timetracker %]
+      [% PROCESS section_timetracking %]
+    [% END %]
+
+    [%# *** Attachments *** %]
+
+    [% PROCESS attachment/list.html.tmpl
+               attachments = bug.attachments
+               bugid       = bug.bug_id
+               num_attachment_flag_types = bug.num_attachment_flag_types
+               show_attachment_flags = bug.show_attachment_flags
+    %]
+  </td>
+  <td>
+    [% PROCESS section_restrict_visibility %]
+  </td>
+  </tr></table>
+
+  [%# *** Additional Comments *** %]
+  <div id="comments">
+    [% PROCESS bug/comments.html.tmpl
+      comments = bug.comments
+      mode = user.id ? "edit" : "show"
+    %]
+  </div>
+
 </form>
 
 [%############################################################################%]
@@ -405,7 +393,17 @@
                                   && bug.alias %]
           </td>
         </tr>
-        [% END %]
+        [% END %] 
+        [%# *** Summary *** %]
+        <tr>
+          <td>
+            <label accesskey="s" for="short_desc"><u>S</u>ummary</label>:
+          </td>
+          <td>
+            [% PROCESS input inputname => "short_desc" size => "80" colspan => 2
+                             maxlength => 255 spellcheck => "true" no_td => 1 %]
+          </td>
+        </tr>
       </table>
     </div>
   </div>
