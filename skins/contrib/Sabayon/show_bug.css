@@ -117,8 +117,8 @@ table#flags {
 
 hr {
 	height: 1px;
-	border: none;
-	border-width: 1px none none;
+	border-width: 1px;
 	border-style: dotted none none;
 	border-color: #666;
+	margin: 1em 0;
 }
