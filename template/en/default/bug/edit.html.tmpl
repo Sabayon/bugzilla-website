@@ -57,7 +57,7 @@
       var prefix = "(In reply to comment #" + id + ")\n";
       var replytext = "";
       [% IF user.settings.quote_replies.value == 'quoted_reply' %]
-        /* pre id="comment_name_N" */
+       /* pre id="comment_name_N" */
         var text_elem = document.getElementById('comment_text_'+id);
         var text = getText(text_elem);
 
@@ -257,6 +257,8 @@
     %]
   </div>
 
+  <hr />
+
   <table class="edit_form">
     <tr>
       [%# 1st Column %]
@@ -312,11 +314,6 @@
          [% PROCESS section_flags %]
 
         </table>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="3">
-          <hr id="bz_top_half_spacer">
       </td>
     </tr>
   </table>

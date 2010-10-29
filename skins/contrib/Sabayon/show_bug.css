@@ -114,3 +114,11 @@ table#flags {
 .knob-buttons {
     float: right;
 }
+
+hr {
+	height: 1px;
+	border: none;
+	border-width: 1px none none;
+	border-style: dotted none none;
+	border-color: rgb(102, 102, 102);
+}
