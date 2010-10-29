@@ -39,7 +39,7 @@
   [%-# Work around FF bug: keep this on one line %]</li>
 
   [% IF user.login %]
-    <a href="userprefs.cgi">Preferences</a></li>
+    <li><a href="userprefs.cgi">Preferences</a></li>
     [% IF user.in_group('tweakparams') || user.in_group('editusers') || user.can_bless
           || (Param('useclassification') && user.in_group('editclassifications'))
           || user.in_group('editcomponents') || user.in_group('admin') || user.in_group('creategroups')
@@ -50,20 +50,19 @@
 
     [% PROCESS link_to_documentation %]
 
-    <li>
       [% IF user.authorizer.can_logout %]
-        <a href="index.cgi?logout=1">Log&nbsp;out</a>
+        <li><a href="index.cgi?logout=1">Log&nbsp;out</a></li>
       [% ELSE %]
-        Logged&nbsp;in&nbsp;as
+        <li>Logged&nbsp;in&nbsp;as
       [% END %]
       [% IF sudoer %]
         [%+ sudoer.login FILTER html %] (<b>impersonating
         [%+ user.login FILTER html %]</b>
-        <a href="relogin.cgi?action=end-sudo">end session</a>)
+        <a href="relogin.cgi?action=end-sudo">end session</a></li>)
       [% ELSE %]
-        [%+ user.login FILTER html %]
+        [%+ user.login FILTER html %]</li>
       [% END %]
-    [%-# Work around FF bug: keep this on one line %]</li>
+    [%-# Work around FF bug: keep this on one line %]
   [% ELSE %]
   
     [% PROCESS link_to_documentation %]
