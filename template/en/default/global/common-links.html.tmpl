@@ -27,16 +27,15 @@
   <li><a href="enter_bug.cgi">New</a></li>
   <li><a href="describecomponents.cgi">Browse</a></li>
   <li><a href="query.cgi">Search</a></li>
-  <li>
     [% IF Param('shutdownhtml') || Bugzilla.has_flags %]
       [% IF user.id %]
-        <a href="request.cgi?requester=[% user.login FILTER url_quote %]&amp;requestee=
-                 [% user.login FILTER url_quote %]&amp;do_union=1&amp;group=type&amp;action=queue">My Requests</a>
+        <li><a href="request.cgi?requester=[% user.login FILTER url_quote %]&amp;requestee=
+                 [% user.login FILTER url_quote %]&amp;do_union=1&amp;group=type&amp;action=queue">My Requests</a></li>
       [% ELSE %]
-        <a href="request.cgi">Requests</a>
+        <li><a href="request.cgi">Requests</a></li>
       [% END %]
     [% END %]
-  [%-# Work around FF bug: keep this on one line %]</li>
+  [%-# Work around FF bug: keep this on one line %]
 
   [% IF user.login %]
     <li><a href="userprefs.cgi">Preferences</a></li>
