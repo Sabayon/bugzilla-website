@@ -31,7 +31,6 @@
 [% login_target = urlbase _ login_target %]
 
 <li id="mini_login_container[% qs_suffix %]">
-  <span class="separator">| </span>
   <a id="login_link[% qs_suffix %]" href="?GoAheadAndLogIn=1"
      onclick="return show_mini_login_form('[% qs_suffix %]')">Log In</a>
   <form action="[% login_target FILTER html %]" method="POST" 
@@ -102,8 +101,7 @@
   </form>
 </li>
 <li id="forgot_container[% qs_suffix %]">
-  <span class="separator">| </span>
-  <a id="forgot_link[% qs_suffix %]" href="?GoAheadAndLogIn=1#forgot"
+   <a id="forgot_link[% qs_suffix %]" href="?GoAheadAndLogIn=1#forgot"
      onclick="return show_forgot_form('[% qs_suffix %]')">Forgot Password</a>
   <form action="token.cgi" method="post" id="forgot_form[% qs_suffix %]"
         class="mini_forgot bz_default_hidden">

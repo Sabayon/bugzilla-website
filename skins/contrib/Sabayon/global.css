@@ -81,7 +81,7 @@
     ul.links li {
         display: inline;
         white-space: nowrap;
-    }
+}
 
     ul.links li a,
 	ul.links li a:active,
@@ -89,6 +89,8 @@
 	ul.links li a:visited {
 		color: #EEE;
 		text-decoration: none;
+		font-size: 1.2em;
+		margin: 0 1em 0 0;
 	}
 
 	ul.links li a:hover {
