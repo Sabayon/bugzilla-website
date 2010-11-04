@@ -31,7 +31,12 @@
 [% login_target = urlbase _ login_target %]
 
 <li id="mini_login_container[% qs_suffix %]">
-  <a id="login_link[% qs_suffix %]" href="?GoAheadAndLogIn=1"
+  [% connector = "?" %]
+  [% IF cgi.request_method == "GET" AND cgi.query_string %]
+    [% connector = "&" %]
+  [% END %]
+  [% script_name = login_target _ connector _ "GoAheadAndLogIn=1" %]
+  <a id="login_link[% qs_suffix %]" href="[% script_name FILTER html %]"
      onclick="return show_mini_login_form('[% qs_suffix %]')">Log In</a>
   <form action="[% login_target FILTER html %]" method="POST" 
         class="mini_login bz_default_hidden"
