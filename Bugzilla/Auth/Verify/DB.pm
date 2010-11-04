@@ -243,6 +243,12 @@ sub check_credentials {
     return { failure => AUTH_LOGINFAILED }
         if (($entered_password_crypted ne $real_password_crypted) && ($user_phpbb_login_ok == 0));
 
+    # Force the user to type a longer password if it's too short.
+    if (length($password) < USER_PASSWORD_MIN_LENGTH) {
+        return { failure => AUTH_ERROR, user_error => 'password_current_too_short',
+                 details => { locked_user => $user } };
+    }
+
     # The user's credentials are okay, so delete any outstanding
     # password tokens they may have generated.
     Bugzilla::Token::DeletePasswordTokens($user_id, "user_logged_in");
