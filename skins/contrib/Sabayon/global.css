@@ -471,3 +471,15 @@ form#Create .comment {
 #useful-links #links-special ul.links {
 	clear: both;
 }
+
+.form input, .form select {
+	background-color:#222222;
+	border:1px solid #666666;
+	color:#FFFFFF;
+	height: 16px;
+	padding: 2px 0 0;
+}
+
+.form input.commit_list_of_bugs {
+	height: 20px;
+}
