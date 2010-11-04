@@ -18,6 +18,10 @@
   * Contributor(s): Myk Melez <myk@mozilla.org>
   */
 
+.bz_buglist {
+	font-size: 1.3em;
+}
+
 .search_description {
   margin: .5em 0;
   padding: 0;
@@ -46,18 +50,11 @@
 .bz_sort_order_primary   { color: black; }
 .bz_sort_order_secondary { color: #777;  }
 
+.bz_bugitem {
+	height: 2.2em;
+}
 
 .bz_id_column {
-}
-
-.bz_row_odd {
-    background-color: #F7F7F7;
-    color: #000000;
-}
-
-.bz_row_even {
-    background-color: #FFFFFF;
-    color: #000000;
 }
 
 /* Style bug rows according to severity. */

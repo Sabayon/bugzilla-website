@@ -466,7 +466,9 @@ form#Create .comment {
     background-image: url(global/down.png);
 }
 
-/* Footer */
+/* 
+ * Footer 
+ */
 #useful-links #links-saved ul.links,
 #useful-links #links-special ul.links {
 	clear: both;
