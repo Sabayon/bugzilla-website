@@ -122,3 +122,18 @@ hr {
 	border-color: #666;
 	margin: 1em 0;
 }
+
+/* Info Box */
+#infobox {
+	float: right;
+}
+
+#infobox table {
+	background-color: #edf2f2;
+	padding: 0.5em;
+	margin: 2em 0 0;
+	clear: both;
+	border-radius: 0.5em;
+	-moz-border-radius: 0.5em;
+	-webkit-radius-border: 0.5em;
+}
