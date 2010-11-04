@@ -480,6 +480,11 @@ form#Create .comment {
 	padding: 2px 0 0;
 }
 
-.form input.commit_list_of_bugs {
+.form #commit_list_of_bugs {
+	height: 22px;
+	padding-top: 1px;
+}
+
+.form #lob_action {
 	height: 20px;
 }
