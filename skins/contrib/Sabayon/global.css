@@ -81,6 +81,7 @@
     ul.links li {
         display: inline;
         white-space: nowrap;
+	color: #FFF;
 }
 
     ul.links li a,
