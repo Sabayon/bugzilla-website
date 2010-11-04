@@ -127,8 +127,8 @@ hr {
 #infobox {
 	float: right;
 	padding: 0.5em;
-	margin: 3em;
-        background-color: #333;
+	margin-top: 3em;
+        background-color: #222;
 	color: #FFF;
         border-radius: 0.5em;
         -moz-border-radius: 0.5em;
@@ -140,5 +140,5 @@ hr {
 }
 
 #infobox table tr td b {
-	padding-left: 1em;
+	padding-right: 1em;
 }
