@@ -465,3 +465,9 @@ form#Create .comment {
 #down_button {
     background-image: url(global/down.png);
 }
+
+/* Footer */
+#useful-links #links-saved ul.links,
+#useful-links #links-special ul.links {
+	clear: both;
+}
