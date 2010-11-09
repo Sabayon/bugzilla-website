@@ -246,8 +246,6 @@
   <input type="hidden" name="id" value="[% bug.bug_id %]">
   <input type="hidden" name="token" value="[% issue_hash_token([bug.id, bug.delta_ts]) FILTER html %]">
 
-  [% PROCESS section_title %]
-
   [%# *** Additional Comments *** %]
   <div id="comments">
     [% PROCESS bug/comments.html.tmpl
@@ -256,7 +254,7 @@
     %]
   </div>
 
-  <hr />
+  [% PROCESS section_title %]
 
   <table class="edit_form">
     <tr>
