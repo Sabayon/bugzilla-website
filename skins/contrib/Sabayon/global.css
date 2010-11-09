@@ -80,6 +80,8 @@
         list-style-type: none;
 		float: left;
 		line-height: 4em;
+		/* set here or webkit has a brainfart */
+		width: 75%
     }
 
     ul.links li {

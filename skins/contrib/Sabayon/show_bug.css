@@ -127,12 +127,11 @@ hr {
 #infobox {
 	float: right;
 	padding: 0.5em;
-	margin-top: 3em;
-        background-color: #222;
+	background-color: #222;
 	color: #FFF;
-        border-radius: 0.5em;
-        -moz-border-radius: 0.5em;
-        -webkit-radius-border: 0.5em;
+	border-radius: 0.5em;
+	-moz-border-radius: 0.5em;
+	-webkit-radius-border: 0.5em;
 }
 
 #infobox table tr {
@@ -141,4 +140,13 @@ hr {
 
 #infobox table tr td b {
 	padding-right: 1em;
+}
+
+#infobox a,
+#infobox a:link,
+#infobox a:visited,
+#infobox a:active,
+#infobox a:hover
+ {
+	color: #FFF;
 }
