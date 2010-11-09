@@ -28,6 +28,10 @@
     pre, code, kbd {
         font-size: medium;
     }
+
+	#bugzilla-body {
+	    padding: 1em 0;
+	}
 /* global (end) */
 
 /* header (begin) */
