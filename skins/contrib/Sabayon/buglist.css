@@ -58,16 +58,32 @@
 }
 
 /* Style bug rows according to severity. */
+.bz_enhancement td.first-child {
+border-left:10px solid #2C7F00;
+}
+
+.bz_trivial td.first-child {
+border-left:10px solid #B7FD45;
+}
+
+.bz_minor td.first-child {
+border-left:10px solid #D6FD48;
+}
+
+.bz_normal td.first-child {
+border-left:10px solid #AAA;
+}
+
+.bz_major td.first-child {
+border-left:10px solid #FDAE3E;
+}
+
 .bz_blocker td.first-child {
-border-left:10px solid ##FDAE3E;
+border-left:10px solid #FD4A2E;
 }
 
 .bz_critical td.first-child {
 border-left:10px solid #FF0000;
-}
-
-.bz_enhancement td.first-child {
-border-left:10px solid #2C7F00;
 }
 
 /* Align columns in the "change multiple bugs" form to the right. */
