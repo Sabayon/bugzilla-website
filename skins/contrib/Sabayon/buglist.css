@@ -58,9 +58,17 @@
 }
 
 /* Style bug rows according to severity. */
-.bz_blocker { color: red; font-weight: bold; }
-.bz_critical { color: red; }
-.bz_enhancement { color: #666; background-color: white; }
+.bz_blocker td.first-child {
+border-left:10px solid ##FDAE3E;
+}
+
+.bz_critical td.first-child {
+border-left:10px solid #FF0000;
+}
+
+.bz_enhancement td.first-child {
+border-left:10px solid #2C7F00;
+}
 
 /* Align columns in the "change multiple bugs" form to the right. */
 table#form tr th { text-align: right; }
@@ -78,7 +86,6 @@ tr.bz_secure td.first-child {
 }
 
 th.first-child, td.first-child {
-  padding-left: 20px;
 }
 
 tr.bz_secure_mode_implied td.first-child {
