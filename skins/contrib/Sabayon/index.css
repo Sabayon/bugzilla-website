@@ -16,7 +16,7 @@
 
 /* index page (begin) */
 	/* This is to make the lists wrap the images in the boxes */
-	#mid_content li {
+	#common_actions ul li {
 		clear: none;
 	}
 
