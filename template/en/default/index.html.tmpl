@@ -120,68 +120,85 @@ YAHOO.util.Event.onDOMReady(onLoadActions);
 [% END %]
 
 <div id="page-index">
-  <!-- <div class="intro"></div> -->
-  <h3>Welcome!</h3>
-  <p>Welcome to the Sabayon Linux issue tracker.  This site is for <a href="http://bugs.sabayon.org/enter_bug.cgi">bug submissions</a> as well
-as <a href="http://bugs.sabayon.org/enter_bug.cgi?product=Entropy&format=packreq">feature and package requests</a>.  Before making a submission, please make sure to do a <a href="http://bugs.sabayon.org/query.cgi">search</a>.
- This will ensure that you don't submit a duplicate, and will tell you if this is an issue
- that is being addressed, or one that has already been fixed.</p>
+	<div id="col1" class="col_mid">
+		<div id="introduction" class="block">
+			<img src="images/sabayon-logo-95px.png" alt="Sabayon Logo"/>
+			<h2>Welcome</h2>
+			<p>Welcome to the Sabayon Linux issue tracker.  This site is for <a href="http://bugs.sabayon.org/enter_bug.cgi">bug submissions</a> as well
+			as <a href="http://bugs.sabayon.org/enter_bug.cgi?product=Entropy&format=packreq">feature and package requests</a>.  Before making a submission, please make sure to do a <a href="http://bugs.sabayon.org/query.cgi">search</a>.
+			This will ensure that you don't submit a duplicate, and will tell you if this is an issue
+			that is being addressed, or one that has already been fixed.</p>
 
-<p>When submitting a bug report, please try to provide as much information as possible including
- program and version, logs, tracebacks, and a description of what conditions are necessary to 
-reproduce the problem.  The more information we have, the better we are able to track the issue 
-down and get it fixed.
-<p>
+			<p>When submitting a bug report, please try to provide as much information as possible including
+			program and version, logs, tracebacks, and a description of what conditions are necessary to 
+			reproduce the problem. The more information we have, the better we are able to track the issue 
+			down and get it fixed.</p>
+		</div>
+	</div>
+		<div id="col2" class="col_mid col_center">
+		<div id="common_actions" class="block">
+			<img src="images/actions.png" alt="Bugs!"/>
+			<h2>Most Common Actions</h2>
+				<ul>
+					 <li id="entropyreq">
+						<a href="enter_bug.cgi?product=Entropy&format=packreq">Make a Entropy Package Request</a>
+					</li>
+					<li id="openissues">
+						<a href="buglist.cgi?query_format=advanced&bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED&bug_status=VERIFIED&chfieldfrom=3m&chfieldto=Now&chfield=[Bug+creation]&chfield=assigned_to&order=bugs.bug_id%20desc">View Open Issues</a></li>
+					<li id="lastweek">
+						<a href="buglist.cgi?bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED&bugidtype=include&chfieldfrom=1w&chfieldto=Now&query_format=advanced&value-1-0-0=NEW%2CASSIGNED%2CREOPENED&order=bugs.bug_id%20desc">Last Week's Issues</a></li>
+					<li id="query">
+						<a href="query.cgi">Search existing [% terms.bug %] reports</a>
+					</li>
+					<li id="enter-bug">
+						<a href="enter_bug.cgi">Enter a new [% terms.bug %] report</a>
+					</li>
+				</ul>
 
-  <h3>Most common actions:</h3>
-  <ul>
-    <li id="entropyreq"><a href="enter_bug.cgi?product=Entropy&format=packreq">Make a Entropy Package Request</a></li>
-    <li id="openissues"><a 
-href="buglist.cgi?query_format=advanced&bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED&bug_status=VERIFIED&chfieldfrom=3m&chfieldto=Now&chfield=[Bug+creation]&chfield=assigned_to&order=bugs.bug_id%20desc">View Open Issues</a></li>
-    <li id="lastweek"><a 
-href="buglist.cgi?bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED&bugidtype=include&chfieldfrom=1w&chfieldto=Now&query_format=advanced&value-1-0-0=NEW%2CASSIGNED%2CREOPENED&order=bugs.bug_id%20desc">Last 
-Week's Issues</a></li>
-    <li id="query"><a href="query.cgi">Search existing [% terms.bug %] reports</a></li>
-    <li id="enter-bug"><a href="enter_bug.cgi">Enter a new [% terms.bug %] report</a></li></ul>
-[% IF user.id %]
-    <h3>User Management</h3>
-    <ul>
-    <li id="userprefs"><a href="userprefs.cgi">Change password or user preferences</a></li>
-  [% IF user.authorizer.can_logout %]
-    <li id="logout"><a href="relogin.cgi">Log out [% user.login FILTER html %]</a></li>
-  [% END %]
-[% ELSIF user.authorizer.can_login %]
-  </ul>
-<!--    [% PROCESS "account/auth/login-small.html.tmpl" %] -->
-  <ul>
-  [% IF Param('createemailregexp') && user.authorizer.user_can_create_account %]
-    <li id="account"><a href="createaccount.cgi">Open a new [% terms.Bugzilla %] account</a></li>
-  [% END %]
-[% END %]
-    <li id="quick_search_plugin">
-      <a href="javascript:window.external.AddSearchProvider('[% urlbase FILTER html %]search_plugin.cgi')">Add a Sabayon Bugzilla
-      Quick Search plugin</a>
-    </li>
-
-
-    [%# List items of links to more things users can do on this installation. %]
-    [% Hook.process("links") %]
-
-  </ul>
-
-  <form id="f" name="f" action="buglist.cgi" method="get"
-        onsubmit="if (this.quicksearch.value == '')
-                  { alert('Please enter one or more search terms first.');
-                    return false; } return true;">
-  <div>
-    <p>Enter [% terms.abug %] # or some search terms:</p>
-    <input id="quicksearch" type="text" name="quicksearch">
-    <input id="find" type="submit" value="Find">
-    <a href="page.cgi?id=quicksearch.html">[Help]</a>
-  </div>
-  </form>
-
-  <div class="outro"></div>
+			[% IF user.id %]
+		    <h2>User Management</h2>
+			<ul>
+				<li id="userprefs">
+					<a href="userprefs.cgi">Change password or user preferences</a>
+				</li>
+				[% IF user.authorizer.can_logout %]
+				<li id="logout">
+					<a href="relogin.cgi">Log out [% user.login FILTER html %]</a>
+				</li>
+			[% END %]
+			[% ELSIF user.authorizer.can_login %]
+				<!--    [% PROCESS "account/auth/login-small.html.tmpl" %] -->
+				[% IF Param('createemailregexp') && user.authorizer.user_can_create_account %]
+			    <li id="account">
+					<a href="createaccount.cgi">Open a new [% terms.Bugzilla %] account</a><
+				/li>
+			[% END %]
+			[% END %]
+			    <li id="quick_search_plugin">
+					<a href="javascript:window.external.AddSearchProvider('[% urlbase FILTER html %]search_plugin.cgi')">Add a Sabayon Bugzilla Quick Search plugin</a>
+			    </li>
+			[%# List items of links to more things users can do on this installation. %]
+			[% Hook.process("links") %]
+			</ul>
+		</div>
+	</div>
+	<div id="col3" class="col_mid">
+		<div id="search" class="block">
+			<img src="images/search.png" alt="Search"/>
+			<h2>Search</h2>
+			<form id="f" name="f" action="buglist.cgi" method="get"
+				onsubmit="if (this.quicksearch.value == '')
+			    { alert('Please enter one or more search terms first.');
+			    return false; } return true;">
+				<div>
+				    <p>Enter [% terms.abug %] # or some search terms:</p>
+					<input id="quicksearch" type="text" name="quicksearch">
+					<input id="find" type="submit" value="Find">
+					<a href="page.cgi?id=quicksearch.html">[Help]</a>
+				</div>
+			</form>
+		</div>
+	</div>
 </div>
 
 [% PROCESS global/footer.html.tmpl %]
