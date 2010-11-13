@@ -15,11 +15,10 @@
   */
 
 /* index page (begin) */
-
-    #page-index
-    {
-        padding: 0.2em 0.2em 0.15em 0.2em;
-    }
+	/* This is to make the lists wrap the images in the boxes */
+	#mid_content li {
+		clear: none;
+	}
 
     /* By default these contain nothing, but these CSS rules make things
        easier on customizers. */
@@ -29,7 +28,6 @@
     }
 
     /* Hide from NN4 */
-
     #new_release
     {
         border: 2px solid red;
