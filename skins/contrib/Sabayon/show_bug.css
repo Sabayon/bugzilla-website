@@ -63,7 +63,7 @@ table#flags {
     white-space: nowrap;
     
 }
-bz_big_form_parts {
+#bz_big_form_parts {
 	font-size: 1.2em;
 	line-height: 1.6em;
 }
