@@ -29,9 +29,18 @@
         font-size: medium;
     }
 
-	#bugzilla-body {
-	    padding: 1em 0;
-	}
+        #bugzilla-body {
+                padding: 1em 0;
+                font-size: 1.2em;
+		line-height: 1.6em
+        }
+
+        .bz_bug #bugzilla-body {
+                padding: 1em 0;
+		font-size: 1em;
+		line-height: inherit;
+        }
+
 /* global (end) */
 
 /* header (begin) */
