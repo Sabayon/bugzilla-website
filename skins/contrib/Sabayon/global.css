@@ -515,3 +515,12 @@ form#Create .comment {
 .bugnav {
 	font-size: 1.2em
 }
+
+/* Horiz */
+hr {
+	height: 1px;
+	border-width: 1px;
+	border-style: dotted none none;
+	border-color: #666;
+	margin: 1em 0;
+}

@@ -121,14 +121,6 @@ table#flags {
     float: right;
 }
 
-hr {
-	height: 1px;
-	border-width: 1px;
-	border-style: dotted none none;
-	border-color: #666;
-	margin: 1em 0;
-}
-
 /* Info Box */
 #infobox {
 	float: right;
