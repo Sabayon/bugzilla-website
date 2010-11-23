@@ -29,17 +29,22 @@
         font-size: medium;
     }
 
-        #bugzilla-body {
-                padding: 1em 0;
-                font-size: 1.2em;
+	#bugzilla-body {
+		padding: 1em 0;
+		font-size: 1.2em;
 		line-height: 1.6em
-        }
+	}
 
-        .bz_bug #bugzilla-body {
-                padding: 1em 0;
+	.bz_bug #bugzilla-body {
+		padding: 1em 0;
 		font-size: 1em;
 		line-height: inherit;
-        }
+	}
+
+	#bugzilla-body #page-index {
+		/* 1.2x0.835 is approx 1 */
+		font-size: 0.835em;
+	}
 
 /* global (end) */
 
