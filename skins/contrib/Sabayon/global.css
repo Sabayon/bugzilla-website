@@ -496,3 +496,8 @@ form#Create .comment {
 .form #lob_action {
 	height: 20px;
 }
+
+/* Navigation */
+.bugnav {
+	font-size: 1.2em
+}
