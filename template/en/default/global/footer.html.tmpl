@@ -28,19 +28,22 @@
 
 </div>
 
+	</div><!--/inside -->
+</div><!-- mid_wrapper -->
+
 [%# Migration note: below this point, this file corresponds to the old Param
   # 'footerhtml'
   #%]
 
-<div id="footer">
+<div id="footer_wrapper">
+<div id="footer_inner" class="inside">
 [%# Migration note: useful-links.html.tmpl corresponds to %commandmenu% %]
 
-           [% PROCESS "global/useful-links.html.tmpl" %]
+[% PROCESS "global/useful-links.html.tmpl" %]
 
-<div id="copyright">
-	<p>Powered by <a href="http://bugzilla.org">Bugzilla</a>. Copyright Sabayon Foundation 2010, All other trademarks are the property of their respective owners. Some rights reserved.</p>
+[% INCLUDE "/home/sabayonlinux/public_html/include/footer_menu.html.inc" %]
+
 </div>
-
 </div>
 
 [% Hook.process("end") %]

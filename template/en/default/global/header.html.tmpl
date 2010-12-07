@@ -57,12 +57,13 @@
   # set header's default value here only if it is undefined. %]
 [% IF !header.defined %][% header = title %][% END %]
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-                      "http://www.w3.org/TR/html4/loose.dtd">
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     [% Hook.process("start") %]
-    <title>[% title %]</title>
+    <title>[% title %] | Sabayon Bugzilla</title>
 
 [%# Migration note: contents of the old Param 'headerhtml' would go here %]
 
@@ -80,7 +81,11 @@
       # Exactly one is preferred, determined by the "skin" user preference.
       #%]
     [%# CSS cascade - Sabayon Header %]
-     <link rel="stylesheet" href="http://wiki.sabayonlinux.org/skins/sabayon/navbar.css" type="text/css" />
+	<link rel="stylesheet" href="http://static.sabayon.org/site/css/reset-min.css" type="text/css" />
+	<link rel="stylesheet" href="http://static.sabayon.org/site/css/global.css" type="text/css" />
+	<link rel="stylesheet" href="http://static.sabayon.org/site/css/global_menu.css" type="text/css" />
+	<link rel="stylesheet" href="http://static.sabayon.org/site/css/global_styles.css" type="text/css" />
+	<link rel="stylesheet" href="http://static.sabayon.org/site/css/style.css" type="text/css"/>
 
     [% IF user.settings.skin.value != 'standard' %]
       [% user_skin = user.settings.skin.value %]
@@ -90,11 +95,6 @@
     [%# CSS cascade, part 1: Standard Bugzilla stylesheet set (persistent).
       # Always present.
       #%]
-    [% FOREACH style_url = style_urls %]
-      <link href="[% style_url FILTER html %]"
-            rel="stylesheet"
-            type="text/css">
-    [% END %]
     <!--[if lte IE 7]>
       [%# Internet Explorer treats [if IE] HTML comments as uncommented.
         # Use it to import CSS fixes so that Bugzilla looks decent on IE 7
@@ -266,49 +266,21 @@
                  [% ' ' %][% class FILTER css_class_quote %]
                [% END %]">
 
-	<div id="sabnavbar"><!-- Sabayon Linux global navigation bar  (thanks Arch Linux guys! ) -->
-        <div id="sabnavbarlogo">
-                <p><a accesskey="z" title="Visit the main page [z]" href="/" id="logo"></a></p>
-        </div>
-        <div id="sabnavbarmenu">
-               <ul id="sabnavbarlist">
-                        <li id="anb-home"><a href="http://www.sabayon.org/">Home</a></li>
-			<li id="anb-blog"><a href="http://planet.sabayon.org/">Planet</a></li>
-			<li id="anb-irc"><a href="http://www.sabayon.org/chat">Web Chat</a></li>
-			<li id="anb-packages"><a href="http://www.sabayon.org/packages/">Packages</a></li>
-			<li id="anb-gitweb"><a href="http://gitweb.sabayon.org/">Git</a></li>
-			<li id="anb-forums"><a href="http://forum.sabayon.org/">Forum</a></li>
-			<li id="anb-wiki"><a href="http://wiki.sabayon.org/">Wiki</a></li>
-			<li id="anb-bugs"><a href="http://bugs.sabayon.org/">Bugs</a></li>
-			<li id="anb-download"><a href="http://www.sabayon.org/download/">Download</a></li>
-		</ul>
-
-        </div>
-</div>
-
+[% INCLUDE global/sabayon_global_menu.html.tmpl %]
 
 [%# Migration note: the following file corresponds to the old Param
   # 'bannerhtml'
   #%]
-
-<div id="header">
+<div id="top_wrapper">
+<div class="inside">
 
 [% INCLUDE global/banner.html.tmpl %]
 
-<table border="0" cellspacing="0" cellpadding="0" id="titles">
-<tr>
-    <td id="title">
-      <p>[% terms.Bugzilla %]
-      [% " &ndash; $header" IF header %]</p>
-    </td>
-
-  [% IF header_addl_info %]
-    <td id="information">
-      <p class="header_addl_info">[% header_addl_info %]</p>
-    </td>
-  [% END %]
-</tr>
-</table>
+<h1 class="title">
+	[% "$header" IF header %]
+	[% "&nbsp;&ndash;&nbsp;" IF bug.short_desc %]
+	[% bug.short_desc FILTER quoteUrls(bug) %]
+</h1>
 
 <table id="lang_links_container" cellpadding="0" cellspacing="0"
        class="bz_default_hidden"><tr><td>
@@ -329,7 +301,11 @@
 </td></tr></table>
 
 [% PROCESS "global/common-links.html.tmpl" qs_suffix = "_top" %]
+</div>
 </div> [%# header %]
+
+<div id="mid_wrapper">
+	<div class="inside">
 
 <div id="bugzilla-body">
 
