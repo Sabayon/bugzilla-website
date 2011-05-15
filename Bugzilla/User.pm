@@ -44,6 +44,7 @@ package Bugzilla::User;
 use Bugzilla::Error;
 use Bugzilla::Util;
 use Bugzilla::Constants;
+use Bugzilla::Search::Recent;
 use Bugzilla::User::Setting;
 use Bugzilla::Product;
 use Bugzilla::Classification;
@@ -51,8 +52,11 @@ use Bugzilla::Field;
 use Bugzilla::Group;
 
 use DateTime::TimeZone;
+use List::Util qw(max);
 use Scalar::Util qw(blessed);
 use Storable qw(dclone);
+use URI;
+use URI::QueryParam;
 
 use base qw(Bugzilla::Object Exporter);
 @Bugzilla::User::EXPORT = qw(is_available_username
@@ -97,8 +101,6 @@ use constant DB_COLUMNS => (
 use constant NAME_FIELD => 'login_name';
 use constant ID_FIELD   => 'userid';
 use constant LIST_ORDER => NAME_FIELD;
-
-use constant REQUIRED_CREATE_FIELDS => qw(login_name cryptpassword);
 
 use constant VALIDATORS => {
     cryptpassword => \&_check_password,
@@ -334,7 +336,7 @@ sub queries_subscribed {
                 ON ngm.namedquery_id = lif.namedquery_id
           WHERE lif.user_id = ? 
                 AND lif.namedquery_id NOT IN ($query_id_string)
-                AND ngm.group_id IN (" . $self->groups_as_string . ")",
+                AND " . $self->groups_in_sql,
           undef, $self->id);
     require Bugzilla::Search::Saved;
     $self->{queries_subscribed} =
@@ -353,12 +355,157 @@ sub queries_available {
 
     my $avail_query_ids = Bugzilla->dbh->selectcol_arrayref(
         'SELECT namedquery_id FROM namedquery_group_map
-          WHERE group_id IN (' . $self->groups_as_string . ")
+          WHERE '  . $self->groups_in_sql . "
                 AND namedquery_id NOT IN ($query_id_string)");
     require Bugzilla::Search::Saved;
     $self->{queries_available} =
         Bugzilla::Search::Saved->new_from_list($avail_query_ids);
     return $self->{queries_available};
+}
+
+##########################
+# Saved Recent Bug Lists #
+##########################
+
+sub recent_searches {
+    my $self = shift;
+    $self->{recent_searches} ||= 
+        Bugzilla::Search::Recent->match({ user_id => $self->id });
+    return $self->{recent_searches};
+}
+
+sub recent_search_containing {
+    my ($self, $bug_id) = @_;
+    my $searches = $self->recent_searches;
+
+    foreach my $search (@$searches) {
+        return $search if grep($_ == $bug_id, @{ $search->bug_list });
+    }
+
+    return undef;
+}
+
+sub recent_search_for {
+    my ($self, $bug) = @_;
+    my $params = Bugzilla->input_params;
+    my $cgi = Bugzilla->cgi;
+
+    if ($self->id) {
+        # First see if there's a list_id parameter in the query string.
+        my $list_id = $params->{list_id};
+        if (!$list_id) {
+            # If not, check for "list_id" in the query string of the referer.
+            my $referer = $cgi->referer;
+            if ($referer) {
+                my $uri = URI->new($referer);
+                if ($uri->path =~ /buglist\.cgi$/) {
+                    $list_id = $uri->query_param('list_id')
+                               || $uri->query_param('regetlastlist');
+                }
+            }
+        }
+
+        if ($list_id && $list_id ne 'cookie') {
+            # If we got a bad list_id (either some other user's or an expired
+            # one) don't crash, just don't return that list.
+            my $search = Bugzilla::Search::Recent->check_quietly(
+                { id => $list_id });
+            return $search if $search;
+        }
+
+        # If there's no list_id, see if the current bug's id is contained
+        # in any of the user's saved lists.
+        my $search = $self->recent_search_containing($bug->id);
+        return $search if $search;
+    }
+
+    # Finally (or always, if we're logged out), if there's a BUGLIST cookie
+    # and the selected bug is in the list, then return the cookie as a fake
+    # Search::Recent object.
+    if (my $list = $cgi->cookie('BUGLIST')) {
+        # Also split on colons, which was used as a separator in old cookies.
+        my @bug_ids = split(/[:-]/, $list);
+        if (grep { $_ == $bug->id } @bug_ids) {
+            my $search = Bugzilla::Search::Recent->new_from_cookie(\@bug_ids);
+            return $search;
+        }
+    }
+
+    return undef;
+}
+
+sub save_last_search {
+    my ($self, $params) = @_;
+    my ($bug_ids, $order, $vars, $list_id) = 
+        @$params{qw(bugs order vars list_id)};
+
+    my $cgi = Bugzilla->cgi;
+    if ($order) {
+        $cgi->send_cookie(-name => 'LASTORDER',
+                          -value => $order,
+                          -expires => 'Fri, 01-Jan-2038 00:00:00 GMT');
+    }
+
+    return if !@$bug_ids;
+
+    if ($self->id) {
+        on_main_db {
+            my $search;
+            if ($list_id) {
+                # Use eval so that people can still use old search links or
+                # links that don't belong to them.
+                $search = eval { Bugzilla::Search::Recent->check(
+                                    { id => $list_id }) };
+            }
+
+            if ($search) {
+                # We only update placeholders. (Placeholders are
+                # Saved::Search::Recent objects with empty bug lists.)
+                # Otherwise, we could just keep creating new searches
+                # for the same refreshed list over and over.
+                if (!@{ $search->bug_list }) {
+                    $search->set_list_order($order);
+                    $search->set_bug_list($bug_ids);
+                    $search->update();
+                }
+            }
+            else {
+                # If we already have an existing search with a totally
+                # identical bug list, then don't create a new one. This
+                # prevents people from writing over their whole 
+                # recent-search list by just refreshing a saved search
+                # (which doesn't have list_id in the header) over and over.
+                my $list_string = join(',', @$bug_ids);
+                my $existing_search = Bugzilla::Search::Recent->match({
+                    user_id => $self->id, bug_list => $list_string });
+           
+                if (!scalar(@$existing_search)) {
+                    Bugzilla::Search::Recent->create({
+                        user_id    => $self->id,
+                        bug_list   => $bug_ids,
+                        list_order => $order });
+                }
+            }
+        };
+        delete $self->{recent_searches};
+    }
+    # Logged-out users use a cookie to store a single last search. We don't
+    # override that cookie with the logged-in user's latest search, because
+    # if they did one search while logged out and another while logged in,
+    # they may still want to navigate through the search they made while
+    # logged out.
+    else {
+        my $bug_list = join('-', @$bug_ids);
+        if (length($bug_list) < 4000) {
+            $cgi->send_cookie(-name => 'BUGLIST',
+                              -value => $bug_list,
+                              -expires => 'Fri, 01-Jan-2038 00:00:00 GMT');
+        }
+        else {
+            $cgi->remove_cookie('BUGLIST');
+            $vars->{'toolong'} = 1;
+        }
+    }
 }
 
 sub settings {
@@ -464,6 +611,14 @@ sub groups_as_string {
     return scalar(@ids) ? join(',', @ids) : '-1';
 }
 
+sub groups_in_sql {
+    my ($self, $field) = @_;
+    $field ||= 'group_id';
+    my @ids = map { $_->id } @{ $self->groups };
+    @ids = (-1) if !scalar @ids;
+    return Bugzilla->dbh->sql_in($field, \@ids);
+}
+
 sub bless_groups {
     my $self = shift;
 
@@ -524,7 +679,7 @@ sub in_group {
                               FROM group_control_map
                              WHERE product_id = ?
                                    AND $group != 0
-                                   AND group_id IN (" . $self->groups_as_string . ") " .
+                                   AND " . $self->groups_in_sql . ' ' .
                               $dbh->sql_limit(1),
                              undef, $product_id);
 
@@ -550,14 +705,15 @@ sub get_products_by_permission {
                           "SELECT DISTINCT product_id
                              FROM group_control_map
                             WHERE $group != 0
-                              AND group_id IN(" . $self->groups_as_string . ")");
+                              AND " . $self->groups_in_sql);
 
     # No need to go further if the user has no "special" privs.
     return [] unless scalar(@$product_ids);
+    my %product_map = map { $_ => 1 } @$product_ids;
 
     # We will restrict the list to products the user can see.
     my $selectable_products = $self->get_selectable_products;
-    my @products = grep {lsearch($product_ids, $_->id) > -1} @$selectable_products;
+    my @products = grep { $product_map{$_->id} } @$selectable_products;
     return \@products;
 }
 
@@ -744,7 +900,7 @@ sub can_enter_product {
       $product && grep($_->name eq $product->name,
                        @{ $self->get_enterable_products });
 
-    return 1 if $can_enter;
+    return $product if $can_enter;
 
     return 0 unless $warn == THROW_ERROR;
 
@@ -831,7 +987,7 @@ sub check_can_admin_product {
     my ($self, $product_name) = @_;
 
     # First make sure the product name is valid.
-    my $product = Bugzilla::Product::check_product($product_name);
+    my $product = Bugzilla::Product->check($product_name);
 
     ($self->in_group('editcomponents', $product->id)
        && $self->can_see_product($product->name))
@@ -898,10 +1054,9 @@ sub visible_groups_direct {
     my $sth;
    
     if (Bugzilla->params->{'usevisibilitygroups'}) {
-        my $glist = $self->groups_as_string;
         $sth = $dbh->prepare("SELECT DISTINCT grantor_id
                                  FROM group_group_map
-                                WHERE member_id IN($glist)
+                                WHERE " . $self->groups_in_sql('member_id') . "
                                   AND grant_type=" . GROUP_VISIBLE);
     }
     else {
@@ -999,11 +1154,14 @@ sub product_responsibilities {
     return $self->{'product_resp'} if defined $self->{'product_resp'};
     return [] unless $self->id;
 
-    my $list = $dbh->selectall_arrayref('SELECT product_id, id
+    my $list = $dbh->selectall_arrayref('SELECT components.product_id, components.id
                                            FROM components
-                                          WHERE initialowner = ?
-                                             OR initialqacontact = ?',
-                                  {Slice => {}}, ($self->id, $self->id));
+                                           LEFT JOIN component_cc
+                                           ON components.id = component_cc.component_id
+                                          WHERE components.initialowner = ?
+                                             OR components.initialqacontact = ?
+                                             OR component_cc.user_id = ?',
+                                  {Slice => {}}, ($self->id, $self->id, $self->id));
 
     unless ($list) {
         $self->{'product_resp'} = [];
@@ -1054,6 +1212,8 @@ sub match {
     my ($str, $limit, $exclude_disabled) = @_;
     my $user = Bugzilla->user;
     my $dbh = Bugzilla->dbh;
+
+    $str = trim($str);
 
     my @users = ();
     return \@users if $str =~ /^\s*$/;
@@ -1193,7 +1353,7 @@ sub match_field {
         #Concatenate login names, so that we have a common way to handle them.
         my $raw_field;
         if (ref $data->{$field}) {
-            $raw_field = join(" ", @{$data->{$field}});
+            $raw_field = join(",", @{$data->{$field}});
         }
         else {
             $raw_field = $data->{$field};
@@ -1211,7 +1371,7 @@ sub match_field {
             $data->{$field} = '';
         }
         elsif ($fields->{$field}->{'type'} eq 'multi') {
-            @queries =  split(/[\s,;]+/, $raw_field);
+            @queries =  split(/[,;]+/, $raw_field);
             # We will repopulate it later if a match is found, else it must
             # be undefined.
             delete $data->{$field};
@@ -1235,6 +1395,7 @@ sub match_field {
 
         my @logins;
         for my $query (@queries) {
+            $query = trim($query);
             my $users = match(
                 $query,   # match string
                 $limit,   # match limit
@@ -1419,7 +1580,7 @@ sub wants_bug_mail {
     # 
     # We do them separately because if _any_ of them are set, we don't want
     # the mail.
-    if ($wants_mail && $changer && ($self->login eq $changer)) {
+    if ($wants_mail && $changer && ($self->id == $changer->id)) {
         $wants_mail &= $self->wants_mail([EVT_CHANGED_BY_ME], $relationship);
     }    
     
@@ -1463,29 +1624,25 @@ sub wants_mail {
     # Skip DB query if relationship is explicit
     return 1 if $relationship == REL_GLOBAL_WATCHER;
 
-    my $dbh = Bugzilla->dbh;
-
-    my $wants_mail = 
-        $dbh->selectrow_array('SELECT 1
-                                 FROM email_setting
-                                WHERE user_id = ?
-                                  AND relationship = ?
-                                  AND event IN (' . join(',', @$events) . ') ' .
-                                      $dbh->sql_limit(1),
-                              undef, ($self->id, $relationship));
-
-    return defined($wants_mail) ? 1 : 0;
+    my $wants_mail = grep { $self->mail_settings->{$relationship}{$_} } @$events;
+    return $wants_mail ? 1 : 0;
 }
 
-sub is_mover {
+sub mail_settings {
     my $self = shift;
+    my $dbh = Bugzilla->dbh;
 
-    if (!defined $self->{'is_mover'}) {
-        my @movers = map { trim($_) } split(',', Bugzilla->params->{'movers'});
-        $self->{'is_mover'} = ($self->id
-                               && lsearch(\@movers, $self->login) != -1);
+    if (!defined $self->{'mail_settings'}) {
+        my $data =
+          $dbh->selectall_arrayref('SELECT relationship, event FROM email_setting
+                                    WHERE user_id = ?', undef, $self->id);
+        my %mail;
+        # The hash is of the form $mail{$relationship}{$event} = 1.
+        $mail{$_->[0]}{$_->[1]} = 1 foreach @$data;
+
+        $self->{'mail_settings'} = \%mail;
     }
-    return $self->{'is_mover'};
+    return $self->{'mail_settings'};
 }
 
 sub is_insider {
@@ -1503,7 +1660,7 @@ sub is_global_watcher {
     my $self = shift;
 
     if (!defined $self->{'is_global_watcher'}) {
-        my @watchers = split(/[,\s]+/, Bugzilla->params->{'globalwatchers'});
+        my @watchers = split(/[,;]+/, Bugzilla->params->{'globalwatchers'});
         $self->{'is_global_watcher'} = scalar(grep { $_ eq $self->login } @watchers) ? 1 : 0;
     }
     return  $self->{'is_global_watcher'};
@@ -1569,7 +1726,9 @@ sub create {
     my $user = $class->SUPER::create(@_);
 
     # Turn on all email for the new user
-    foreach my $rel (RELATIONSHIPS) {
+    require Bugzilla::BugMail;
+    my %relationships = Bugzilla::BugMail::relationships();
+    foreach my $rel (keys %relationships) {
         foreach my $event (POS_EVENTS, NEG_EVENTS) {
             # These "exceptions" define the default email preferences.
             # 
@@ -1954,6 +2113,13 @@ groups that this user is a member of.
 Returns a string containing a comma-separated list of numeric group ids.  If
 the user is not a member of any groups, returns "-1". This is most often used
 within an SQL IN() function.
+
+=item C<groups_in_sql>
+
+This returns an C<IN> clause for SQL, containing either all of the groups
+the user is in, or C<-1> if the user is in no groups. This takes one
+argument--the name of the SQL field that should be on the left-hand-side
+of the C<IN> statement, which defaults to C<group_id> if not specified.
 
 =item C<in_group($group_name, $product_id)>
 

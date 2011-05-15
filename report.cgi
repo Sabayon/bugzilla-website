@@ -29,6 +29,7 @@ use Bugzilla::Constants;
 use Bugzilla::Util;
 use Bugzilla::Error;
 use Bugzilla::Field;
+use List::MoreUtils qw(uniq);
 
 my $cgi = Bugzilla->cgi;
 my $template = Bugzilla->template;
@@ -107,32 +108,17 @@ else {
 }
 
 # Valid bug fields that can be reported on.
-my @columns = qw(
-    assigned_to
-    reporter
-    qa_contact
-    component
-    classification
-    version
-    votes
-    keywords
-    target_milestone
-);
-# Single-select fields (custom or not) are also accepted as valid.
-my @single_selects = Bugzilla->get_fields({ type => FIELD_TYPE_SINGLE_SELECT,
-                                            obsolete => 0 });
-push(@columns, map { $_->name } @single_selects);
-my %valid_columns = map { $_ => 1 } @columns;
+my $valid_columns = Bugzilla::Search::REPORT_COLUMNS;
 
 # Validate the values in the axis fields or throw an error.
 !$row_field 
-  || ($valid_columns{$row_field} && trick_taint($row_field))
+  || ($valid_columns->{$row_field} && trick_taint($row_field))
   || ThrowCodeError("report_axis_invalid", {fld => "x", val => $row_field});
 !$col_field 
-  || ($valid_columns{$col_field} && trick_taint($col_field))
+  || ($valid_columns->{$col_field} && trick_taint($col_field))
   || ThrowCodeError("report_axis_invalid", {fld => "y", val => $col_field});
 !$tbl_field 
-  || ($valid_columns{$tbl_field} && trick_taint($tbl_field))
+  || ($valid_columns->{$tbl_field} && trick_taint($tbl_field))
   || ThrowCodeError("report_axis_invalid", {fld => "z", val => $tbl_field});
 
 my @axis_fields = ($row_field || EMPTY_COLUMN, 
@@ -285,7 +271,7 @@ elsif ($action eq "plot") {
     $vars->{'data'} = \@image_data;
 }
 else {
-    ThrowCodeError("unknown_action", {action => $cgi->param('action')});
+    ThrowUserError('unknown_action', {action => $action});
 }
 
 my $format = $template->get_format("reports/report", $formatparam,
@@ -332,7 +318,7 @@ sub get_names {
     foreach my $field (@select_fields) {
         my @names =  map($_->name, @{$field->legal_values});
         unshift @names, ' ' if $field->name eq 'resolution'; 
-        $fields{$field->name} = \@names;
+        $fields{$field->name} = [ uniq @names ];
     } 
     my $field_list = $fields{$field};
     my @sorted;
@@ -345,7 +331,9 @@ sub get_names {
         # the normal order.
         #
         # This is O(n^2) but it shouldn't matter for short lists.
-        @sorted = map {lsearch(\@unsorted, $_) == -1 ? () : $_} @{$field_list};
+        foreach my $item (@$field_list) {
+            push(@sorted, $item) if grep { $_ eq $item } @unsorted;
+        }
     }  
     elsif ($isnumeric) {
         # It's not a field we are preserving the order of, so sort it 

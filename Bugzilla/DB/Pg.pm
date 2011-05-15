@@ -52,7 +52,9 @@ use base qw(Bugzilla::DB);
 use constant BLOB_TYPE => { pg_type => DBD::Pg::PG_BYTEA };
 
 sub new {
-    my ($class, $user, $pass, $host, $dbname, $port) = @_;
+    my ($class, $params) = @_;
+    my ($user, $pass, $host, $dbname, $port) = 
+        @$params{qw(db_user db_pass db_host db_name db_port)};
 
     # The default database name for PostgreSQL. We have
     # to connect to SOME database, even if we have
@@ -70,7 +72,8 @@ sub new {
 
     my $attrs = { pg_enable_utf8 => Bugzilla->params->{'utf8'} };
 
-    my $self = $class->db_new($dsn, $user, $pass, $attrs);
+    my $self = $class->db_new({ dsn => $dsn, user => $user, 
+                                pass => $pass, attrs => $attrs });
 
     # all class local variables stored in DBI derived class needs to have
     # a prefix 'private_'. See DBI documentation.
@@ -95,9 +98,14 @@ sub bz_last_key {
 }
 
 sub sql_group_concat {
-    my ($self, $text, $separator) = @_;
-    $separator ||= "','";
-    return "array_to_string(array_accum($text), $separator)";
+    my ($self, $text, $separator, $sort) = @_;
+    $sort = 1 if !defined $sort;
+    $separator = $self->quote(', ') if !defined $separator;
+    my $sql = "array_accum($text)";
+    if ($sort) {
+        $sql = "array_sort($sql)";
+    }
+    return "array_to_string($sql, $separator)";
 }
 
 sub sql_istring {
@@ -184,6 +192,18 @@ sub sql_string_concat {
     return '(CAST(' . join(' AS text) || CAST(', @params) . ' AS text))';
 }
 
+sub sql_string_until {
+    my ($self, $string, $substring) = @_;
+
+    # PostgreSQL does not permit a negative substring length; therefore we
+    # use CASE to only perform the SUBSTRING operation when $substring can
+    # be found withing $string.
+    my $position = $self->sql_position($substring, $string);
+    return "CASE WHEN $position != 0"
+             . " THEN SUBSTRING($string FROM 1 FOR $position - 1)"
+             . " ELSE $string END";
+}
+
 # Tell us whether or not a particular sequence exists in the DB.
 sub bz_sequence_exists {
     my ($self, $seq_name) = @_;
@@ -203,6 +223,19 @@ sub bz_explain {
 # Custom Database Setup
 #####################################################################
 
+sub bz_check_server_version {
+    my $self = shift;
+    my ($db) = @_;
+    my $server_version = $self->SUPER::bz_check_server_version(@_);
+    my ($major_version) = $server_version =~ /^(\d+)/;
+    # Pg 9 requires DBD::Pg 2.17.2 in order to properly read bytea values.
+    if ($major_version >= 9) {
+        local $db->{dbd}->{version} = '2.17.2';
+        local $db->{name} = $db->{name} . ' 9+';
+        Bugzilla::DB::_bz_check_dbd(@_);
+    }
+}
+
 sub bz_setup_database {
     my $self = shift;
     $self->SUPER::bz_setup_database(@_);
@@ -220,6 +253,20 @@ sub bz_setup_database {
                        INITCOND = '{}' 
                    )");
     }
+
+   $self->do(<<'END');
+CREATE OR REPLACE FUNCTION array_sort(ANYARRAY)
+RETURNS ANYARRAY LANGUAGE SQL
+IMMUTABLE STRICT
+AS $$
+SELECT ARRAY(
+    SELECT $1[s.i] AS each_item
+    FROM
+        generate_series(array_lower($1,1), array_upper($1,1)) AS s(i)
+    ORDER BY each_item
+);
+$$;
+END
 
     # PostgreSQL doesn't like having *any* index on the thetext
     # field, because it can't have index data longer than 2770

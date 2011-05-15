@@ -44,6 +44,7 @@ use Bugzilla::Keyword;
 use Bugzilla::Util;
 use Bugzilla::User;
 use Bugzilla::Error;
+use Bugzilla::Search;
 use Bugzilla::Status;
 use Bugzilla::Token;
 
@@ -55,6 +56,7 @@ use File::Find;
 use File::Path qw(rmtree mkpath);
 use File::Spec;
 use IO::Dir;
+use List::MoreUtils qw(firstidx);
 use Scalar::Util qw(blessed);
 
 use base qw(Template);
@@ -84,12 +86,11 @@ sub _load_constants {
 # settings of the user and of the available languages
 # If no Accept-Language is present it uses the defined default
 # Templates may also be found in the extensions/ tree
-sub getTemplateIncludePath {
+sub _include_path {
+    my $lang = shift || '';
     my $cache = Bugzilla->request_cache;
-    my $lang  = $cache->{'language'} || '';
-    $cache->{"template_include_path_$lang"} ||= template_include_path({
-        use_languages => Bugzilla->languages,
-        only_language => $lang });
+    $cache->{"template_include_path_$lang"} ||= 
+        template_include_path({ language => $lang });
     return $cache->{"template_include_path_$lang"};
 }
 
@@ -351,6 +352,128 @@ sub get_bug_link {
     return qq{$pre<a href="$linkval" title="$title">$link_text</a>$post};
 }
 
+#####################
+# Header Generation #
+#####################
+
+# Returns the last modification time of a file, as an integer number of
+# seconds since the epoch.
+sub _mtime { return (stat($_[0]))[9] }
+
+sub mtime_filter {
+    my ($file_url, $mtime) = @_;
+    # This environment var is set in the .htaccess if we have mod_headers
+    # and mod_expires installed, to make sure that JS and CSS with "?"
+    # after them will still be cached by clients.
+    return $file_url if !$ENV{BZ_CACHE_CONTROL};
+    if (!$mtime) {
+        my $cgi_path = bz_locations()->{'cgi_path'};
+        my $file_path = "$cgi_path/$file_url";
+        $mtime = _mtime($file_path);
+    }
+    return "$file_url?$mtime";
+}
+
+# Set up the skin CSS cascade:
+#
+#  1. YUI CSS
+#  2. Standard Bugzilla stylesheet set (persistent)
+#  3. Standard Bugzilla stylesheet set (selectable)
+#  4. All third-party "skin" stylesheet sets (selectable)
+#  5. Page-specific styles
+#  6. Custom Bugzilla stylesheet set (persistent)
+#
+# "Selectable" skin file sets may be either preferred or alternate.
+# Exactly one is preferred, determined by the "skin" user preference.
+sub css_files {
+    my ($style_urls, $yui, $yui_css) = @_;
+    
+    # global.css goes on every page, and so does IE-fixes.css.
+    my @requested_css = ('skins/standard/global.css', @$style_urls,
+                         'skins/standard/IE-fixes.css');
+
+    my @yui_required_css;
+    foreach my $yui_name (@$yui) {
+        next if !$yui_css->{$yui_name};
+        push(@yui_required_css, "js/yui/assets/skins/sam/$yui_name.css");
+    }
+    unshift(@requested_css, @yui_required_css);
+    
+    my @css_sets = map { _css_link_set($_) } @requested_css;
+    
+    my %by_type = (standard => [], alternate => {}, skin => [], custom => []);
+    foreach my $set (@css_sets) {
+        foreach my $key (keys %$set) {
+            if ($key eq 'alternate') {
+                foreach my $alternate_skin (keys %{ $set->{alternate} }) {
+                    my $files = $by_type{alternate}->{$alternate_skin} ||= [];
+                    push(@$files, $set->{alternate}->{$alternate_skin});
+                }
+            }
+            else {
+                push(@{ $by_type{$key} }, $set->{$key});
+            }
+        }
+    }
+    
+    return \%by_type;
+}
+
+sub _css_link_set {
+    my ($file_name) = @_;
+
+    my %set = (standard => mtime_filter($file_name));
+    
+    # We use (^|/) to allow Extensions to use the skins system if they
+    # want.
+    if ($file_name !~ m{(^|/)skins/standard/}) {
+        return \%set;
+    }
+    
+    my $skin_user_prefs = Bugzilla->user->settings->{skin};
+    my $cgi_path = bz_locations()->{'cgi_path'};
+    # If the DB is not accessible, user settings are not available.
+    my $all_skins = $skin_user_prefs ? $skin_user_prefs->legal_values : [];
+    my %skin_urls;
+    foreach my $option (@$all_skins) {
+        next if $option eq 'standard';
+        my $skin_file_name = $file_name;
+        $skin_file_name =~ s{(^|/)skins/standard/}{skins/contrib/$option/};
+        if (my $mtime = _mtime("$cgi_path/$skin_file_name")) {
+            $skin_urls{$option} = mtime_filter($skin_file_name, $mtime);
+        }
+    }
+    $set{alternate} = \%skin_urls;
+    
+    my $skin = $skin_user_prefs->{'value'};
+    if ($skin ne 'standard' and defined $set{alternate}->{$skin}) {
+        $set{skin} = delete $set{alternate}->{$skin};
+    }
+    
+    my $custom_file_name = $file_name;
+    $custom_file_name =~ s{(^|/)skins/standard/}{skins/custom/};
+    if (my $custom_mtime = _mtime("$cgi_path/$custom_file_name")) {
+        $set{custom} = mtime_filter($custom_file_name, $custom_mtime);
+    }
+    
+    return \%set;
+}
+
+# YUI dependency resolution
+sub yui_resolve_deps {
+    my ($yui, $yui_deps) = @_;
+    
+    my @yui_resolved;
+    foreach my $yui_name (@$yui) {
+        my $deps = $yui_deps->{$yui_name} || [];
+        foreach my $dep (reverse @$deps) {
+            push(@yui_resolved, $dep) if !grep { $_ eq $dep } @yui_resolved;
+        }
+        push(@yui_resolved, $yui_name) if !grep { $_ eq $yui_name } @yui_resolved;
+    }
+    return \@yui_resolved;
+}
+
 ###############################################################################
 # Templatization Code
 
@@ -373,14 +496,22 @@ $Template::Stash::PRIVATE = undef;
 $Template::Stash::LIST_OPS->{ contains } =
   sub {
       my ($list, $item) = @_;
-      return grep($_ eq $item, @$list);
+      if (ref $item && $item->isa('Bugzilla::Object')) {
+          return grep($_->id == $item->id, @$list);
+      } else {
+          return grep($_ eq $item, @$list);
+      }
   };
 
 $Template::Stash::LIST_OPS->{ containsany } =
   sub {
       my ($list, $items) = @_;
       foreach my $item (@$items) { 
-          return 1 if grep($_ eq $item, @$list);
+          if (ref $item && $item->isa('Bugzilla::Object')) {
+              return 1 if grep($_->id == $item->id, @$list);
+          } else {
+              return 1 if grep($_ eq $item, @$list);
+          }
       }
       return 0;
   };
@@ -397,14 +528,6 @@ $Template::Stash::LIST_OPS->{ clone } =
 $Template::Stash::SCALAR_OPS->{ 0 } = 
   sub {
       return $_[0];
-  };
-
-# Add a "substr" method to the Template Toolkit's "scalar" object
-# that returns a substring of a string.
-$Template::Stash::SCALAR_OPS->{ substr } = 
-  sub {
-      my ($scalar, $offset, $length) = @_;
-      return substr($scalar, $offset, $length);
   };
 
 # Add a "truncate" method to the Template Toolkit's "scalar" object
@@ -426,6 +549,17 @@ $Template::Stash::SCALAR_OPS->{ truncate } =
 
 ###############################################################################
 
+sub process {
+    my $self = shift;
+    # All of this current_langs stuff allows template_inner to correctly
+    # determine what-language Template object it should instantiate.
+    my $current_langs = Bugzilla->request_cache->{template_current_lang} ||= [];
+    unshift(@$current_langs, $self->context->{bz_language});
+    my $retval = $self->SUPER::process(@_);
+    shift @$current_langs;
+    return $retval;
+}
+
 # Construct the Template object
 
 # Note that all of the failure cases here can't use templateable errors,
@@ -440,7 +574,8 @@ sub create {
 
     my $config = {
         # Colon-separated list of directories containing templates.
-        INCLUDE_PATH => $opts{'include_path'} || getTemplateIncludePath(),
+        INCLUDE_PATH => $opts{'include_path'} 
+                        || _include_path($opts{'language'}),
 
         # Remove white-space before template directives (PRE_CHOMP) and at the
         # beginning and end of templates and template blocks (TRIM) for better
@@ -522,6 +657,7 @@ sub create {
             # See bugs 4928, 22983 and 32000 for more details
             html_linebreak => sub {
                 my ($var) = @_;
+                $var = html_quote($var);
                 $var =~ s/\r\n/\&#013;/g;
                 $var =~ s/\n\r/\&#013;/g;
                 $var =~ s/\r/\&#013;/g;
@@ -627,6 +763,8 @@ sub create {
             html_light => \&Bugzilla::Util::html_light_quote,
 
             email => \&Bugzilla::Util::email_filter,
+            
+            mtime => \&mtime_filter,
 
             # iCalendar contentline filter
             ics => [ sub {
@@ -678,6 +816,8 @@ sub create {
                 {
                     $var = wrap_comment($var, 72);
                 }
+                $var =~ s/\&nbsp;/ /g;
+
                 return $var;
             },
 
@@ -707,7 +847,10 @@ sub create {
             'time2str' => \&Date::Format::time2str,
 
             # Generic linear search function
-            'lsearch' => \&Bugzilla::Util::lsearch,
+            'lsearch' => sub {
+                my ($array, $item) = @_;
+                return firstidx { $_ eq $item } @$array;
+            },
 
             # Currently logged in user, if any
             # If an sudo session is in progress, this is the user we're faking
@@ -759,18 +902,15 @@ sub create {
                     { map { $_->name => $_ } Bugzilla->get_fields() };
                 return $cache->{template_bug_fields};
             },
+            
+            'css_files' => \&css_files,
+            yui_resolve_deps => \&yui_resolve_deps,
 
             # Whether or not keywords are enabled, in this Bugzilla.
             'use_keywords' => sub { return Bugzilla::Keyword->any_exist; },
 
-            'last_bug_list' => sub {
-                my @bug_list;
-                my $cgi = Bugzilla->cgi;
-                if ($cgi->cookie("BUGLIST")) {
-                    @bug_list = split(/:/, $cgi->cookie("BUGLIST"));
-                }
-                return \@bug_list;
-            },
+            # All the keywords.
+            'all_keywords' => sub { return Bugzilla::Keyword->get_all(); },
 
             'feature_enabled' => sub { return Bugzilla->feature(@_); },
 
@@ -780,6 +920,8 @@ sub create {
             'field_descs' => sub { return template_var('field_descs') },
 
             'install_string' => \&Bugzilla::Install::Util::install_string,
+
+            'report_columns' => \&Bugzilla::Search::REPORT_COLUMNS,
 
             # These don't work as normal constants.
             DB_MODULE        => \&Bugzilla::Constants::DB_MODULE,
@@ -804,6 +946,11 @@ sub create {
     Bugzilla::Hook::process('template_before_create', { config => $config });
     my $template = $class->new($config) 
         || die("Template creation failed: " . $class->error());
+
+    # Pass on our current language to any template hooks or inner templates
+    # called by this Template object.
+    $template->context->{bz_language} = $opts{language} || '';
+
     return $template;
 }
 
@@ -836,8 +983,8 @@ sub precompile_templates {
 
     print install_string('template_precompile') if $output;
 
-    my $paths = template_include_path({ use_languages => Bugzilla->languages,
-                                        only_language => Bugzilla->languages });
+    # Pre-compile all available languages.
+    my $paths = template_include_path({ language => Bugzilla->languages });
 
     foreach my $dir (@$paths) {
         my $template = Bugzilla::Template->create(include_path => [$dir]);

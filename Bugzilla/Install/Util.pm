@@ -28,10 +28,15 @@ use strict;
 
 use Bugzilla::Constants;
 
+use Encode;
+use ExtUtils::MM ();
 use File::Basename;
+use File::Spec;
 use POSIX qw(setlocale LC_CTYPE);
 use Safe;
 use Scalar::Util qw(tainted);
+use Term::ANSIColor qw(colored);
+use PerlIO;
 
 use base qw(Exporter);
 our @EXPORT_OK = qw(
@@ -46,23 +51,23 @@ our @EXPORT_OK = qw(
     include_languages
     template_include_path
     vers_cmp
-    get_console_locale
     init_console
 );
 
 sub bin_loc {
-    my ($bin) = @_;
-    return '' if ON_WINDOWS;
-    # Don't print any errors from "which"
-    open(my $saveerr, ">&STDERR");
-    open(STDERR, '>/dev/null');
-    my $loc = `which $bin`;
-    close(STDERR);
-    open(STDERR, ">&", $saveerr);
-    my $exit_code = $? >> 8; # See the perlvar manpage.
-    return '' if $exit_code > 0;
-    chomp($loc);
-    return $loc;
+    my ($bin, $path) = @_;
+    my @path = $path ? @$path : File::Spec->path;
+    
+    foreach my $dir (@path) {
+        next if !-d $dir;
+        my $full_path = File::Spec->catfile($dir, $bin);
+        # MM is an alias for ExtUtils::MM. maybe_command is nice
+        # because it checks .com, .bat, .exe (etc.) on Windows.
+        my $command = MM->maybe_command($full_path);
+        return $command if $command;
+    }
+
+    return '';
 }
 
 sub get_version_and_os {
@@ -216,8 +221,14 @@ sub extension_package_directory {
     my ($invocant, $file) = @_;
     my $class = ref($invocant) || $invocant;
 
+    # $file is set on the first invocation, store the value in the extension's
+    # package for retrieval on subsequent calls
     my $var;
-    { no strict 'refs'; $var = \${"${class}::EXTENSION_PACKAGE_DIR"}; }
+    {
+        no warnings 'once';
+        no strict 'refs';
+        $var = \${"${class}::EXTENSION_PACKAGE_DIR"};
+    }
     if ($file) {
         $$var = dirname($file);
     }
@@ -287,91 +298,88 @@ sub install_string {
     return $string_template;
 }
 
-sub include_languages {
-    # If we are in CGI mode (not in checksetup.pl) and if the function has
-    # been called without any parameter, then we cache the result of this
-    # function in Bugzilla->request_cache. This is done to improve the
-    # performance of the template processing.
-    my $to_be_cached = 0;
-    if (not @_) {
-        my $cache = _cache();
-        if (exists $cache->{include_languages}) {
-            return @{ $cache->{include_languages} };
-        }
-        $to_be_cached = 1;
-    }
-    my ($params) = @_;
-    $params ||= {};
+sub _wanted_languages {
+    my ($requested, @wanted);
 
-    # Basically, the way this works is that we have a list of languages
-    # that we *want*, and a list of languages that Bugzilla actually
-    # supports. The caller tells us what languages they want, by setting
-    # $ENV{HTTP_ACCEPT_LANGUAGE}, using the "LANG" cookie or  setting
-    # $params->{only_language}. The languages we support are those
-    # specified in $params->{use_languages}. Otherwise we support every
-    # language installed in the template/ directory.
-    
-    my @wanted;
-    if ($params->{only_language}) {
-        # We can pass several languages at once as an arrayref
-        # or a single language.
-        if (ref $params->{only_language}) {
-            @wanted = @{ $params->{only_language} };
-        }
-        else {
-            @wanted = ($params->{only_language});
-        }
+    # Checking SERVER_SOFTWARE is the same as i_am_cgi() in Bugzilla::Util.
+    if (exists $ENV{'SERVER_SOFTWARE'}) {
+        my $cgi = Bugzilla->cgi;
+        $requested = $cgi->http('Accept-Language') || '';
+        my $lang = $cgi->cookie('LANG');
+        push(@wanted, $lang) if $lang;
     }
     else {
-        @wanted = _sort_accept_language($ENV{'HTTP_ACCEPT_LANGUAGE'} || '');
-        # Don't use the cookie if we are in "checksetup.pl". The test
-        # with $ENV{'SERVER_SOFTWARE'} is the same as in
-        # Bugzilla:Util::i_am_cgi.
-        if (exists $ENV{'SERVER_SOFTWARE'}) {
-            my $cgi = Bugzilla->cgi;
-            if (defined (my $lang = $cgi->cookie('LANG'))) {
-                unshift @wanted, $lang;
-            }
-        }
+        $requested = get_console_locale();
     }
-    
-    my @supported;
-    if (defined $params->{use_languages}) {
-        @supported = @{$params->{use_languages}};
-    }
-    else {
-        my @dirs = glob(bz_locations()->{'templatedir'} . "/*");
-        @dirs = map(basename($_), @dirs);
-        @supported = grep($_ ne 'CVS', @dirs);
-    }
-    
-    my @usedlanguages;
-    foreach my $wanted (@wanted) {
+
+    push(@wanted, _sort_accept_language($requested));
+    return \@wanted;
+}
+
+sub _wanted_to_actual_languages {
+    my ($wanted, $supported) = @_;
+
+    my @actual;
+    foreach my $lang (@$wanted) {
         # If we support the language we want, or *any version* of
-        # the language we want, it gets pushed into @usedlanguages.
+        # the language we want, it gets pushed into @actual.
         #
         # Per RFC 1766 and RFC 2616, things like 'en' match 'en-us' and
         # 'en-uk', but not the other way around. (This is unfortunately
         # not very clearly stated in those RFC; see comment just over 14.5
         # in http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.4)
-        if(my @found = grep /^\Q$wanted\E(-.+)?$/i, @supported) {
-            push (@usedlanguages, @found);
-        }
+        my @found = grep(/^\Q$lang\E(-.+)?$/i, @$supported);
+        push(@actual, @found) if @found;
     }
 
     # We always include English at the bottom if it's not there, even if
-    # somebody removed it from use_languages.
-    if (!grep($_ eq 'en', @usedlanguages)) {
-        push(@usedlanguages, 'en');
+    # it wasn't selected by the user.
+    if (!grep($_ eq 'en', @actual)) {
+        push(@actual, 'en');
     }
 
-    # Cache the result if we are in CGI mode and called without parameter
-    # (see the comment at the top of this function).
-    if ($to_be_cached) {
-        _cache()->{include_languages} = \@usedlanguages;
+    return \@actual;
+}
+
+sub supported_languages {
+    my $cache = _cache();
+    return $cache->{supported_languages} if $cache->{supported_languages};
+
+    my @dirs = glob(bz_locations()->{'templatedir'} . "/*");
+    my @languages;
+    foreach my $dir (@dirs) {
+        # It's a language directory only if it contains "default" or
+        # "custom". This auto-excludes CVS directories as well.
+        next if (!-d "$dir/default" and !-d "$dir/custom");
+        my $lang = basename($dir);
+        # Check for language tag format conforming to RFC 1766.
+        next unless $lang =~ /^[a-zA-Z]{1,8}(-[a-zA-Z]{1,8})?$/;
+        push(@languages, $lang);
     }
 
-    return @usedlanguages;
+    $cache->{supported_languages} = \@languages;
+    return \@languages;
+}
+
+sub include_languages {
+    my ($params) = @_;
+
+    # Basically, the way this works is that we have a list of languages
+    # that we *want*, and a list of languages that Bugzilla actually
+    # supports.
+    my $wanted;
+    if ($params->{language}) {
+        # We can pass several languages at once as an arrayref
+        # or a single language.
+        $wanted = $params->{language};
+        $wanted = [$wanted] unless ref $wanted;
+    }
+    else {
+        $wanted = _wanted_languages();
+    }
+    my $supported = supported_languages();
+    my $actual    = _wanted_to_actual_languages($wanted, $supported);
+    return @$actual;
 }
 
 # Used by template_include_path
@@ -574,11 +582,61 @@ sub get_console_locale {
     return $locale;
 }
 
+sub set_output_encoding {
+    # If we've already set an encoding layer on STDOUT, don't
+    # add another one.
+    my @stdout_layers = PerlIO::get_layers(STDOUT);
+    return if grep(/^encoding/, @stdout_layers);
+
+    my $encoding;
+    if (ON_WINDOWS and eval { require Win32::Console }) {
+        # Although setlocale() works on Windows, it doesn't always return
+        # the current *console's* encoding. So we use OutputCP here instead,
+        # when we can.
+        $encoding = Win32::Console::OutputCP();
+    }
+    else {
+        my $locale = setlocale(LC_CTYPE);
+        if ($locale =~ /\.([^\.]+)$/) {
+            $encoding = $1;
+        }
+    }
+    $encoding = "cp$encoding" if ON_WINDOWS;
+
+    $encoding = Encode::resolve_alias($encoding) if $encoding;
+    if ($encoding and $encoding !~ /utf-8/i) {
+        binmode STDOUT, ":encoding($encoding)";
+        binmode STDERR, ":encoding($encoding)";
+    }
+    else {
+        binmode STDOUT, ':utf8';
+        binmode STDERR, ':utf8';
+    }
+}
+
 sub init_console {
     eval { ON_WINDOWS && require Win32::Console::ANSI; };
     $ENV{'ANSI_COLORS_DISABLED'} = 1 if ($@ || !-t *STDOUT);
-    $ENV{'HTTP_ACCEPT_LANGUAGE'} ||= get_console_locale();
+    $SIG{__DIE__} = \&_console_die;
     prevent_windows_dialog_boxes();
+    set_output_encoding();
+}
+
+sub _console_die {
+    my ($message) = @_;
+    # $^S means "we are in an eval"
+    if ($^S) {
+        die $message;
+    }
+    # Remove newlines from the message before we color it, and then
+    # add them back in on display. Otherwise the ANSI escape code
+    # for resetting the color comes after the newline, and Perl thinks
+    # that it should put "at Bugzilla/Install.pm line 1234" after the
+    # message.
+    $message =~ s/\n+$//;
+    # We put quotes around the message to stringify any object exceptions,
+    # like Template::Exception.
+    die colored("$message", COLOR_ERROR) . "\n";
 }
 
 sub prevent_windows_dialog_boxes {

@@ -17,11 +17,9 @@
 #                 Max Kanat-Alexander <mkanat@bugzilla.org>
 #                 Akamai Technologies <bugzilla-dev@akamai.com>
 
-use strict;
-
 package Bugzilla::Component;
-
-use base qw(Bugzilla::Object);
+use strict;
+use base qw(Bugzilla::Field::ChoiceInterface Bugzilla::Object);
 
 use Bugzilla::Constants;
 use Bugzilla::Util;
@@ -30,11 +28,15 @@ use Bugzilla::User;
 use Bugzilla::FlagType;
 use Bugzilla::Series;
 
+use Scalar::Util qw(blessed);
+
 ###############################
 ####    Initialization     ####
 ###############################
 
 use constant DB_TABLE => 'components';
+# This is mostly for the editfields.cgi case where ->get_all is called.
+use constant LIST_ORDER => 'product_id, name';
 
 use constant DB_COLUMNS => qw(
     id
@@ -45,19 +47,16 @@ use constant DB_COLUMNS => qw(
     description
 );
 
-use constant REQUIRED_CREATE_FIELDS => qw(
-    name
-    product
-    initialowner
-    description
-);
-
 use constant UPDATE_COLUMNS => qw(
     name
     initialowner
     initialqacontact
     description
 );
+
+use constant REQUIRED_FIELD_MAP => {
+    product_id => 'product',
+};
 
 use constant VALIDATORS => {
     create_series    => \&Bugzilla::Object::check_boolean,
@@ -66,10 +65,11 @@ use constant VALIDATORS => {
     initialqacontact => \&_check_initialqacontact,
     description      => \&_check_description,
     initial_cc       => \&_check_cc_list,
+    name             => \&_check_name,
 };
 
-use constant UPDATE_VALIDATORS => {
-    name => \&_check_name,
+use constant VALIDATOR_DEPENDENCIES => {
+    name => ['product'],
 };
 
 ###############################
@@ -80,7 +80,7 @@ sub new {
     my $dbh = Bugzilla->dbh;
 
     my $product;
-    if (ref $param) {
+    if (ref $param and !defined $param->{id}) {
         $product = $param->{product};
         my $name = $param->{name};
         if (!defined $product) {
@@ -116,8 +116,11 @@ sub create {
     my $params = $class->run_create_validators(@_);
     my $cc_list = delete $params->{initial_cc};
     my $create_series = delete $params->{create_series};
+    my $product = delete $params->{product};
+    $params->{product_id} = $product->id;
 
     my $component = $class->insert_create_data($params);
+    $component->{product} = $product;
 
     # We still have to fill the component_cc table.
     $component->_update_cc_list($cc_list) if $cc_list;
@@ -127,17 +130,6 @@ sub create {
 
     $dbh->bz_commit_transaction();
     return $component;
-}
-
-sub run_create_validators {
-    my $class  = shift;
-    my $params = $class->SUPER::run_create_validators(@_);
-
-    my $product = delete $params->{product};
-    $params->{product_id} = $product->id;
-    $params->{name} = $class->_check_name($params->{name}, $product);
-
-    return $params;
 }
 
 sub update {
@@ -155,6 +147,8 @@ sub update {
 sub remove_from_db {
     my $self = shift;
     my $dbh = Bugzilla->dbh;
+
+    $self->_check_if_controller(); # From ChoiceInterface
 
     $dbh->bz_start_transaction();
 
@@ -188,7 +182,8 @@ sub remove_from_db {
 ################################
 
 sub _check_name {
-    my ($invocant, $name, $product) = @_;
+    my ($invocant, $name, undef, $params) = @_;
+    my $product = blessed($invocant) ? $invocant->product : $params->{product};
 
     $name = trim($name);
     $name || ThrowUserError('component_blank_name');
@@ -197,7 +192,6 @@ sub _check_name {
         ThrowUserError('component_name_too_long', {'name' => $name});
     }
 
-    $product = $invocant->product if (ref $invocant);
     my $component = new Bugzilla::Component({product => $product, name => $name});
     if ($component && (!ref $invocant || $component->id != $invocant->id)) {
         ThrowUserError('component_already_exists', { name    => $component->name,
@@ -237,6 +231,8 @@ sub _check_initialqacontact {
 
 sub _check_product {
     my ($invocant, $product) = @_;
+    $product || ThrowCodeError('param_required', 
+                    { function => "$invocant->create", param => 'product' });
     return Bugzilla->user->check_can_admin_product($product->name);
 }
 
@@ -416,10 +412,24 @@ sub product {
 ####      Accessors        ####
 ###############################
 
-sub id          { return $_[0]->{'id'};          }
-sub name        { return $_[0]->{'name'};        }
 sub description { return $_[0]->{'description'}; }
 sub product_id  { return $_[0]->{'product_id'};  }
+
+##############################################
+# Implement Bugzilla::Field::ChoiceInterface #
+##############################################
+
+use constant FIELD_NAME => 'component';
+use constant is_default => 0;
+use constant is_active => 1;
+
+sub is_set_on_bug {
+    my ($self, $bug) = @_;
+    # We treat it like a hash always, so that we don't have to check if it's
+    # a hash or an object.
+    return 0 if !defined $bug->{component_id};
+    $bug->{component_id} == $self->id ? 1 : 0;
+}
 
 ###############################
 ####      Subroutines      ####

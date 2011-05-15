@@ -25,6 +25,7 @@
 #                 Max Kanat-Alexander <mkanat@bugzilla.org>
 #                 Frédéric Buclin <LpSolit@gmail.com>
 #                 Lance Larsh <lance.larsh@oracle.com>
+#                 Elliotte Martin <elliotte_martin@yahoo.com>
 
 package Bugzilla::Bug;
 
@@ -48,15 +49,16 @@ use Bugzilla::Group;
 use Bugzilla::Status;
 use Bugzilla::Comment;
 
-use List::Util qw(min);
+use List::MoreUtils qw(firstidx uniq);
+use List::Util qw(min max first);
 use Storable qw(dclone);
 use URI;
 use URI::QueryParam;
+use Scalar::Util qw(blessed);
 
 use base qw(Bugzilla::Object Exporter);
 @Bugzilla::Bug::EXPORT = qw(
     bug_alias_to_id
-    RemoveVotes CheckIfVotedConfirmed
     LogActivityEntry
     editable_bug_fields
 );
@@ -89,6 +91,7 @@ sub DB_COLUMNS {
         delta_ts
         estimated_time
         everconfirmed
+        lastdiffed
         op_sys
         priority
         product_id
@@ -112,34 +115,38 @@ sub DB_COLUMNS {
     return @columns;
 }
 
-use constant REQUIRED_CREATE_FIELDS => qw(
-    component
-    product
-    short_desc
-    version
-);
-
-# There are also other, more complex validators that are called
-# from run_create_validators.
 sub VALIDATORS {
-    my $cache = Bugzilla->request_cache;
-    return $cache->{bug_validators} if defined $cache->{bug_validators};
 
     my $validators = {
         alias          => \&_check_alias,
+        assigned_to    => \&_check_assigned_to,
         bug_file_loc   => \&_check_bug_file_loc,
         bug_severity   => \&_check_select_field,
+        bug_status     => \&_check_bug_status,
+        cc             => \&_check_cc,
         comment        => \&_check_comment,
-        commentprivacy => \&_check_commentprivacy,
+        comment_is_private => \&_check_comment_is_private,
+        component      => \&_check_component,
         deadline       => \&_check_deadline,
+        dup_id         => \&_check_dup_id,
         estimated_time => \&_check_estimated_time,
+        everconfirmed  => \&Bugzilla::Object::check_boolean,
+        groups         => \&_check_groups,
+        keywords       => \&_check_keywords,
         op_sys         => \&_check_select_field,
         priority       => \&_check_priority,
         product        => \&_check_product,
+        qa_contact     => \&_check_qa_contact,
         remaining_time => \&_check_remaining_time,
         rep_platform   => \&_check_select_field,
+        resolution     => \&_check_resolution,
         short_desc     => \&_check_short_desc,
         status_whiteboard => \&_check_status_whiteboard,
+        target_milestone  => \&_check_target_milestone,
+        version           => \&_check_version,
+
+        cclist_accessible   => \&Bugzilla::Object::check_boolean,
+        reporter_accessible => \&Bugzilla::Object::check_boolean,
     };
 
     # Set up validators for custom fields.    
@@ -166,21 +173,35 @@ sub VALIDATORS {
         $validators->{$field->name} = $validator;
     }
 
-    $cache->{bug_validators} = $validators;
-    return $cache->{bug_validators};
+    return $validators;
 };
 
-use constant UPDATE_VALIDATORS => {
-    assigned_to         => \&_check_assigned_to,
-    bug_status          => \&_check_bug_status,
-    cclist_accessible   => \&Bugzilla::Object::check_boolean,
-    dup_id              => \&_check_dup_id,
-    everconfirmed       => \&Bugzilla::Object::check_boolean,
-    qa_contact          => \&_check_qa_contact,
-    reporter_accessible => \&Bugzilla::Object::check_boolean,
-    resolution          => \&_check_resolution,
-    target_milestone    => \&_check_target_milestone,
-    version             => \&_check_version,
+sub VALIDATOR_DEPENDENCIES {
+    my $cache = Bugzilla->request_cache;
+    return $cache->{bug_validator_dependencies} 
+        if $cache->{bug_validator_dependencies};
+
+    my %deps = (
+        assigned_to      => ['component'],
+        bug_status       => ['product', 'comment', 'target_milestone'],
+        cc               => ['component'],
+        component        => ['product'],
+        dup_id           => ['bug_status', 'resolution'],
+        groups           => ['product'],
+        keywords         => ['product'],
+        resolution       => ['bug_status'],
+        qa_contact       => ['component'],
+        target_milestone => ['product'],
+        version          => ['product'],
+    );
+
+    my @custom_deps = Bugzilla->get_fields(
+        { visibility_field_id => NOT_NULL });
+    foreach my $field (@custom_deps) {
+        $deps{$field->name} = [$field->visibility_field->name];
+    }
+    $cache->{bug_validator_dependencies} = \%deps;
+    return \%deps;
 };
 
 sub UPDATE_COLUMNS {
@@ -221,8 +242,7 @@ use constant NUMERIC_COLUMNS => qw(
 );
 
 sub DATE_COLUMNS {
-    my @fields = Bugzilla->get_fields(
-        { custom => 1, type => FIELD_TYPE_DATETIME });
+    my @fields = Bugzilla->get_fields({ type => FIELD_TYPE_DATETIME });
     return map { $_->name } @fields;
 }
 
@@ -245,9 +265,18 @@ use constant MAX_LINE_LENGTH => 254;
 # of Bugzilla. (These are the field names that the WebService and email_in.pl
 # use.)
 use constant FIELD_MAP => {
+    blocks           => 'blocked',
+    cc_accessible    => 'cclist_accessible',
+    commentprivacy   => 'comment_is_private',
     creation_time    => 'creation_ts',
+    creator          => 'reporter',
     description      => 'comment',
+    depends_on       => 'dependson',
+    dupe_of          => 'dup_id',
     id               => 'bug_id',
+    is_confirmed     => 'everconfirmed',
+    is_cc_accessible => 'cclist_accessible',
+    is_creator_accessible => 'reporter_accessible',
     last_change_time => 'delta_ts',
     platform         => 'rep_platform',
     severity         => 'bug_severity',
@@ -260,6 +289,26 @@ use constant FIELD_MAP => {
     limit            => 'LIMIT',
     offset           => 'OFFSET',
 };
+
+use constant REQUIRED_FIELD_MAP => {
+    product_id   => 'product',
+    component_id => 'component',
+};
+
+# Target Milestone is here because it has a default that the validator
+# creates (product.defaultmilestone) that is different from the database
+# default.
+#
+# CC is here because it is a separate table, and has a validator-created
+# default of the component initialcc.
+#
+# QA Contact is allowed to be NULL in the database, so it wouldn't normally
+# be caught by _required_create_fields. However, it always has to be validated,
+# because it has a default of the component.defaultqacontact.
+#
+# Groups are in a separate table, but must always be validated so that
+# mandatory groups get set on bugs.
+use constant EXTRA_REQUIRED_FIELDS => qw(target_milestone cc qa_contact groups);
 
 #####################################################################
 
@@ -417,6 +466,87 @@ sub match {
     return $class->SUPER::match(@_);
 }
 
+sub possible_duplicates {
+    my ($class, $params) = @_;
+    my $short_desc = $params->{summary};
+    my $products = $params->{products} || [];
+    my $limit = $params->{limit} || MAX_POSSIBLE_DUPLICATES;
+    $limit = MAX_POSSIBLE_DUPLICATES if $limit > MAX_POSSIBLE_DUPLICATES;
+    $products = [$products] if !ref($products) eq 'ARRAY';
+
+    my $orig_limit = $limit;
+    detaint_natural($limit) 
+        || ThrowCodeError('param_must_be_numeric', 
+                          { function => 'possible_duplicates',
+                            param    => $orig_limit });
+
+    my $dbh = Bugzilla->dbh;
+    my $user = Bugzilla->user;
+    my @words = split(/[\b\s]+/, $short_desc || '');
+    # Exclude punctuation from the array.
+    @words = map { /(\w+)/; $1 } @words;
+    # And make sure that each word is longer than 2 characters.
+    @words = grep { defined $_ and length($_) > 2 } @words;
+
+    return [] if !@words;
+
+    my ($where_sql, $relevance_sql);
+    if ($dbh->FULLTEXT_OR) {
+        my $joined_terms = join($dbh->FULLTEXT_OR, @words);
+        ($where_sql, $relevance_sql) = 
+            $dbh->sql_fulltext_search('bugs_fulltext.short_desc', 
+                                      $joined_terms, 1);
+        $relevance_sql ||= $where_sql;
+    }
+    else {
+        my (@where, @relevance);
+        my $count = 0;
+        foreach my $word (@words) {
+            $count++;
+            my ($term, $rel_term) = $dbh->sql_fulltext_search(
+                'bugs_fulltext.short_desc', $word, $count);
+            push(@where, $term);
+            push(@relevance, $rel_term || $term);
+        }
+
+        $where_sql = join(' OR ', @where);
+        $relevance_sql = join(' + ', @relevance);
+    }
+
+    my $product_ids = join(',', map { $_->id } @$products);
+    my $product_sql = $product_ids ? "AND product_id IN ($product_ids)" : "";
+
+    # Because we collapse duplicates, we want to get slightly more bugs
+    # than were actually asked for.
+    my $sql_limit = $limit + 5;
+
+    my $possible_dupes = $dbh->selectall_arrayref(
+        "SELECT bugs.bug_id AS bug_id, bugs.resolution AS resolution,
+                ($relevance_sql) AS relevance
+           FROM bugs
+                INNER JOIN bugs_fulltext ON bugs.bug_id = bugs_fulltext.bug_id
+          WHERE ($where_sql) $product_sql
+       ORDER BY relevance DESC, bug_id DESC
+          LIMIT $sql_limit", {Slice=>{}});
+
+    my @actual_dupe_ids;
+    # Resolve duplicates into their ultimate target duplicates.
+    foreach my $bug (@$possible_dupes) {
+        my $push_id = $bug->{bug_id};
+        if ($bug->{resolution} && $bug->{resolution} eq 'DUPLICATE') {
+            $push_id = _resolve_ultimate_dup_id($bug->{bug_id});
+        }
+        push(@actual_dupe_ids, $push_id);
+    }
+    @actual_dupe_ids = uniq @actual_dupe_ids;
+    if (scalar @actual_dupe_ids > $limit) {
+        @actual_dupe_ids = @actual_dupe_ids[0..($limit-1)];
+    }
+
+    my $visible = $user->visible_bugs(\@actual_dupe_ids);
+    return $class->new_from_list($visible);
+}
+
 # Docs for create() (there's no POD in this file yet, but we very
 # much need this documented right now):
 #
@@ -482,14 +612,10 @@ sub create {
     my $groups     = delete $params->{groups};
     my $depends_on = delete $params->{dependson};
     my $blocked    = delete $params->{blocked};
-    my ($comment, $privacy) = ($params->{comment}, $params->{commentprivacy});
+    my $keywords   = delete $params->{keywords};
+    my ($comment, $privacy) = ($params->{comment}, $params->{comment_is_private});
     delete $params->{comment};
-    delete $params->{commentprivacy};
-
-    # Set up the keyword cache for bug creation.
-    my $keywords = $params->{keywords};
-    $params->{keywords} = join(', ', sort {lc($a) cmp lc($b)} 
-                                          map($_->name, @$keywords));
+    delete $params->{comment_is_private};
 
     # We don't want the bug to appear in the system until it's correctly
     # protected by groups.
@@ -501,8 +627,8 @@ sub create {
     # Add the group restrictions
     my $sth_group = $dbh->prepare(
         'INSERT INTO bug_group_map (bug_id, group_id) VALUES (?, ?)');
-    foreach my $group_id (@$groups) {
-        $sth_group->execute($bug->bug_id, $group_id);
+    foreach my $group (@$groups) {
+        $sth_group->execute($bug->bug_id, $group->id);
     }
 
     $dbh->do('UPDATE bugs SET creation_ts = ? WHERE bug_id = ?', undef,
@@ -586,33 +712,10 @@ sub run_create_validators {
     my $class  = shift;
     my $params = $class->SUPER::run_create_validators(@_);
 
-    my $product = $params->{product};
+    my $product = delete $params->{product};
     $params->{product_id} = $product->id;
-    delete $params->{product};
-
-    ($params->{bug_status}, $params->{everconfirmed})
-        = $class->_check_bug_status($params->{bug_status}, $product,
-                                    $params->{comment});
-
-    $params->{target_milestone} = $class->_check_target_milestone(
-        $params->{target_milestone}, $product);
-
-    $params->{version} = $class->_check_version($params->{version}, $product);
-
-    $params->{keywords} = $class->_check_keywords($params->{keywords}, $product);
-
-    $params->{groups} = $class->_check_groups($product,
-        $params->{groups});
-
-    my $component = $class->_check_component($params->{component}, $product);
+    my $component = delete $params->{component};
     $params->{component_id} = $component->id;
-    delete $params->{component};
-
-    $params->{assigned_to} = 
-        $class->_check_assigned_to($params->{assigned_to}, $component);
-    $params->{qa_contact} =
-        $class->_check_qa_contact($params->{qa_contact}, $component);
-    $params->{cc} = $class->_check_cc($component, $params->{cc});
 
     # Callers cannot set reporter, creation_ts, or delta_ts.
     $params->{reporter} = $class->_check_reporter();
@@ -633,12 +736,19 @@ sub run_create_validators {
 
     # You can't set these fields on bug creation (or sometimes ever).
     delete $params->{resolution};
-    delete $params->{votes};
     delete $params->{lastdiffed};
     delete $params->{bug_id};
 
     Bugzilla::Hook::process('bug_end_of_create_validators',
                             { params => $params });
+
+    my @mandatory_fields = Bugzilla->get_fields({ is_mandatory => 1,
+                                                  enter_bug    => 1,
+                                                  obsolete     => 0 });
+    foreach my $field (@mandatory_fields) {
+        $class->_check_field_is_mandatory($params->{$field->name}, $field,
+                                          $params);
+    }
 
     return $params;
 }
@@ -650,6 +760,8 @@ sub update {
     # XXX This is just a temporary hack until all updating happens
     # inside this function.
     my $delta_ts = shift || $dbh->selectrow_array('SELECT LOCALTIMESTAMP(0)');
+
+    $dbh->bz_start_transaction();
 
     my ($changes, $old_bug) = $self->SUPER::update(@_);
 
@@ -709,8 +821,6 @@ sub update {
         $dbh->do('INSERT INTO keywords (bug_id, keywordid) VALUES (?,?)',
                  undef, $self->id, $keyword_id);
     }
-    $dbh->do('UPDATE bugs SET keywords = ? WHERE bug_id = ?', undef,
-             $self->keywords, $self->id);
     # If any changes were found, record it in the activity log
     if (scalar @$removed_kw || scalar @$added_kw) {
         my $removed_keywords = Bugzilla::Keyword->new_from_list($removed_kw);
@@ -797,11 +907,15 @@ sub update {
                 Bugzilla->user->id, $delta_ts);
         }
     }
-    
+   
+    # Comment Privacy 
     foreach my $comment_id (keys %{$self->{comment_isprivate} || {}}) {
         $dbh->do("UPDATE longdescs SET isprivate = ? WHERE comment_id = ?",
                  undef, $self->{comment_isprivate}->{$comment_id}, $comment_id);
-        # XXX It'd be nice to track this in the bug activity.
+        my ($from, $to) 
+            = $self->{comment_isprivate}->{$comment_id} ? (0, 1) : (1, 0);
+        LogActivityEntry($self->id, "longdescs.isprivate", $from, $to, 
+                         Bugzilla->user->id, $delta_ts, $comment_id);
     }
 
     # Insert the values into the multiselect value tables
@@ -872,11 +986,15 @@ sub update {
           old_bug => $old_bug });
 
     # If any change occurred, refresh the timestamp of the bug.
-    if (scalar(keys %$changes) || $self->{added_comments}) {
+    if (scalar(keys %$changes) || $self->{added_comments}
+        || $self->{comment_isprivate})
+    {
         $dbh->do('UPDATE bugs SET delta_ts = ? WHERE bug_id = ?',
                  undef, ($delta_ts, $self->id));
         $self->{delta_ts} = $delta_ts;
     }
+
+    $dbh->bz_commit_transaction();
 
     # The only problem with this here is that update() is often called
     # in the middle of a transaction, and if that transaction is rolled
@@ -965,7 +1083,6 @@ sub remove_from_db {
     # - flags
     # - keywords
     # - longdescs
-    # - votes
 
     # Also, the attach_data table uses attachments.attach_id as a foreign
     # key, and so indirectly depends on a bug deletion too.
@@ -981,7 +1098,6 @@ sub remove_from_db {
              undef, ($bug_id, $bug_id));
     $dbh->do("DELETE FROM flags WHERE bug_id = ?", undef, $bug_id);
     $dbh->do("DELETE FROM keywords WHERE bug_id = ?", undef, $bug_id);
-    $dbh->do("DELETE FROM votes WHERE bug_id = ?", undef, $bug_id);
 
     # The attach_data table doesn't depend on bugs.bug_id directly.
     my $attach_ids =
@@ -1006,6 +1122,93 @@ sub remove_from_db {
     # Now this bug no longer exists
     $self->DESTROY;
     return $self;
+}
+
+#####################################################################
+# Sending Email After Bug Update
+#####################################################################
+
+sub send_changes {
+    my ($self, $changes, $vars) = @_;
+
+    my $user = Bugzilla->user;
+
+    my $old_qa  = $changes->{'qa_contact'}  
+                  ? $changes->{'qa_contact'}->[0] : '';
+    my $old_own = $changes->{'assigned_to'} 
+                  ? $changes->{'assigned_to'}->[0] : '';
+    my $old_cc  = $changes->{cc}
+                  ? $changes->{cc}->[0] : '';
+
+    my %forced = (
+        cc        => [split(/[,;]+/, $old_cc)],
+        owner     => $old_own,
+        qacontact => $old_qa,
+        changer   => $user,
+    );
+
+    _send_bugmail({ id => $self->id, type => 'bug', forced => \%forced }, 
+                  $vars);
+
+    # If the bug was marked as a duplicate, we need to notify users on the
+    # other bug of any changes to that bug.
+    my $new_dup_id = $changes->{'dup_id'} ? $changes->{'dup_id'}->[1] : undef;
+    if ($new_dup_id) {
+        _send_bugmail({ forced => { changer => $user }, type => "dupe",
+                        id => $new_dup_id }, $vars);
+    }
+
+    # If there were changes in dependencies, we need to notify those
+    # dependencies.
+    if ($changes->{'bug_status'}) {
+        my ($old_status, $new_status) = @{ $changes->{'bug_status'} };
+
+        # If this bug has changed from opened to closed or vice-versa,
+        # then all of the bugs we block need to be notified.
+        if (is_open_state($old_status) ne is_open_state($new_status)) {
+            my $params = { forced   => { changer => $user },
+                           type     => 'dep',
+                           dep_only => 1 };
+
+            foreach my $id (@{ $self->blocked }) {
+                $params->{id} = $id;
+                _send_bugmail($params, $vars);
+            }
+        }
+    }
+
+    # To get a list of all changed dependencies, convert the "changes" arrays
+    # into a long string, then collapse that string into unique numbers in
+    # a hash.
+    my $all_changed_deps = join(', ', @{ $changes->{'dependson'} || [] });
+    $all_changed_deps = join(', ', @{ $changes->{'blocked'} || [] },
+                                   $all_changed_deps);
+    my %changed_deps = map { $_ => 1 } split(', ', $all_changed_deps);
+    # When clearning one field (say, blocks) and filling in the other
+    # (say, dependson), an empty string can get into the hash and cause
+    # an error later.
+    delete $changed_deps{''};
+
+    foreach my $id (sort { $a <=> $b } (keys %changed_deps)) {
+        _send_bugmail({ forced => { changer => $user }, type => "dep",
+                         id => $id }, $vars);
+    }
+}
+
+sub _send_bugmail {
+    my ($params, $vars) = @_;
+
+    my $results = 
+        Bugzilla::BugMail::Send($params->{'id'}, $params->{'forced'}, $params);
+
+    if (Bugzilla->usage_mode == USAGE_MODE_BROWSER) {
+        my $template = Bugzilla->template;
+        $vars->{$_} = $params->{$_} foreach keys %$params;
+        $vars->{'sent_bugmail'} = $results;
+        $template->process("bug/process/results.html.tmpl", $vars)
+            || ThrowTemplateError($template->error());
+        $vars->{'header_done'} = 1;
+    }
 }
 
 #####################################################################
@@ -1042,8 +1245,10 @@ sub _check_alias {
 }
 
 sub _check_assigned_to {
-    my ($invocant, $assignee, $component) = @_;
+    my ($invocant, $assignee, undef, $params) = @_;
     my $user = Bugzilla->user;
+    my $component = blessed($invocant) ? $invocant->component_obj
+                                       : $params->{component};
 
     # Default assignee is the component owner.
     my $id;
@@ -1081,11 +1286,12 @@ sub _check_bug_file_loc {
 }
 
 sub _check_bug_status {
-    my ($invocant, $new_status, $product, $comment) = @_;
+    my ($invocant, $new_status, undef, $params) = @_;
     my $user = Bugzilla->user;
     my @valid_statuses;
     my $old_status; # Note that this is undef for new bugs.
 
+    my ($product, $comment);
     if (ref $invocant) {
         @valid_statuses = @{$invocant->statuses_available};
         $product = $invocant->product_obj;
@@ -1094,6 +1300,8 @@ sub _check_bug_status {
         $comment = $comments->[-1];
     }
     else {
+        $product = $params->{product};
+        $comment = $params->{comment};
         @valid_statuses = @{Bugzilla::Status->can_change_to()};
         if (!$product->allows_unconfirmed) {
             @valid_statuses = grep {$_->name ne 'UNCONFIRMED'} @valid_statuses;
@@ -1147,7 +1355,10 @@ sub _check_bug_status {
         
     }
     
-    if (ref $invocant && $new_status->name eq 'ASSIGNED'
+    if (ref $invocant 
+        && ($new_status->name eq 'IN_PROGRESS'
+            # Backwards-compat for the old default workflow.
+            or $new_status->name eq 'ASSIGNED')
         && Bugzilla->params->{"usetargetmilestone"}
         && Bugzilla->params->{"musthavemilestoneonaccept"}
         # musthavemilestoneonaccept applies only if at least two
@@ -1158,19 +1369,25 @@ sub _check_bug_status {
         ThrowUserError("milestone_required", { bug => $invocant });
     }
 
-    return $new_status->name if ref $invocant;
-    return ($new_status->name, $new_status->name eq 'UNCONFIRMED' ? 0 : 1);
+    if (!blessed $invocant) {
+        $params->{everconfirmed} = $new_status->name eq 'UNCONFIRMED' ? 0 : 1;
+    }
+
+    return $new_status->name;
 }
 
 sub _check_cc {
-    my ($invocant, $component, $ccs) = @_;
+    my ($invocant, $ccs, undef, $params) = @_;
+    my $component = blessed($invocant) ? $invocant->component_obj
+                                       : $params->{component};
     return [map {$_->id} @{$component->initial_cc}] unless $ccs;
 
     # Allow comma-separated input as well as arrayrefs.
-    $ccs = [split(/[\s,]+/, $ccs)] if !ref $ccs;
+    $ccs = [split(/[,;]+/, $ccs)] if !ref $ccs;
 
     my %cc_ids;
     foreach my $person (@$ccs) {
+        $person = trim($person);
         next unless $person;
         my $id = login_to_id($person, THROW_ERROR);
         $cc_ids{$id} = 1;
@@ -1196,7 +1413,7 @@ sub _check_comment {
     return $comment;
 }
 
-sub _check_commentprivacy {
+sub _check_comment_is_private {
     my ($invocant, $comment_privacy) = @_;
     if ($comment_privacy && !Bugzilla->user->is_insider) {
         ThrowUserError('user_not_insider');
@@ -1213,22 +1430,25 @@ sub _check_comment_type {
 }
 
 sub _check_component {
-    my ($invocant, $name, $product) = @_;
+    my ($invocant, $name, undef, $params) = @_;
     $name = trim($name);
     $name || ThrowUserError("require_component");
-    ($product = $invocant->product_obj) if ref $invocant;
+    my $product = blessed($invocant) ? $invocant->product_obj 
+                                     : $params->{product};
     my $obj = Bugzilla::Component->check({ product => $product, name => $name });
     return $obj;
 }
 
 sub _check_deadline {
     my ($invocant, $date) = @_;
-    
-    # Check time-tracking permissions.
-    # deadline() returns '' instead of undef if no deadline is set.
-    my $current = ref $invocant ? ($invocant->deadline || undef) : undef;
-    return $current unless Bugzilla->user->is_timetracker;
-    
+
+    # When filing bugs, we're forgiving and just return undef if
+    # the user isn't a timetracker. When updating bugs, check_can_change_field
+    # controls permissions, so we don't want to check them here.
+    if (!ref $invocant and !Bugzilla->user->is_timetracker) {
+        return undef;
+    }
+
     # Validate entered deadline
     $date = trim($date);
     return undef if !$date;
@@ -1321,23 +1541,7 @@ sub _check_dup_id {
 
     # Make sure a loop isn't created when marking this bug
     # as duplicate.
-    my %dupes;
-    my $this_dup = $dupe_of;
-    my $sth = $dbh->prepare('SELECT dupe_of FROM duplicates WHERE dupe = ?');
-
-    while ($this_dup) {
-        if ($this_dup == $self->id) {
-            ThrowUserError('dupe_loop_detected', { bug_id  => $self->id,
-                                                   dupe_of => $dupe_of });
-        }
-        # If $dupes{$this_dup} is already set to 1, then a loop
-        # already exists which does not involve this bug.
-        # As the user is not responsible for this loop, do not
-        # prevent him from marking this bug as a duplicate.
-        last if exists $dupes{$this_dup};
-        $dupes{$this_dup} = 1;
-        $this_dup = $dbh->selectrow_array($sth, undef, $this_dup);
-    }
+   _resolve_ultimate_dup_id($self->id, $dupe_of, 1);
 
     my $cur_dup = $self->dup_id || 0;
     if ($cur_dup != $dupe_of && Bugzilla->params->{'commentonduplicate'}
@@ -1391,66 +1595,63 @@ sub _check_estimated_time {
 }
 
 sub _check_groups {
-    my ($invocant, $product, $group_ids) = @_;
-
-    my $user = Bugzilla->user;
-
+    my ($invocant, $group_names, undef, $params) = @_;
+    my $product = blessed($invocant) ? $invocant->product_obj 
+                                     : $params->{product};
     my %add_groups;
-    my $controls = $product->group_controls;
 
-    foreach my $id (@$group_ids) {
-        my $group = new Bugzilla::Group($id)
-            || ThrowUserError("invalid_group_ID");
-
-        # This can only happen if somebody hacked the enter_bug form.
-        ThrowCodeError("inactive_group", { name => $group->name })
-            unless $group->is_active;
-
-        my $membercontrol = $controls->{$id}
-                            && $controls->{$id}->{membercontrol};
-        my $othercontrol  = $controls->{$id} 
-                            && $controls->{$id}->{othercontrol};
-        
-        my $permit = ($membercontrol && $user->in_group($group->name))
-                     || $othercontrol;
-
-        $add_groups{$id} = 1 if $permit;
+    # In email or WebServices, when the "groups" item actually 
+    # isn't specified, then just add the default groups.
+    if (!defined $group_names) {
+        my $available = $product->groups_available;
+        foreach my $group (@$available) {
+            $add_groups{$group->id} = $group if $group->{is_default};
+        }
     }
+    else {
+        # Allow a comma-separated list, for email_in.pl.
+        $group_names = [map { trim($_) } split(',', $group_names)]
+            if !ref $group_names;
 
-    foreach my $id (keys %$controls) {
-        next unless $controls->{$id}->{'group'}->is_active;
-        my $membercontrol = $controls->{$id}->{membercontrol} || 0;
-        my $othercontrol  = $controls->{$id}->{othercontrol}  || 0;
-
-        # Add groups required
-        if ($membercontrol == CONTROLMAPMANDATORY
-            || ($othercontrol == CONTROLMAPMANDATORY
-                && !$user->in_group_id($id))) 
-        {
-            # User had no option, bug needs to be in this group.
-            $add_groups{$id} = 1;
+        # First check all the groups they chose to set.
+        foreach my $name (@$group_names) {
+            # We don't want to expose the existence or non-existence of groups,
+            # so instead of doing check(), we just do "next" on an invalid
+            # group.
+            my $group = new Bugzilla::Group({ name => $name }) or next;
+            next if !$product->group_is_settable($group);
+            $add_groups{$group->id} = $group;
         }
     }
 
-    my @add_groups = keys %add_groups;
+    # Now enforce mandatory groups.
+    $add_groups{$_->id} = $_ foreach @{ $product->groups_mandatory };
+
+    my @add_groups = values %add_groups;
     return \@add_groups;
 }
 
 sub _check_keywords {
-    my ($invocant, $keyword_string, $product) = @_;
-    $keyword_string = trim($keyword_string);
-    return [] if !$keyword_string;
+    my ($invocant, $keywords_in, undef, $params) = @_;
+
+    return [] if !defined $keywords_in;
+
+    my $keyword_array = $keywords_in;
+    if (!ref $keyword_array) {
+        $keywords_in = trim($keywords_in);
+        $keyword_array = [split(/[\s,]+/, $keywords_in)];
+    }
     
     # On creation, only editbugs users can set keywords.
     if (!ref $invocant) {
+        my $product = $params->{product};
         return [] if !Bugzilla->user->in_group('editbugs', $product->id);
     }
     
     my %keywords;
-    foreach my $keyword (split(/[\s,]+/, $keyword_string)) {
+    foreach my $keyword (@$keyword_array) {
         next unless $keyword;
-        my $obj = new Bugzilla::Keyword({ name => $keyword });
-        ThrowUserError("unknown_keyword", { keyword => $keyword }) if !$obj;
+        my $obj = Bugzilla::Keyword->check($keyword);
         $keywords{$obj->id} = $obj;
     }
     return [values %keywords];
@@ -1466,10 +1667,8 @@ sub _check_product {
     }
     # Check that the product exists and that the user
     # is allowed to enter bugs into this product.
-    Bugzilla->user->can_enter_product($name, THROW_ERROR);
-    # can_enter_product already does everything that check_product
-    # would do for us, so we don't need to use it.
-    return new Bugzilla::Product({ name => $name });
+    my $product = Bugzilla->user->can_enter_product($name, THROW_ERROR);
+    return $product;
 }
 
 sub _check_priority {
@@ -1481,9 +1680,10 @@ sub _check_priority {
 }
 
 sub _check_qa_contact {
-    my ($invocant, $qa_contact, $component) = @_;
+    my ($invocant, $qa_contact, undef, $params) = @_;
     $qa_contact = trim($qa_contact) if !ref $qa_contact;
-    
+    my $component = blessed($invocant) ? $invocant->component_obj
+                                       : $params->{component};
     my $id;
     if (!ref $invocant) {
         # Bugs get no QA Contact on creation if useqacontact is off.
@@ -1527,8 +1727,8 @@ sub _check_reporter {
     else {
         # On bug creation, the reporter is the logged in user
         # (meaning that he must be logged in first!).
+        Bugzilla->login(LOGIN_REQUIRED);
         $reporter = Bugzilla->user->id;
-        $reporter || ThrowCodeError('invalid_user');
     }
     return $reporter;
 }
@@ -1552,13 +1752,14 @@ sub _check_resolution {
     # Check noresolveonopenblockers.
     if (Bugzilla->params->{"noresolveonopenblockers"}
         && $resolution eq 'FIXED'
-        && (!$self->resolution || $resolution ne $self->resolution))
+        && (!$self->resolution || $resolution ne $self->resolution)
+        && scalar @{$self->dependson})
     {
-        my @dependencies = CountOpenDependencies($self->id);
-        if (@dependencies) {
+        my $dep_bugs = Bugzilla::Bug->new_from_list($self->dependson);
+        my $count_open = grep { $_->isopened } @$dep_bugs;
+        if ($count_open) {
             ThrowUserError("still_unresolved_bugs",
-                           { dependencies     => \@dependencies,
-                             dependency_count => scalar @dependencies });
+                           { bug_id => $self->id, dep_count => $count_open });
         }
     }
 
@@ -1580,6 +1781,10 @@ sub _check_short_desc {
 
     if (!defined $short_desc || $short_desc eq '') {
         ThrowUserError("require_summary");
+    }
+    if (length($short_desc) > MAX_FREETEXT_LENGTH) {
+        ThrowUserError('freetext_too_long', 
+                       { field => 'short_desc', text => $short_desc });
     }
     return $short_desc;
 }
@@ -1660,9 +1865,9 @@ sub _check_strict_isolation_for_user {
 }
 
 sub _check_target_milestone {
-    my ($invocant, $target, $product) = @_;
-    $product = $invocant->product_obj if ref $invocant;
-
+    my ($invocant, $target, undef, $params) = @_;
+    my $product = blessed($invocant) ? $invocant->product_obj 
+                                     : $params->{product};
     $target = trim($target);
     $target = $product->default_milestone if !defined $target;
     my $object = Bugzilla::Milestone->check(
@@ -1673,11 +1878,12 @@ sub _check_target_milestone {
 sub _check_time {
     my ($invocant, $time, $field) = @_;
 
-    my $current = 0;
-    if (ref $invocant && $field ne 'work_time') {
-        $current = $invocant->$field;
+    # When filing bugs, we're forgiving and just return 0 if
+    # the user isn't a timetracker. When updating bugs, check_can_change_field
+    # controls permissions, so we don't want to check them here.
+    if (!ref $invocant and !Bugzilla->user->is_timetracker) {
+        return 0;
     }
-    return $current unless Bugzilla->user->is_timetracker;
     
     $time = trim($time) || 0;
     ValidateTime($time, $field);
@@ -1685,19 +1891,55 @@ sub _check_time {
 }
 
 sub _check_version {
-    my ($invocant, $version, $product) = @_;
+    my ($invocant, $version, undef, $params) = @_;
     $version = trim($version);
-    ($product = $invocant->product_obj) if ref $invocant;
+    my $product = blessed($invocant) ? $invocant->product_obj 
+                                     : $params->{product};
     my $object = 
         Bugzilla::Version->check({ product => $product, name => $version });
     return $object->name;
 }
 
 sub _check_work_time {
-    return $_[0]->_check_time($_[1], 'work_time');
+    my ($self, $input) = @_;
+    my $time = $self->_check_time($input, 'work_time');
+    # Because work_time isn't set by a set_ function, we need to
+    # do check_can_change_field here manually.
+    my $privs;
+    $self->check_can_change_field('work_time', 0, $time, \$privs)
+        || ThrowUserError('illegal_change', 
+                          { field => 'work_time', privs => $privs });
+    return $time;
 }
 
 # Custom Field Validators
+
+sub _check_field_is_mandatory {
+    my ($invocant, $value, $field, $params) = @_;
+
+    if (!blessed($field)) {
+        $field = Bugzilla::Field->new({ name => $field });
+        return if !$field;
+    }
+
+    return if !$field->is_mandatory;
+
+    return if !$field->is_visible_on_bug($params || $invocant);
+
+    if (ref($value) eq 'ARRAY') {
+        $value = join('', @$value);
+    }
+
+    $value = trim($value);
+    if (!defined($value)
+        or $value eq ""
+        or ($value eq '---' and $field->type == FIELD_TYPE_SINGLE_SELECT)
+        or ($value =~ EMPTY_DATETIME_REGEX
+            and $field->type == FIELD_TYPE_DATETIME))
+    {
+        ThrowUserError('required_field', { field => $field });
+    }
+}
 
 sub _check_datetime_field {
     my ($invocant, $date_time) = @_;
@@ -1724,11 +1966,12 @@ sub _check_datetime_field {
 sub _check_default_field { return defined $_[1] ? trim($_[1]) : ''; }
 
 sub _check_freetext_field {
-    my ($invocant, $text) = @_;
+    my ($invocant, $text, $field) = @_;
 
     $text = (defined $text) ? trim($text) : '';
     if (length($text) > MAX_FREETEXT_LENGTH) {
-        ThrowUserError('freetext_too_long', { text => $text });
+        ThrowUserError('freetext_too_long', 
+                       { field => $field, text => $text });
     }
     return $text;
 }
@@ -1763,7 +2006,42 @@ sub _check_select_field {
 sub _check_bugid_field {
     my ($invocant, $value, $field) = @_;
     return undef if !$value;
-    return $invocant->check($value, $field)->id;
+    
+    # check that the value is a valid, visible bug id
+    my $checked_id = $invocant->check($value, $field)->id;
+    
+    # check for loop (can't have a loop if this is a new bug)
+    if (ref $invocant) {
+        _check_relationship_loop($field, $invocant->bug_id, $checked_id);
+    }
+
+    return $checked_id;
+}
+
+sub _check_relationship_loop {
+    # Generates a dependency tree for a given bug.  Calls itself recursively
+    # to generate sub-trees for the bug's dependencies.
+    my ($field, $bug_id, $dep_id, $ids) = @_;
+
+    # Don't do anything if this bug doesn't have any dependencies.
+    return unless defined($dep_id);
+
+    # Check whether we have seen this bug yet
+    $ids = {} unless defined $ids;
+    $ids->{$bug_id} = 1;
+    if ($ids->{$dep_id}) {
+        ThrowUserError("relationship_loop_single", {
+            'bug_id' => $bug_id,
+            'dep_id' => $dep_id,
+            'field_name' => $field});
+    }
+    
+    # Get this dependency's record from the database
+    my $dbh = Bugzilla->dbh;
+    my $next_dep_id = $dbh->selectrow_array(
+        "SELECT $field FROM bugs WHERE bug_id = ?", undef, $dep_id);
+
+    _check_relationship_loop($field, $dep_id, $next_dep_id, $ids);
 }
 
 #####################################################################
@@ -1784,7 +2062,7 @@ sub fields {
            bug_status resolution dup_id see_also
            bug_file_loc status_whiteboard keywords
            priority bug_severity target_milestone
-           dependson blocked votes everconfirmed
+           dependson blocked everconfirmed
            reporter assigned_to cc estimated_time
            remaining_time actual_time deadline),
 
@@ -1827,12 +2105,132 @@ sub _set_global_validator {
                                            newvalue => $value,
                                            privs    => $privs });
     }
+    $self->_check_field_is_mandatory($value, $field);
 }
 
 
 #################
 # "Set" Methods #
 #################
+
+# Note that if you are changing multiple bugs at once, you must pass
+# other_bugs to set_all in order for it to behave properly.
+sub set_all {
+    my $self = shift;
+    my ($params) = @_;
+
+    # You cannot mark bugs as duplicate when changing several bugs at once
+    # (because currently there is no way to check for duplicate loops in that
+    # situation). You also cannot set the alias of several bugs at once.
+    if ($params->{other_bugs} and scalar @{ $params->{other_bugs} } > 1) {
+        ThrowUserError('dupe_not_allowed') if exists $params->{dup_id};
+        ThrowUserError('multiple_alias_not_allowed') 
+            if defined $params->{alias};
+    }
+
+    # For security purposes, and because lots of other checks depend on it,
+    # we set the product first before anything else.
+    my $product_changed; # Used only for strict_isolation checks.
+    if (exists $params->{'product'}) {
+        $product_changed = $self->_set_product($params->{'product'}, $params);
+    }
+
+    # strict_isolation checks mean that we should set the groups
+    # immediately after changing the product.
+    $self->_add_remove($params, 'groups');
+
+    if (exists $params->{'dependson'} or exists $params->{'blocked'}) {
+        my %set_deps;
+        foreach my $name (qw(dependson blocked)) {
+            my @dep_ids = @{ $self->$name };
+            # If only one of the two fields was passed in, then we need to
+            # retain the current value for the other one.
+            if (!exists $params->{$name}) {
+                $set_deps{$name} = \@dep_ids;
+                next;
+            }
+
+            # Explicitly setting them to a particular value overrides
+            # add/remove.
+            if (exists $params->{$name}->{set}) {
+                $set_deps{$name} = $params->{$name}->{set};
+                next;
+            }
+
+            foreach my $add (@{ $params->{$name}->{add} || [] }) {
+                push(@dep_ids, $add) if !grep($_ == $add, @dep_ids);
+            }
+            foreach my $remove (@{ $params->{$name}->{remove} || [] }) {
+                @dep_ids = grep($_ != $remove, @dep_ids);
+            }
+            $set_deps{$name} = \@dep_ids;
+        }
+
+        $self->set_dependencies($set_deps{'dependson'}, $set_deps{'blocked'});
+    }
+
+    if (exists $params->{'keywords'}) {
+        # Sorting makes the order "add, remove, set", just like for other
+        # fields.
+        foreach my $action (sort keys %{ $params->{'keywords'} }) {
+            $self->modify_keywords($params->{'keywords'}->{$action}, $action);
+        }
+    }
+
+    if (exists $params->{'comment'} or exists $params->{'work_time'}) {
+        # Add a comment as needed to each bug. This is done early because
+        # there are lots of things that want to check if we added a comment.
+        $self->add_comment($params->{'comment'}->{'body'},
+            { isprivate => $params->{'comment'}->{'is_private'},
+              work_time => $params->{'work_time'} });
+    }
+
+    my %normal_set_all;
+    foreach my $name (keys %$params) {
+        # These are handled separately below.
+        if ($self->can("set_$name")) {
+            $normal_set_all{$name} = $params->{$name};
+        }
+    }
+    $self->SUPER::set_all(\%normal_set_all);
+
+    $self->reset_assigned_to if $params->{'reset_assigned_to'};
+    $self->reset_qa_contact  if $params->{'reset_qa_contact'};
+
+    $self->_add_remove($params, 'see_also');
+
+    # And set custom fields.
+    my @custom_fields = Bugzilla->active_custom_fields;
+    foreach my $field (@custom_fields) {
+        my $fname = $field->name;
+        if (exists $params->{$fname}) {
+            $self->set_custom_field($field, $params->{$fname});
+        }
+    }
+
+    $self->_add_remove($params, 'cc');
+
+    # Theoretically you could move a product without ever specifying
+    # a new assignee or qa_contact, or adding/removing any CCs. So,
+    # we have to check that the current assignee, qa, and CCs are still
+    # valid if we've switched products, under strict_isolation. We can only
+    # do that here, because if they *did* change the assignee, qa, or CC,
+    # then we don't want to check the original ones, only the new ones. 
+    $self->_check_strict_isolation() if $product_changed;
+}
+
+# Helper for set_all that helps with fields that have an "add/remove"
+# pattern instead of a "set_" pattern.
+sub _add_remove {
+    my ($self, $params, $name) = @_;
+    my @add    = @{ $params->{$name}->{add}    || [] };
+    my @remove = @{ $params->{$name}->{remove} || [] };
+    $name =~ s/s$//;
+    my $add_method = "add_$name";
+    my $remove_method = "remove_$name";
+    $self->$add_method($_) foreach @add;
+    $self->$remove_method($_) foreach @remove;
+}
 
 sub set_alias { $_[0]->set('alias', $_[1]); }
 sub set_assigned_to {
@@ -1850,13 +2248,22 @@ sub reset_assigned_to {
 sub set_cclist_accessible { $_[0]->set('cclist_accessible', $_[1]); }
 sub set_comment_is_private {
     my ($self, $comment_id, $isprivate) = @_;
-    return unless Bugzilla->user->is_insider;
+
+    # We also allow people to pass in a hash of comment ids to update.
+    if (ref $comment_id) {
+        while (my ($id, $is) = each %$comment_id) {
+            $self->set_comment_is_private($id, $is);
+        }
+        return;
+    }
+
     my ($comment) = grep($comment_id == $_->id, @{ $self->comments });
     ThrowUserError('comment_invalid_isprivate', { id => $comment_id }) 
         if !$comment;
 
     $isprivate = $isprivate ? 1 : 0;
     if ($isprivate != $comment->is_private) {
+        ThrowUserError('user_not_insider') if !Bugzilla->user->is_insider;
         $self->{comment_isprivate} ||= {};
         $self->{comment_isprivate}->{$comment_id} = $isprivate;
     }
@@ -1904,6 +2311,21 @@ sub set_dup_id {
     $self->set('dup_id', $dup_id);
     my $new = $self->dup_id;
     return if $old == $new;
+
+    # Make sure that we have the DUPLICATE resolution. This is needed
+    # if somebody calls set_dup_id without calling set_bug_status or
+    # set_resolution.
+    if ($self->resolution ne 'DUPLICATE') {
+        # Even if the current status is VERIFIED, we change it back to
+        # RESOLVED (or whatever the duplicate_or_move_bug_status is) here,
+        # because that's the same thing the UI does when you click on the
+        # "Mark as Duplicate" link. If people really want to retain their
+        # current status, they can use set_bug_status and set the DUPLICATE
+        # resolution before getting here.
+        $self->set_bug_status(
+            Bugzilla->params->{'duplicate_or_move_bug_status'},
+            { resolution => 'DUPLICATE' });
+    }
     
     # Update the other bug.
     my $dupe_of = new Bugzilla::Bug($self->dup_id);
@@ -1939,7 +2361,9 @@ sub set_flags {
 sub set_op_sys         { $_[0]->set('op_sys',        $_[1]); }
 sub set_platform       { $_[0]->set('rep_platform',  $_[1]); }
 sub set_priority       { $_[0]->set('priority',      $_[1]); }
-sub set_product {
+# For security reasons, you have to use set_all to change the product.
+# See the strict_isolation check in set_all for an explanation.
+sub _set_product {
     my ($self, $name, $params) = @_;
     my $old_product = $self->product_obj;
     my $product = $self->_check_product($name);
@@ -1957,9 +2381,10 @@ sub set_product {
     }
 
     $params ||= {};
-    my $comp_name = $params->{component} || $self->component;
-    my $vers_name = $params->{version}   || $self->version;
-    my $tm_name   = $params->{target_milestone};
+    # We delete these so that they're not set again later in set_all.
+    my $comp_name = delete $params->{component} || $self->component;
+    my $vers_name = delete $params->{version}   || $self->version;
+    my $tm_name   = delete $params->{target_milestone};
     # This way, if usetargetmilestone is off and we've changed products,
     # set_target_milestone will reset our target_milestone to
     # $product->default_milestone. But if we haven't changed products,
@@ -1991,7 +2416,7 @@ sub set_product {
         undef $@;
         Bugzilla->error_mode($old_error_mode);
         
-        my $verified = $params->{change_confirmed};
+        my $verified = $params->{product_change_confirmed};
         my %vars;
         if (!$verified || !$component_ok || !$version_ok || !$milestone_ok) {
             $vars{defaults} = {
@@ -2045,7 +2470,9 @@ sub set_product {
         # just die if any of these are invalid.
         $self->set_component($comp_name);
         $self->set_version($vers_name);
-        if ($product_changed && !$self->check_can_change_field('target_milestone', 0, 1)) {
+        if ($product_changed 
+            and !$self->check_can_change_field('target_milestone', 0, 1)) 
+        {
             # Have to set this directly to bypass the validators.
             $self->{target_milestone} = $product->default_milestone;
         }
@@ -2055,26 +2482,24 @@ sub set_product {
     }
     
     if ($product_changed) {
-        # Remove groups that aren't valid in the new product. This will also
-        # have the side effect of removing the bug from groups that aren't
-        # active anymore.
+        # Remove groups that can't be set in the new product, or that aren't
+        # active.
         #
         # We copy this array because the original array is modified while we're
         # working, and that confuses "foreach".
         my @current_groups = @{$self->groups_in};
         foreach my $group (@current_groups) {
-            if (!grep($group->id == $_->id, @{$product->groups_valid})) {
+            if (!$group->is_active or !$product->group_is_valid($group)) {
                 $self->remove_group($group);
             }
         }
     
         # Make sure the bug is in all the mandatory groups for the new product.
-        foreach my $group (@{$product->groups_mandatory_for(Bugzilla->user)}) {
+        foreach my $group (@{$product->groups_mandatory}) {
             $self->add_group($group);
         }
     }
     
-    # XXX This is temporary until all of process_bug uses update();
     return $product_changed;
 }
 
@@ -2105,10 +2530,6 @@ sub set_resolution {
     my $new_res = $self->resolution;
 
     if ($new_res ne $old_res) {
-        # MOVED has a special meaning and can only be used when
-        # really moving bugs to another installation.
-        ThrowCodeError('no_manual_moved') if ($new_res eq 'MOVED' && !$params->{moving});
-
         # Clear the dup_id if we're leaving the dup resolution.
         if ($old_res eq 'DUPLICATE') {
             $self->_clear_dup_id();
@@ -2124,13 +2545,17 @@ sub set_resolution {
     # of another, theoretically. Note that this code block will also run
     # when going between different closed states.
     if ($self->resolution eq 'DUPLICATE') {
-        if ($params->{dupe_of}) {
-            $self->set_dup_id($params->{dupe_of});
+        if (my $dup_id = $params->{dup_id}) {
+            $self->set_dup_id($dup_id);
         }
         elsif (!$self->dup_id) {
             ThrowUserError('dupe_id_required');
         }
     }
+
+    # This method has handled dup_id, so set_all doesn't have to worry
+    # about it now.
+    delete $params->{dup_id};
 }
 sub clear_resolution {
     my $self = shift;
@@ -2141,7 +2566,7 @@ sub clear_resolution {
     $self->_clear_dup_id; 
 }
 sub set_severity       { $_[0]->set('bug_severity',  $_[1]); }
-sub set_status {
+sub set_bug_status {
     my ($self, $status, $params) = @_;
     my $old_status = $self->status;
     $self->set('bug_status', $status);
@@ -2149,16 +2574,26 @@ sub set_status {
     delete $self->{'statuses_available'};
     delete $self->{'choices'};
     my $new_status = $self->status;
-    
+   
     if ($new_status->is_open) {
         # Check for the everconfirmed transition
         $self->_set_everconfirmed($new_status->name eq 'UNCONFIRMED' ? 0 : 1);
         $self->clear_resolution();
+        # Calling clear_resolution handled the "resolution" and "dup_id"
+        # setting, so set_all doesn't have to worry about them.
+        delete $params->{resolution};
+        delete $params->{dup_id};
     }
     else {
         # We do this here so that we can make sure closed statuses have
         # resolutions.
-        my $resolution = delete $params->{resolution} || $self->resolution;
+        my $resolution = $self->resolution;
+        # We need to check "defined" to prevent people from passing
+        # a blank resolution in the WebService, which would otherwise fail
+        # silently.
+        if (defined $params->{resolution}) {
+            $resolution = delete $params->{resolution};
+        }
         $self->set_resolution($resolution, $params);
 
         # Changing between closed statuses zeros the remaining time.
@@ -2209,22 +2644,25 @@ sub add_comment {
     $comment = $self->_check_comment($comment);
 
     $params ||= {};
-    if (exists $params->{work_time}) {
-        $params->{work_time} = $self->_check_work_time($params->{work_time});
-        ThrowUserError('comment_required')
-            if $comment eq '' && $params->{work_time} != 0;
-    }
+    $params->{work_time} = $self->_check_work_time($params->{work_time});
     if (exists $params->{type}) {
         $params->{type} = $self->_check_comment_type($params->{type});
     }
     if (exists $params->{isprivate}) {
         $params->{isprivate} = 
-            $self->_check_commentprivacy($params->{isprivate});
+            $self->_check_comment_is_private($params->{isprivate});
     }
     # XXX We really should check extra_data, too.
 
-    if ($comment eq '' && !($params->{type} || $params->{work_time})) {
+    if ($comment eq '' && !($params->{type} || abs($params->{work_time}))) {
         return;
+    }
+
+    # If the user has explicitly set remaining_time, this will be overridden
+    # later in set_all. But if they haven't, this keeps remaining_time
+    # up-to-date.
+    if ($params->{work_time}) {
+        $self->set_remaining_time(max($self->remaining_time - $params->{work_time}, 0));
     }
 
     # So we really want to comment. Make sure we are allowed to do so.
@@ -2252,15 +2690,15 @@ sub add_comment {
 sub modify_keywords {
     my ($self, $keywords, $action) = @_;
     
-    $action ||= "makeexact";
-    if (!grep($action eq $_, qw(add delete makeexact))) {
-        $action = "makeexact";
+    $action ||= 'set';
+    if (!grep($action eq $_, qw(add remove set))) {
+        $action = 'set';
     }
     
     $keywords = $self->_check_keywords($keywords);
 
     my (@result, $any_changes);
-    if ($action eq 'makeexact') {
+    if ($action eq 'set') {
         @result = @$keywords;
         # Check if anything was added or removed.
         my @old_ids = map { $_->id } @{$self->keyword_objects};
@@ -2294,23 +2732,22 @@ sub modify_keywords {
     }
 
     $self->{'keyword_objects'} = \@result;
-    return $any_changes;
 }
 
 sub add_group {
     my ($self, $group) = @_;
     # Invalid ids are silently ignored. (We can't tell people whether
     # or not a group exists.)
-    $group = new Bugzilla::Group($group) unless ref $group;
-    return unless $group;
+    $group = Bugzilla::Group->check($group) if !blessed $group;
 
     return if !$group->is_active or !$group->is_bug_group;
 
     # Make sure that bugs in this product can actually be restricted
-    # to this group.
-    grep($group->id == $_->id, @{$self->product_obj->groups_valid})
+    # to this group by the current user.
+    $self->product_obj->group_is_settable($group)
          || ThrowUserError('group_invalid_restriction',
-                { product => $self->product, group_id => $group->id });
+                { product => $self->product, group => $group,
+                  bug => $self });
 
     # OtherControl people can add groups only during a product change,
     # and only when the group is not NA for them.
@@ -2320,7 +2757,7 @@ sub add_group {
             || $controls->{othercontrol} == CONTROLMAPNA)
         {
             ThrowUserError('group_change_denied',
-                           { bug => $self, group_id => $group->id });
+                           { bug => $self, group => $group });
         }
     }
 
@@ -2332,22 +2769,23 @@ sub add_group {
 
 sub remove_group {
     my ($self, $group) = @_;
-    $group = new Bugzilla::Group($group) unless ref $group;
-    return unless $group;
+    $group = Bugzilla::Group->check($group) if !blessed $group;
     
     # First, check if this is a valid group for this product.
-    # You can *always* remove a group that is not valid for this product, so
-    # we don't do any other checks if that's the case. (set_product does this.)
+    # You can *always* remove a group that is not valid for this product
+    # or that is not active, so we don't do any other checks if either of
+    # those are the case. (Users might remove inactive groups, and set_product
+    # removes groups that aren't valid for this product.)
     #
     # This particularly happens when isbuggroup is no longer 1, and we're
     # moving a bug to a new product.
-    if (grep($_->id == $group->id, @{$self->product_obj->groups_valid})) {   
+    if ($group->is_active and $self->product_obj->group_is_valid($group)) {
         my $controls = $self->product_obj->group_controls->{$group->id};
 
         # Nobody can ever remove a Mandatory group.
         if ($controls->{membercontrol} == CONTROLMAPMANDATORY) {
             ThrowUserError('group_invalid_removal',
-                { product => $self->product, group_id => $group->id,
+                { product => $self->product, group => $group,
                   bug => $self });
         }
 
@@ -2359,7 +2797,7 @@ sub remove_group {
                 || $controls->{othercontrol} == CONTROLMAPNA)
             {
                 ThrowUserError('group_change_denied',
-                               { bug => $self, group_id => $group->id });
+                               { bug => $self, group => $group });
             }
         }
     }
@@ -2371,6 +2809,11 @@ sub remove_group {
 sub add_see_also {
     my ($self, $input) = @_;
     $input = trim($input);
+
+    if (!$input) {
+        ThrowCodeError('param_required',
+                       { function => 'add_see_also', param => '$input' });
+    }
 
     # We assume that the URL is an HTTP URL if there is no (something):// 
     # in front.
@@ -2545,6 +2988,38 @@ sub dup_id {
     return $self->{'dup_id'};
 }
 
+sub _resolve_ultimate_dup_id {
+    my ($bug_id, $dupe_of, $loops_are_an_error) = @_;
+    my $dbh = Bugzilla->dbh;
+    my $sth = $dbh->prepare('SELECT dupe_of FROM duplicates WHERE dupe = ?');
+
+    my $this_dup = $dupe_of || $dbh->selectrow_array($sth, undef, $bug_id);
+    my $last_dup = $bug_id;
+
+    my %dupes;
+    while ($this_dup) {
+        if ($this_dup == $bug_id) {
+            if ($loops_are_an_error) {
+                ThrowUserError('dupe_loop_detected', { bug_id  => $bug_id,
+                                                       dupe_of => $dupe_of });
+            }
+            else {
+                return $last_dup;
+            }
+        }
+        # If $dupes{$this_dup} is already set to 1, then a loop
+        # already exists which does not involve this bug.
+        # As the user is not responsible for this loop, do not
+        # prevent him from marking this bug as a duplicate.
+        return $last_dup if exists $dupes{$this_dup};
+        $dupes{$this_dup} = 1;
+        $last_dup = $this_dup;
+        $this_dup = $dbh->selectrow_array($sth, undef, $this_dup);
+    }
+
+    return $last_dup;
+}
+
 sub actual_time {
     my ($self) = @_;
     return $self->{'actual_time'} if exists $self->{'actual_time'};
@@ -2606,6 +3081,20 @@ sub blocked {
 
 # Even bugs in an error state always have a bug_id.
 sub bug_id { $_[0]->{'bug_id'}; }
+
+sub bug_group {
+    my ($self) = @_;
+    return join(', ', (map { $_->name } @{$self->groups_in}));
+}
+
+sub related_bugs {
+    my ($self, $relationship) = @_;
+    return [] if $self->{'error'};
+
+    my $field_name = $relationship->name;
+    $self->{'related_bugs'}->{$field_name} ||= $self->match({$field_name => $self->id});
+    return $self->{'related_bugs'}->{$field_name}; 
+}
 
 sub cc {
     my ($self) = @_;
@@ -2767,6 +3256,17 @@ sub comments {
     return \@comments;
 }
 
+# This is needed by xt/search.t.
+sub percentage_complete {
+    my $self = shift;
+    return undef if $self->{'error'} || !Bugzilla->user->is_timetracker;
+    my $remaining = $self->remaining_time;
+    my $actual    = $self->actual_time;
+    my $total = $remaining + $actual;
+    return undef if $total == 0;
+    return 100 * ($actual / $total);
+}
+
 sub product {
     my ($self) = @_;
     return $self->{product} if exists $self->{product};
@@ -2879,14 +3379,6 @@ sub show_attachment_flags {
     return $self->{'show_attachment_flags'};
 }
 
-sub use_votes {
-    my ($self) = @_;
-    return 0 if $self->{'error'};
-
-    return Bugzilla->params->{'usevotes'} 
-           && $self->product_obj->votes_per_user > 0;
-}
-
 sub groups {
     my $self = shift;
     return $self->{'groups'} if exists $self->{'groups'};
@@ -2970,7 +3462,6 @@ sub user {
     return {} if $self->{'error'};
 
     my $user = Bugzilla->user;
-    my $canmove = Bugzilla->params->{'move-enabled'} && $user->is_mover;
 
     my $prod_id = $self->{'product_id'};
 
@@ -2985,8 +3476,7 @@ sub user {
     my $isreporter = $user->id
                      && $user->id == $self->{reporter_id};
 
-    $self->{'user'} = {canmove    => $canmove,
-                       canconfirm => $canconfirm,
+    $self->{'user'} = {canconfirm => $canconfirm,
                        canedit    => $canedit,
                        isreporter => $isreporter};
     return $self->{'user'};
@@ -3006,9 +3496,13 @@ sub choices {
     if (!grep($_->name eq $self->product_obj->name, @products)) {
         unshift(@products, $self->product_obj);
     }
+    my %class_ids = map { $_->classification_id => 1 } @products;
+    my $classifications = 
+        Bugzilla::Classification->new_from_list([keys %class_ids]);
 
     my %choices = (
         bug_status => $self->statuses_available,
+        classification => $classifications,
         product    => \@products,
         component  => $self->product_obj->components,
         version    => $self->product_obj->versions,
@@ -3018,28 +3512,10 @@ sub choices {
     my $resolution_field = new Bugzilla::Field({ name => 'resolution' });
     # Don't include the empty resolution in drop-downs.
     my @resolutions = grep($_->name, @{ $resolution_field->legal_values });
-    # And don't include MOVED in the list unless the bug is already MOVED.
-    if ($self->resolution ne 'MOVED') {
-        @resolutions= grep { $_->name ne 'MOVED' } @resolutions;
-    }
     $choices{'resolution'} = \@resolutions;
 
     $self->{'choices'} = \%choices;
     return $self->{'choices'};
-}
-
-sub votes {
-    my ($self) = @_;
-    return 0 if $self->{error};
-    return $self->{votes} if defined $self->{votes};
-
-    my $dbh = Bugzilla->dbh;
-    $self->{votes} = $dbh->selectrow_array(
-        'SELECT SUM(vote_count) FROM votes
-          WHERE bug_id = ? ' . $dbh->sql_group_by('bug_id'),
-        undef, $self->bug_id);
-    $self->{votes} ||= 0;
-    return $self->{votes};
 }
 
 # Convenience Function. If you need speed, use this. If you need
@@ -3066,8 +3542,10 @@ sub editable_bug_fields {
     # Obsolete custom fields are not editable.
     my @obsolete_fields = Bugzilla->get_fields({obsolete => 1, custom => 1});
     @obsolete_fields = map { $_->name } @obsolete_fields;
-    foreach my $remove ("bug_id", "reporter", "creation_ts", "delta_ts", "lastdiffed", @obsolete_fields) {
-        my $location = lsearch(\@fields, $remove);
+    foreach my $remove ("bug_id", "reporter", "creation_ts", "delta_ts", 
+                        "lastdiffed", @obsolete_fields) 
+    {
+        my $location = firstidx { $_ eq $remove } @fields;
         # Custom multi-select fields are not stored in the bugs table.
         splice(@fields, $location, 1) if ($location > -1);
     }
@@ -3152,7 +3630,8 @@ sub GetBugActivity {
 
     my $query = "SELECT fielddefs.name, bugs_activity.attach_id, " .
         $dbh->sql_date_format('bugs_activity.bug_when', '%Y.%m.%d %H:%i:%s') .
-            ", bugs_activity.removed, bugs_activity.added, profiles.login_name
+            ", bugs_activity.removed, bugs_activity.added, profiles.login_name, 
+               bugs_activity.comment_id
           FROM bugs_activity
                $suppjoins
      LEFT JOIN fielddefs
@@ -3173,7 +3652,7 @@ sub GetBugActivity {
     my $incomplete_data = 0;
 
     foreach my $entry (@$list) {
-        my ($fieldname, $attachid, $when, $removed, $added, $who) = @$entry;
+        my ($fieldname, $attachid, $when, $removed, $added, $who, $comment_id) = @$entry;
         my %change;
         my $activity_visible = 1;
 
@@ -3184,7 +3663,14 @@ sub GetBugActivity {
             || $fieldname eq 'deadline')
         {
             $activity_visible = Bugzilla->user->is_timetracker;
-        } else {
+        }
+        elsif ($fieldname eq 'longdescs.isprivate'
+                && !Bugzilla->user->is_insider 
+                && $added) 
+        { 
+            $activity_visible = 0;
+        } 
+        else {
             $activity_visible = 1;
         }
 
@@ -3218,6 +3704,11 @@ sub GetBugActivity {
             $change{'attachid'} = $attachid;
             $change{'removed'} = $removed;
             $change{'added'} = $added;
+            
+            if ($comment_id) {
+                $change{'comment'} = Bugzilla::Comment->new($comment_id);
+            }
+
             push (@$changes, \%change);
         }
     }
@@ -3232,7 +3723,7 @@ sub GetBugActivity {
 
 # Update the bugs_activity table to reflect changes made in bugs.
 sub LogActivityEntry {
-    my ($i, $col, $removed, $added, $whoid, $timestamp) = @_;
+    my ($i, $col, $removed, $added, $whoid, $timestamp, $comment_id) = @_;
     my $dbh = Bugzilla->dbh;
     # in the case of CCs, deps, and keywords, there's a possibility that someone
     # might try to add or remove a lot of them at once, which might take more
@@ -3260,179 +3751,29 @@ sub LogActivityEntry {
         trick_taint($removestr);
         my $fieldid = get_field_id($col);
         $dbh->do("INSERT INTO bugs_activity
-                  (bug_id, who, bug_when, fieldid, removed, added)
-                  VALUES (?, ?, ?, ?, ?, ?)",
-                  undef, ($i, $whoid, $timestamp, $fieldid, $removestr, $addstr));
+                  (bug_id, who, bug_when, fieldid, removed, added, comment_id)
+                  VALUES (?, ?, ?, ?, ?, ?, ?)",
+                  undef, ($i, $whoid, $timestamp, $fieldid, $removestr, $addstr, $comment_id));
     }
 }
 
 # Convert WebService API and email_in.pl field names to internal DB field
 # names.
 sub map_fields {
-    my ($params) = @_; 
+    my ($params, $except) = @_; 
 
     my %field_values;
     foreach my $field (keys %$params) {
-        my $field_name = FIELD_MAP->{$field} || $field;
+        my $field_name;
+        if ($except->{$field}) {
+           $field_name = $field;
+        }
+        else {
+            $field_name = FIELD_MAP->{$field} || $field;
+        }
         $field_values{$field_name} = $params->{$field};
     }
     return \%field_values;
-}
-
-# CountOpenDependencies counts the number of open dependent bugs for a
-# list of bugs and returns a list of bug_id's and their dependency count
-# It takes one parameter:
-#  - A list of bug numbers whose dependencies are to be checked
-sub CountOpenDependencies {
-    my (@bug_list) = @_;
-    my @dependencies;
-    my $dbh = Bugzilla->dbh;
-
-    my $sth = $dbh->prepare(
-          "SELECT blocked, COUNT(bug_status) " .
-            "FROM bugs, dependencies " .
-           "WHERE " . $dbh->sql_in('blocked', \@bug_list) .
-             "AND bug_id = dependson " .
-             "AND bug_status IN (" . join(', ', map {$dbh->quote($_)} BUG_STATE_OPEN)  . ") " .
-          $dbh->sql_group_by('blocked'));
-    $sth->execute();
-
-    while (my ($bug_id, $dependencies) = $sth->fetchrow_array()) {
-        push(@dependencies, { bug_id       => $bug_id,
-                              dependencies => $dependencies });
-    }
-
-    return @dependencies;
-}
-
-# If a bug is moved to a product which allows less votes per bug
-# compared to the previous product, extra votes need to be removed.
-sub RemoveVotes {
-    my ($id, $who, $reason) = (@_);
-    my $dbh = Bugzilla->dbh;
-
-    my $whopart = ($who) ? " AND votes.who = $who" : "";
-
-    my $sth = $dbh->prepare("SELECT profiles.login_name, " .
-                            "profiles.userid, votes.vote_count, " .
-                            "products.votesperuser, products.maxvotesperbug " .
-                            "FROM profiles " . 
-                            "LEFT JOIN votes ON profiles.userid = votes.who " .
-                            "LEFT JOIN bugs ON votes.bug_id = bugs.bug_id " .
-                            "LEFT JOIN products ON products.id = bugs.product_id " .
-                            "WHERE votes.bug_id = ? " . $whopart);
-    $sth->execute($id);
-    my @list;
-    while (my ($name, $userid, $oldvotes, $votesperuser, $maxvotesperbug) = $sth->fetchrow_array()) {
-        push(@list, [$name, $userid, $oldvotes, $votesperuser, $maxvotesperbug]);
-    }
-
-    # @messages stores all emails which have to be sent, if any.
-    # This array is passed to the caller which will send these emails itself.
-    my @messages = ();
-
-    if (scalar(@list)) {
-        foreach my $ref (@list) {
-            my ($name, $userid, $oldvotes, $votesperuser, $maxvotesperbug) = (@$ref);
-
-            $maxvotesperbug = min($votesperuser, $maxvotesperbug);
-
-            # If this product allows voting and the user's votes are in
-            # the acceptable range, then don't do anything.
-            next if $votesperuser && $oldvotes <= $maxvotesperbug;
-
-            # If the user has more votes on this bug than this product
-            # allows, then reduce the number of votes so it fits
-            my $newvotes = $maxvotesperbug;
-
-            my $removedvotes = $oldvotes - $newvotes;
-
-            if ($newvotes) {
-                $dbh->do("UPDATE votes SET vote_count = ? " .
-                         "WHERE bug_id = ? AND who = ?",
-                         undef, ($newvotes, $id, $userid));
-            } else {
-                $dbh->do("DELETE FROM votes WHERE bug_id = ? AND who = ?",
-                         undef, ($id, $userid));
-            }
-
-            # Notice that we did not make sure that the user fit within the $votesperuser
-            # range.  This is considered to be an acceptable alternative to losing votes
-            # during product moves.  Then next time the user attempts to change their votes,
-            # they will be forced to fit within the $votesperuser limit.
-
-            # Now lets send the e-mail to alert the user to the fact that their votes have
-            # been reduced or removed.
-            my $vars = {
-                'to' => $name . Bugzilla->params->{'emailsuffix'},
-                'bugid' => $id,
-                'reason' => $reason,
-
-                'votesremoved' => $removedvotes,
-                'votesold' => $oldvotes,
-                'votesnew' => $newvotes,
-            };
-
-            my $voter = new Bugzilla::User($userid);
-            my $template = Bugzilla->template_inner($voter->settings->{'lang'}->{'value'});
-
-            my $msg;
-            $template->process("email/votes-removed.txt.tmpl", $vars, \$msg);
-            push(@messages, $msg);
-        }
-        Bugzilla->template_inner("");
-
-        my $votes = $dbh->selectrow_array("SELECT SUM(vote_count) " .
-                                          "FROM votes WHERE bug_id = ?",
-                                          undef, $id) || 0;
-        $dbh->do("UPDATE bugs SET votes = ? WHERE bug_id = ?",
-                 undef, ($votes, $id));
-    }
-    # Now return the array containing emails to be sent.
-    return @messages;
-}
-
-# If a user votes for a bug, or the number of votes required to
-# confirm a bug has been reduced, check if the bug is now confirmed.
-sub CheckIfVotedConfirmed {
-    my $id = shift;
-    my $bug = new Bugzilla::Bug($id);
-
-    my $ret = 0;
-    if (!$bug->everconfirmed
-        and $bug->product_obj->votes_to_confirm
-        and $bug->votes >= $bug->product_obj->votes_to_confirm) 
-    {
-        $bug->add_comment('', { type => CMT_POPULAR_VOTES });
-
-        if ($bug->bug_status eq 'UNCONFIRMED') {
-            # Get a valid open state.
-            my $new_status;
-            foreach my $state (@{$bug->status->can_change_to}) {
-                if ($state->is_open && $state->name ne 'UNCONFIRMED') {
-                    $new_status = $state->name;
-                    last;
-                }
-            }
-            ThrowCodeError('no_open_bug_status') unless $new_status;
-
-            # We cannot call $bug->set_status() here, because a user without
-            # canconfirm privs should still be able to confirm a bug by
-            # popular vote. We already know the new status is valid, so it's safe.
-            $bug->{bug_status} = $new_status;
-            $bug->{everconfirmed} = 1;
-            delete $bug->{'status'}; # Contains the status object.
-        }
-        else {
-            # If the bug is in a closed state, only set everconfirmed to 1.
-            # Do not call $bug->_set_everconfirmed(), for the same reason as above.
-            $bug->{everconfirmed} = 1;
-        }
-        $bug->update();
-
-        $ret = 1;
-    }
-    return $ret;
 }
 
 ################################################################################
@@ -3468,9 +3809,24 @@ sub check_can_change_field {
     } elsif (trim($oldvalue) eq trim($newvalue)) {
         return 1;
     # numeric fields need to be compared using ==
-    } elsif (($field eq 'estimated_time' || $field eq 'remaining_time')
+    } elsif (($field eq 'estimated_time' || $field eq 'remaining_time' 
+              || $field eq 'work_time')
              && $oldvalue == $newvalue)
     {
+        return 1;
+    }
+
+    my @priv_results;
+    Bugzilla::Hook::process('bug_check_can_change_field',
+        { bug => $self, field => $field, 
+          new_value => $newvalue, old_value => $oldvalue, 
+          priv_results => \@priv_results });
+    if (my $priv_required = first { $_ > 0 } @priv_results) {
+        $$PrivilegesRequired = $priv_required;
+        return 0;
+    }
+    my $allow_found = first { $_ == 0 } @priv_results;
+    if (defined $allow_found) {
         return 1;
     }
 
@@ -3483,15 +3839,15 @@ sub check_can_change_field {
     # We store the required permission set into the $PrivilegesRequired
     # variable which gets passed to the error template.
     #
-    # $PrivilegesRequired = 0 : no privileges required;
-    # $PrivilegesRequired = 1 : the reporter, assignee or an empowered user;
-    # $PrivilegesRequired = 2 : the assignee or an empowered user;
-    # $PrivilegesRequired = 3 : an empowered user.
+    # $PrivilegesRequired = PRIVILEGES_REQUIRED_NONE : no privileges required;
+    # $PrivilegesRequired = PRIVILEGES_REQUIRED_REPORTER : the reporter, assignee or an empowered user;
+    # $PrivilegesRequired = PRIVILEGES_REQUIRED_ASSIGNEE : the assignee or an empowered user;
+    # $PrivilegesRequired = PRIVILEGES_REQUIRED_EMPOWERED : an empowered user.
     
     # Only users in the time-tracking group can change time-tracking fields.
-    if ( grep($_ eq $field, qw(deadline estimated_time remaining_time)) ) {
+    if ( grep($_ eq $field, TIMETRACKING_FIELDS) ) {
         if (!$user->is_timetracker) {
-            $$PrivilegesRequired = 3;
+            $$PrivilegesRequired = PRIVILEGES_REQUIRED_EMPOWERED;
             return 0;
         }
     }
@@ -3503,7 +3859,7 @@ sub check_can_change_field {
 
     # *Only* users with (product-specific) "canconfirm" privs can confirm bugs.
     if ($self->_changes_everconfirmed($field, $oldvalue, $newvalue)) {
-        $$PrivilegesRequired = 3;
+        $$PrivilegesRequired = PRIVILEGES_REQUIRED_EMPOWERED;
         return $user->in_group('canconfirm', $self->{'product_id'});
     }
 
@@ -3534,36 +3890,36 @@ sub check_can_change_field {
     #   in that case we will have already returned 1 above
     #   when checking for the assignee of the bug.
     if ($field eq 'assigned_to') {
-        $$PrivilegesRequired = 2;
+        $$PrivilegesRequired = PRIVILEGES_REQUIRED_ASSIGNEE;
         return 0;
     }
     # - change the QA contact
     if ($field eq 'qa_contact') {
-        $$PrivilegesRequired = 2;
+        $$PrivilegesRequired = PRIVILEGES_REQUIRED_ASSIGNEE;
         return 0;
     }
     # - change the target milestone
     if ($field eq 'target_milestone') {
-        $$PrivilegesRequired = 2;
+        $$PrivilegesRequired = PRIVILEGES_REQUIRED_ASSIGNEE;
         return 0;
     }
     # - change the priority (unless he could have set it originally)
     if ($field eq 'priority'
         && !Bugzilla->params->{'letsubmitterchoosepriority'})
     {
-        $$PrivilegesRequired = 2;
+        $$PrivilegesRequired = PRIVILEGES_REQUIRED_ASSIGNEE;
         return 0;
     }
     # - unconfirm bugs (confirming them is handled above)
     if ($field eq 'everconfirmed') {
-        $$PrivilegesRequired = 2;
+        $$PrivilegesRequired = PRIVILEGES_REQUIRED_ASSIGNEE;
         return 0;
     }
     # - change the status from one open state to another
     if ($field eq 'bug_status'
         && is_open_state($oldvalue) && is_open_state($newvalue)) 
     {
-       $$PrivilegesRequired = 2;
+       $$PrivilegesRequired = PRIVILEGES_REQUIRED_ASSIGNEE;
        return 0;
     }
 
@@ -3574,7 +3930,7 @@ sub check_can_change_field {
 
     # If we haven't returned by this point, then the user doesn't
     # have the necessary permissions to change this field.
-    $$PrivilegesRequired = 1;
+    $$PrivilegesRequired = PRIVILEGES_REQUIRED_REPORTER;
     return 0;
 }
 
@@ -3692,7 +4048,8 @@ sub _validate_attribute {
         qw(error groups product_id component_id
            comments milestoneurl attachments isopened
            flag_types num_attachment_flag_types
-           show_attachment_flags any_flags_requesteeble),
+           show_attachment_flags any_flags_requesteeble
+           lastdiffed),
 
         # Bug fields.
         Bugzilla::Bug->fields

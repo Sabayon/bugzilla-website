@@ -44,6 +44,7 @@ use Bugzilla::Constants;
 use Carp qw(confess);
 use Digest::MD5 qw(md5_hex);
 use Hash::Util qw(lock_value unlock_hash lock_keys unlock_keys);
+use List::MoreUtils qw(firstidx);
 use Safe;
 # Historical, needed for SCHEMA_VERSION = '1.00'
 use Storable qw(dclone freeze thaw);
@@ -209,6 +210,9 @@ update this column in this table."
 
 use constant SCHEMA_VERSION  => '2.00';
 use constant ADD_COLUMN      => 'ADD COLUMN';
+# Multiple FKs can be added using ALTER TABLE ADD CONSTRAINT in one
+# SQL statement. This isn't true for all databases.
+use constant MULTIPLE_FKS_IN_ALTER => 1;
 # This is a reasonable default that's true for both PostgreSQL and MySQL.
 use constant MAX_IDENTIFIER_LEN => 63;
 
@@ -269,15 +273,9 @@ use constant ABSTRACT_SCHEMA => {
             target_milestone    => {TYPE => 'varchar(20)',
                                     NOTNULL => 1, DEFAULT => "'---'"},
             qa_contact          => {TYPE => 'INT3',
-                                    REERENCES => {TABLE  => 'profiles',
-                                                  COLUMN => 'userid'}},
+                                    REFERENCES => {TABLE  => 'profiles',
+                                                   COLUMN => 'userid'}},
             status_whiteboard   => {TYPE => 'MEDIUMTEXT', NOTNULL => 1,
-                                    DEFAULT => "''"},
-            votes               => {TYPE => 'INT3', NOTNULL => 1,
-                                    DEFAULT => '0'},
-            # Note: keywords field is only a cache; the real data
-            # comes from the keywords table
-            keywords            => {TYPE => 'MEDIUMTEXT', NOTNULL => 1,
                                     DEFAULT => "''"},
             lastdiffed          => {TYPE => 'DATETIME'},
             everconfirmed       => {TYPE => 'BOOLEAN', NOTNULL => 1},
@@ -309,7 +307,6 @@ use constant ABSTRACT_SCHEMA => {
             bugs_resolution_idx       => ['resolution'],
             bugs_target_milestone_idx => ['target_milestone'],
             bugs_qa_contact_idx       => ['qa_contact'],
-            bugs_votes_idx            => ['votes'],
         ],
     },
 
@@ -355,6 +352,10 @@ use constant ABSTRACT_SCHEMA => {
                                              COLUMN =>  'id'}},
             added     => {TYPE => 'varchar(255)'},
             removed   => {TYPE => 'TINYTEXT'},
+            comment_id => {TYPE => 'INT3', 
+                           REFERENCES => { TABLE  => 'longdescs',
+                                           COLUMN => 'comment_id',
+                                           DELETE => 'CASCADE'}},
         ],
         INDEXES => [
             bugs_activity_bug_id_idx  => ['bug_id'],
@@ -430,24 +431,6 @@ use constant ABSTRACT_SCHEMA => {
         ],
     },
 
-    votes => {
-        FIELDS => [
-            who        => {TYPE => 'INT3', NOTNULL => 1,
-                           REFERENCES => {TABLE  => 'profiles',
-                                          COLUMN => 'userid',
-                                          DELETE => 'CASCADE'}},
-            bug_id     => {TYPE => 'INT3', NOTNULL => 1,
-                          REFERENCES  => {TABLE  =>  'bugs',
-                                          COLUMN =>  'bug_id',
-                                          DELETE => 'CASCADE'}},
-            vote_count => {TYPE => 'INT2', NOTNULL => 1},
-        ],
-        INDEXES => [
-            votes_who_idx    => ['who'],
-            votes_bug_id_idx => ['bug_id'],
-        ],
-    },
-
     attachments => {
         FIELDS => [
             attach_id    => {TYPE => 'MEDIUMSERIAL', NOTNULL => 1,
@@ -460,7 +443,8 @@ use constant ABSTRACT_SCHEMA => {
             modification_time => {TYPE => 'DATETIME', NOTNULL => 1},
             description  => {TYPE => 'TINYTEXT', NOTNULL => 1},
             mimetype     => {TYPE => 'TINYTEXT', NOTNULL => 1},
-            ispatch      => {TYPE => 'BOOLEAN'},
+            ispatch      => {TYPE => 'BOOLEAN', NOTNULL => 1,
+                             DEFAULT => 'FALSE'},
             filename     => {TYPE => 'varchar(100)', NOTNULL => 1},
             submitter_id => {TYPE => 'INT3', NOTNULL => 1,
                              REFERENCES => {TABLE => 'profiles',
@@ -506,7 +490,10 @@ use constant ABSTRACT_SCHEMA => {
 
     bug_see_also => {
         FIELDS => [
-            bug_id => {TYPE => 'INT3', NOTNULL => 1},
+            bug_id => {TYPE => 'INT3', NOTNULL => 1,
+                       REFERENCES => {TABLE  => 'bugs',
+                                      COLUMN => 'bug_id',
+                                      DELETE => 'CASCADE'}},
             value  => {TYPE => 'varchar(255)', NOTNULL => 1},
         ],
         INDEXES => [
@@ -523,7 +510,7 @@ use constant ABSTRACT_SCHEMA => {
             id          => {TYPE => 'SMALLSERIAL', NOTNULL => 1,
                             PRIMARYKEY => 1},
             name        => {TYPE => 'varchar(64)', NOTNULL => 1},
-            description => {TYPE => 'MEDIUMTEXT'},
+            description => {TYPE => 'MEDIUMTEXT', NOTNULL => 1},
         ],
         INDEXES => [
             keyworddefs_name_idx   => {FIELDS => ['name'],
@@ -573,7 +560,7 @@ use constant ABSTRACT_SCHEMA => {
                                                  DELETE => 'CASCADE'}},
             creation_date     => {TYPE => 'DATETIME', NOTNULL => 1},
             modification_date => {TYPE => 'DATETIME'},
-            setter_id         => {TYPE => 'INT3',
+            setter_id         => {TYPE => 'INT3', NOTNULL => 1,
                                   REFERENCES => {TABLE  => 'profiles',
                                                  COLUMN => 'userid'}},
             requestee_id      => {TYPE => 'INT3',
@@ -693,12 +680,16 @@ use constant ABSTRACT_SCHEMA => {
             value_field_id => {TYPE => 'INT3',
                                REFERENCES => {TABLE  => 'fielddefs',
                                               COLUMN => 'id'}},
+            reverse_desc => {TYPE => 'TINYTEXT'},
+            is_mandatory => {TYPE => 'BOOLEAN', NOTNULL => 1,
+                             DEFAULT => 'FALSE'},
         ],
         INDEXES => [
             fielddefs_name_idx    => {FIELDS => ['name'],
                                       TYPE => 'UNIQUE'},
             fielddefs_sortkey_idx => ['sortkey'],
             fielddefs_value_field_id_idx => ['value_field_id'],
+            fielddefs_is_mandatory_idx => ['is_mandatory'],
         ],
     },
 
@@ -852,6 +843,18 @@ use constant ABSTRACT_SCHEMA => {
                                         TYPE => 'UNIQUE'},
             profiles_extern_id_idx => {FIELDS => ['extern_id'],
                                        TYPE   => 'UNIQUE'}
+        ],
+    },
+
+    profile_search => {
+        FIELDS => [
+            id         => {TYPE => 'INTSERIAL', NOTNULL => 1, PRIMARYKEY => 1},
+            user_id    => {TYPE => 'INT3', NOTNULL => 1},
+            bug_list   => {TYPE => 'MEDIUMTEXT', NOTNULL => 1},
+            list_order => {TYPE => 'MEDIUMTEXT'},
+        ],
+        INDEXES => [
+            profile_search_user_id => [qw(user_id)],
         ],
     },
 
@@ -1056,8 +1059,10 @@ use constant ABSTRACT_SCHEMA => {
                                              DELETE =>  'CASCADE'}},
             entry         => {TYPE => 'BOOLEAN', NOTNULL => 1,
                               DEFAULT => 'FALSE'},
-            membercontrol => {TYPE => 'BOOLEAN', NOTNULL => 1},
-            othercontrol  => {TYPE => 'BOOLEAN', NOTNULL => 1},
+            membercontrol => {TYPE => 'INT1', NOTNULL => 1,
+                              DEFAULT => CONTROLMAPNA},
+            othercontrol  => {TYPE => 'INT1', NOTNULL => 1,
+                              DEFAULT => CONTROLMAPNA},
             canedit       => {TYPE => 'BOOLEAN', NOTNULL => 1,
                               DEFAULT => 'FALSE'},
             editcomponents => {TYPE => 'BOOLEAN', NOTNULL => 1,
@@ -1215,19 +1220,13 @@ use constant ABSTRACT_SCHEMA => {
                                   REFERENCES => {TABLE  => 'classifications',
                                                  COLUMN => 'id',
                                                  DELETE => 'CASCADE'}},
-            description       => {TYPE => 'MEDIUMTEXT'},
+            description       => {TYPE => 'MEDIUMTEXT', NOTNULL => 1},
             isactive          => {TYPE => 'BOOLEAN', NOTNULL => 1,
                                   DEFAULT => 1},
-            votesperuser      => {TYPE => 'INT2', NOTNULL => 1,
-                                  DEFAULT => 0},
-            maxvotesperbug    => {TYPE => 'INT2', NOTNULL => 1,
-                                  DEFAULT => '10000'},
-            votestoconfirm    => {TYPE => 'INT2', NOTNULL => 1,
-                                  DEFAULT => 0},
             defaultmilestone  => {TYPE => 'varchar(20)',
                                   NOTNULL => 1, DEFAULT => "'---'"},
             allows_unconfirmed => {TYPE => 'BOOLEAN', NOTNULL => 1,
-                                   DEFAULT => 'FALSE'},
+                                   DEFAULT => 'TRUE'},
         ],
         INDEXES => [
             products_name_idx   => {FIELDS => ['name'],
@@ -1837,11 +1836,26 @@ sub _hash_identifier {
 }
 
 
-sub get_add_fk_sql {
-    my ($self, $table, $column, $def) = @_;
+sub get_add_fks_sql {
+    my ($self, $table, $column_fks) = @_;
 
-    my $fk_string = $self->get_fk_ddl($table, $column, $def);
-    return ("ALTER TABLE $table ADD $fk_string");
+    my @add;
+    foreach my $column (keys %$column_fks) {
+        my $def = $column_fks->{$column};
+        my $fk_string = $self->get_fk_ddl($table, $column, $def);
+        push(@add, $fk_string);
+    }
+    my @sql;
+    if ($self->MULTIPLE_FKS_IN_ALTER) {
+        my $alter = "ALTER TABLE $table ADD " . join(', ADD ', @add);
+        push(@sql, $alter);
+    }
+    else {
+        foreach my $fk_string (@add) {
+            push(@sql, "ALTER TABLE $table ADD $fk_string");
+        }
+    }
+    return @sql;
 }
 
 sub get_drop_fk_sql { 
@@ -2146,6 +2160,10 @@ sub get_alter_column_ddl {
 
     my $default = $new_def->{DEFAULT};
     my $default_old = $old_def->{DEFAULT};
+
+    if (defined $default) {
+        $default = $specific->{$default} if exists $specific->{$default};
+    }
     # This first condition prevents "uninitialized value" errors.
     if (!defined $default && !defined $default_old) {
         # Do Nothing
@@ -2159,7 +2177,6 @@ sub get_alter_column_ddl {
     elsif ( (defined $default && !defined $default_old) || 
             ($default ne $default_old) ) 
     {
-        $default = $specific->{$default} if exists $specific->{$default};
         push(@statements, "ALTER TABLE $table ALTER COLUMN $column "
                          . " SET DEFAULT $default");
     }
@@ -2168,7 +2185,7 @@ sub get_alter_column_ddl {
     if (!$old_def->{NOTNULL} && $new_def->{NOTNULL}) {
         my $setdefault;
         # Handle any fields that were NULL before, if we have a default,
-        $setdefault = $new_def->{DEFAULT} if exists $new_def->{DEFAULT};
+        $setdefault = $default if defined $default;
         # But if we have a set_nulls_to, that overrides the DEFAULT 
         # (although nobody would usually specify both a default and 
         # a set_nulls_to.)
@@ -2477,7 +2494,7 @@ sub delete_column {
     my ($self, $table, $column) = @_;
 
     my $abstract_fields = $self->{abstract_schema}{$table}{FIELDS};
-    my $name_position = lsearch($abstract_fields, $column);
+    my $name_position = firstidx { $_ eq $column } @$abstract_fields;
     die "Attempted to delete nonexistent column ${table}.${column}" 
         if $name_position == -1;
     # Delete the key/value pair from the array.
@@ -2566,7 +2583,7 @@ sub set_index {
 sub _set_object {
     my ($self, $table, $name, $definition, $array_to_change) = @_;
 
-    my $obj_position = lsearch($array_to_change, $name) + 1;
+    my $obj_position = (firstidx { $_ eq $name } @$array_to_change) + 1;
     # If the object doesn't exist, then add it.
     if (!$obj_position) {
         push(@$array_to_change, $name);
@@ -2599,7 +2616,7 @@ sub delete_index {
     my ($self, $table, $name) = @_;
 
     my $indexes = $self->{abstract_schema}{$table}{INDEXES};
-    my $name_position = lsearch($indexes, $name);
+    my $name_position = firstidx { $_ eq $name } @$indexes;
     die "Attempted to delete nonexistent index $name on the $table table" 
         if $name_position == -1;
     # Delete the key/value pair from the array.

@@ -115,7 +115,7 @@ if ($action eq 'add') {
 
 if ($action eq 'new') {
     check_token_data($token, 'add_milestone');
-    my $milestone = Bugzilla::Milestone->create({ name    => $milestone_name,
+    my $milestone = Bugzilla::Milestone->create({ value   => $milestone_name,
                                                   product => $product,
                                                   sortkey => $sortkey });
     delete_token($token);
@@ -206,6 +206,9 @@ if ($action eq 'update') {
     $milestone->set_name($milestone_name);
     $milestone->set_sortkey($sortkey);
     my $changes = $milestone->update();
+    # Reloading the product since the default milestone name
+    # could have been changed.
+    $product = new Bugzilla::Product({ name => $product_name });
 
     delete_token($token);
 
@@ -218,7 +221,5 @@ if ($action eq 'update') {
     exit;
 }
 
-#
 # No valid action found
-#
-ThrowUserError('no_valid_action', {'field' => "target_milestone"});
+ThrowUserError('unknown_action', {action => $action});

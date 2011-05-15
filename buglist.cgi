@@ -40,6 +40,7 @@ use Bugzilla::Error;
 use Bugzilla::Util;
 use Bugzilla::Search;
 use Bugzilla::Search::Quicksearch;
+use Bugzilla::Search::Recent;
 use Bugzilla::Search::Saved;
 use Bugzilla::User;
 use Bugzilla::Bug;
@@ -60,7 +61,7 @@ my $buffer = $cgi->query_string();
 # We have to check the login here to get the correct footer if an error is
 # thrown and to prevent a logged out user to use QuickSearch if 'requirelogin'
 # is turned 'on'.
-Bugzilla->login();
+my $user = Bugzilla->login();
 
 if (length($buffer) == 0) {
     print $cgi->header(-refresh=> '10; URL=query.cgi');
@@ -80,17 +81,7 @@ if (grep { $_ =~ /^cmd\-/ } $cgi->param()) {
     exit;
 }
 
-# If query was POSTed, clean the URL from empty parameters and redirect back to
-# itself. This will make advanced search URLs more tolerable.
-#
-if ($cgi->request_method() eq 'POST') {
-    $cgi->clean_search_url();
-    my $uri_length = length($cgi->self_url());
-    if ($uri_length < CGI_URI_LIMIT) {
-        print $cgi->redirect(-url => $cgi->self_url());
-        exit;
-    }
-}
+$cgi->redirect_search_url();
 
 # Determine whether this is a quicksearch query.
 my $searchstring = $cgi->param('quicksearch');
@@ -185,17 +176,26 @@ my $params;
 
 # If the user is retrieving the last bug list they looked at, hack the buffer
 # storing the query string so that it looks like a query retrieving those bugs.
-if (defined $cgi->param('regetlastlist')) {
-    $cgi->cookie('BUGLIST') || ThrowUserError("missing_cookie");
+if (my $last_list = $cgi->param('regetlastlist')) {
+    my ($bug_ids, $order);
 
-    $order = "reuse last sort" unless $order;
-    my $bug_id = $cgi->cookie('BUGLIST');
-    $bug_id =~ s/:/,/g;
+    # Logged-out users use the old cookie method for storing the last search.
+    if (!$user->id or $last_list eq 'cookie') {
+        $cgi->cookie('BUGLIST') || ThrowUserError("missing_cookie");
+        $order = "reuse last sort" unless $order;
+        $bug_ids = $cgi->cookie('BUGLIST');
+        $bug_ids =~ s/[:-]/,/g;
+    }
+    # But logged in users store the last X searches in the DB so they can
+    # have multiple bug lists available.
+    else {
+        my $last_search = Bugzilla::Search::Recent->check(
+            { id => $last_list });
+        $bug_ids = join(',', @{ $last_search->bug_list });
+        $order   = $last_search->list_order if !$order;
+    }
     # set up the params for this new query
-    $params = new Bugzilla::CGI({
-                                 bug_id => $bug_id,
-                                 order => $order,
-                                });
+    $params = new Bugzilla::CGI({ bug_id => $bug_ids, order => $order });
 }
 
 # Figure out whether or not the user is doing a fulltext search.  If not,
@@ -431,7 +431,7 @@ if ($cmdtype eq "dorem") {
         $order = $params->param('order') || $order;
     }
     elsif ($remaction eq "forget") {
-        my $user = Bugzilla->login(LOGIN_REQUIRED);
+        $user = Bugzilla->login(LOGIN_REQUIRED);
         # Copy the name into a variable, so that we can trick_taint it for
         # the DB. We know it's safe, because we're using placeholders in 
         # the SQL, and the SQL is only a DELETE.
@@ -458,10 +458,9 @@ if ($cmdtype eq "dorem") {
         }
 
         # If we are here, then we can safely remove the saved search
-        my ($query_id) = $dbh->selectrow_array('SELECT id FROM namedqueries
-                                                    WHERE userid = ?
-                                                      AND name   = ?',
-                                                  undef, ($user->id, $qname));
+        my $query_id;
+        ($buffer, $query_id) = LookupNamedQuery(scalar $cgi->param("namedcmd"),
+                                                $user->id);
         if (!$query_id) {
             # The user has no query of this name. Play along.
         }
@@ -488,7 +487,7 @@ if ($cmdtype eq "dorem") {
         # Generate and return the UI (HTML page) from the appropriate template.
         $vars->{'message'} = "buglist_query_gone";
         $vars->{'namedcmd'} = $qname;
-        $vars->{'url'} = "query.cgi";
+        $vars->{'url'} = "buglist.cgi?newquery=" . url_quote($buffer) . "&cmdtype=doit&remtype=asnamed&newqueryname=" . url_quote($qname);
         $template->process("global/message.html.tmpl", $vars)
           || ThrowTemplateError($template->error());
         exit;
@@ -496,15 +495,17 @@ if ($cmdtype eq "dorem") {
 }
 elsif (($cmdtype eq "doit") && defined $cgi->param('remtype')) {
     if ($cgi->param('remtype') eq "asdefault") {
-        my $user = Bugzilla->login(LOGIN_REQUIRED);
+        $user = Bugzilla->login(LOGIN_REQUIRED);
         InsertNamedQuery(DEFAULT_QUERY_NAME, $buffer);
         $vars->{'message'} = "buglist_new_default_query";
     }
     elsif ($cgi->param('remtype') eq "asnamed") {
-        my $user = Bugzilla->login(LOGIN_REQUIRED);
+        $user = Bugzilla->login(LOGIN_REQUIRED);
         my $query_name = $cgi->param('newqueryname');
         my $new_query = $cgi->param('newquery');
         my $query_type = QUERY_LIST;
+        my $token = $cgi->param('token');
+        check_hash_token($token, ['savedsearch']);
         # If list_of_bugs is true, we are adding/removing individual bugs
         # to a saved search. We get the existing list of bug IDs (if any)
         # and add/remove the passed ones.
@@ -512,7 +513,7 @@ elsif (($cmdtype eq "doit") && defined $cgi->param('remtype')) {
             # We add or remove bugs based on the action choosen.
             my $action = trim($cgi->param('action') || '');
             $action =~ /^(add|remove)$/
-              || ThrowCodeError('unknown_action', {'action' => $action});
+              || ThrowUserError('unknown_action', {action => $action});
 
             # If we are removing bugs, then we must have an existing
             # saved search selected.
@@ -655,18 +656,6 @@ else {
 # and are hard-coded into the display templates.
 @displaycolumns = grep($_ ne 'bug_id', @displaycolumns);
 
-# Add the votes column to the list of columns to be displayed
-# in the bug list if the user is searching for bugs with a certain
-# number of votes and the votes column is not already on the list.
-
-# Some versions of perl will taint 'votes' if this is done as a single
-# statement, because the votes param is tainted at this point
-my $votes = $params->param('votes');
-$votes ||= "";
-if (trim($votes) && !grep($_ eq 'votes', @displaycolumns)) {
-    push(@displaycolumns, 'votes');
-}
-
 # Remove the timetracking columns if they are not a part of the group
 # (happens if a user had access to time tracking and it was revoked/disabled)
 if (!Bugzilla->user->is_timetracker) {
@@ -696,7 +685,7 @@ my @selectcolumns = ("bug_id", "bug_severity", "priority", "bug_status",
                      "resolution", "product");
 
 # remaining and actual_time are required for percentage_complete calculation:
-if (lsearch(\@displaycolumns, "percentage_complete") >= 0) {
+if (grep { $_ eq "percentage_complete" } @displaycolumns) {
     push (@selectcolumns, "remaining_time");
     push (@selectcolumns, "actual_time");
 }
@@ -810,12 +799,6 @@ if ($order) {
                 # Special handlings for certain columns
                 next if $column_name eq 'relevance' && !$fulltext;
                                 
-                # If we are sorting by votes, sort in descending order if
-                # no explicit sort order was given.
-                if ($column_name eq 'votes' && !$direction) {
-                    $direction = "DESC";
-                }
-
                 if (exists $columns->{$column_name}) {
                     $direction = " $direction" if $direction;
                     push(@order, "$column_name$direction");
@@ -933,12 +916,12 @@ $buglist_sth->execute();
 # of Perl records.
 
 # If we're doing time tracking, then keep totals for all bugs.
-my $percentage_complete = lsearch(\@displaycolumns, 'percentage_complete') >= 0;
-my $estimated_time      = lsearch(\@displaycolumns, 'estimated_time') >= 0;
-my $remaining_time    = ((lsearch(\@displaycolumns, 'remaining_time') >= 0)
-                         || $percentage_complete);
-my $actual_time       = ((lsearch(\@displaycolumns, 'actual_time') >= 0)
-                         || $percentage_complete);
+my $percentage_complete = grep($_ eq 'percentage_complete', @displaycolumns);
+my $estimated_time      = grep($_ eq 'estimated_time', @displaycolumns);
+my $remaining_time      = grep($_ eq 'remaining_time', @displaycolumns)
+                            || $percentage_complete;
+my $actual_time         = grep($_ eq 'actual_time', @displaycolumns)
+                            || $percentage_complete;
 
 my $time_info = { 'estimated_time' => 0,
                   'remaining_time' => 0,
@@ -1193,6 +1176,9 @@ if ($dotweak && scalar @bugs) {
 # the "Remember search as" field.
 $vars->{'defaultsavename'} = $cgi->param('query_based_on');
 
+# If we did a quick search then redisplay the previously entered search 
+# string in the text field.
+$vars->{'quicksearch'} = $searchstring;
 
 ################################################################################
 # HTTP Header Generation
@@ -1204,26 +1190,11 @@ my $contenttype;
 my $disposition = "inline";
 
 if ($format->{'extension'} eq "html" && !$agent) {
-    if ($order && !$cgi->param('sharer_id')) {
-        $cgi->send_cookie(-name => 'LASTORDER',
-                          -value => $order,
-                          -expires => 'Fri, 01-Jan-2038 00:00:00 GMT');
+    if (!$cgi->param('regetlastlist')) {
+        Bugzilla->user->save_last_search(
+            { bugs => \@bugidlist, order => $order, vars => $vars,
+              list_id => scalar $cgi->param('list_id') });
     }
-    my $bugids = join(":", @bugidlist);
-    # See also Bug 111999
-    if (length($bugids) == 0) {
-        $cgi->remove_cookie('BUGLIST');
-    }
-    elsif (length($bugids) < 4000) {
-        $cgi->send_cookie(-name => 'BUGLIST',
-                          -value => $bugids,
-                          -expires => 'Fri, 01-Jan-2038 00:00:00 GMT');
-    }
-    else {
-        $cgi->remove_cookie('BUGLIST');
-        $vars->{'toolong'} = 1;
-    }
-
     $contenttype = "text/html";
 }
 else {

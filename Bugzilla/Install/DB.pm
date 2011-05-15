@@ -102,6 +102,16 @@ sub update_fielddefs_definition {
         $dbh->do('UPDATE fielddefs SET buglist = 1 WHERE custom = 1 AND type != ' . FIELD_TYPE_MULTI_SELECT);
     }
 
+    #2008-08-26 elliotte_martin@yahoo.com - Bug 251556
+    $dbh->bz_add_column('fielddefs', 'reverse_desc', {TYPE => 'TINYTEXT'});
+
+    $dbh->do('UPDATE fielddefs SET buglist = 1
+               WHERE custom = 1 AND type = ' . FIELD_TYPE_MULTI_SELECT);
+
+    $dbh->bz_add_column('fielddefs', 'is_mandatory',
+        {TYPE => 'BOOLEAN', NOTNULL => 1, DEFAULT => 'FALSE'});
+    $dbh->bz_add_index('fielddefs', 'fielddefs_is_mandatory_idx',
+                       ['is_mandatory']);
 
     # Remember, this is not the function for adding general table changes.
     # That is below. Add new changes to the fielddefs table above this
@@ -142,7 +152,6 @@ sub update_table_definitions {
 
     _add_bug_vote_cache();
     _update_product_name_definition();
-    _add_bug_keyword_cache();
 
     $dbh->bz_add_column('profiles', 'disabledtext',
                         {TYPE => 'MEDIUMTEXT', NOTNULL => 1}, '');
@@ -164,11 +173,6 @@ sub update_table_definitions {
 
     $dbh->bz_add_column('bugs', 'everconfirmed',
                         {TYPE => 'BOOLEAN', NOTNULL => 1}, 1);
-
-    $dbh->bz_add_column('products', 'maxvotesperbug',
-                        {TYPE => 'INT2', NOTNULL => 1, DEFAULT => '10000'});
-    $dbh->bz_add_column('products', 'votestoconfirm',
-                        {TYPE => 'INT2', NOTNULL => 1}, 0);
 
     _populate_milestones_table();
 
@@ -358,10 +362,10 @@ sub update_table_definitions {
     # Add defaults for some fields that should have them but didn't.
     $dbh->bz_alter_column('bugs', 'status_whiteboard',
         {TYPE => 'MEDIUMTEXT', NOTNULL => 1, DEFAULT => "''"});
-    $dbh->bz_alter_column('bugs', 'keywords',
-        {TYPE => 'MEDIUMTEXT', NOTNULL => 1, DEFAULT => "''"});
-    $dbh->bz_alter_column('bugs', 'votes',
-                          {TYPE => 'INT3', NOTNULL => 1, DEFAULT => '0'});
+    if ($dbh->bz_column_info('bugs', 'votes')) {
+        $dbh->bz_alter_column('bugs', 'votes',
+                              {TYPE => 'INT3', NOTNULL => 1, DEFAULT => '0'});
+    }
 
     $dbh->bz_alter_column('bugs', 'lastdiffed', {TYPE => 'DATETIME'});
 
@@ -466,11 +470,14 @@ sub update_table_definitions {
     if ($dbh->bz_column_info('products', 'disallownew')){
         $dbh->bz_alter_column('products', 'disallownew',
                               {TYPE => 'BOOLEAN', NOTNULL => 1,  DEFAULT => 0});
+    
+        if ($dbh->bz_column_info('products', 'votesperuser')) {
+            $dbh->bz_alter_column('products', 'votesperuser', 
+                {TYPE => 'INT2', NOTNULL => 1, DEFAULT => 0});
+            $dbh->bz_alter_column('products', 'votestoconfirm',
+                {TYPE => 'INT2', NOTNULL => 1, DEFAULT => 0});
+        }
     }
-    $dbh->bz_alter_column('products', 'votesperuser', 
-                          {TYPE => 'INT2', NOTNULL => 1, DEFAULT => 0});
-    $dbh->bz_alter_column('products', 'votestoconfirm',
-                          {TYPE => 'INT2', NOTNULL => 1, DEFAULT => 0});
 
     # 2006-08-04 LpSolit@gmail.com - Bug 305941
     $dbh->bz_drop_column('profiles', 'refreshed_when');
@@ -523,7 +530,7 @@ sub update_table_definitions {
     _fix_uppercase_index_names();
 
     # 2007-05-17 LpSolit@gmail.com - Bug 344965
-    _initialize_workflow($old_params);
+    _initialize_workflow_for_upgrade($old_params);
 
     # 2007-08-08 LpSolit@gmail.com - Bug 332149
     $dbh->bz_add_column('groups', 'icon_url', {TYPE => 'TINYTEXT'});
@@ -597,6 +604,35 @@ sub update_table_definitions {
     _fix_decimal_types();
     _fix_series_creator_fk();
 
+    # 2009-11-14 dkl@redhat.com - Bug 310450
+    $dbh->bz_add_column('bugs_activity', 'comment_id', {TYPE => 'INT3'});
+
+    # 2010-04-07 LpSolit@gmail.com - Bug 69621
+    $dbh->bz_drop_column('bugs', 'keywords');
+    
+    # 2010-05-07 ewong@pw-wspx.org - Bug 463945
+    $dbh->bz_alter_column('group_control_map', 'membercontrol',
+                          {TYPE => 'INT1', NOTNULL => 1, DEFAULT => CONTROLMAPNA});
+    $dbh->bz_alter_column('group_control_map', 'othercontrol',
+                          {TYPE => 'INT1', NOTNULL => 1, DEFAULT => CONTROLMAPNA});
+
+    # Add NOT NULL to some columns that need it, and DEFAULT to
+    # attachments.ispatch.
+    $dbh->bz_alter_column('attachments', 'ispatch', 
+        { TYPE => 'BOOLEAN', NOTNULL => 1, DEFAULT => 'FALSE'});
+    $dbh->bz_alter_column('keyworddefs', 'description',
+                          { TYPE => 'MEDIUMTEXT', NOTNULL => 1 }, '');
+    $dbh->bz_alter_column('products', 'description',
+                          { TYPE => 'MEDIUMTEXT', NOTNULL => 1 }, '');
+
+    # Change the default of allows_unconfirmed to TRUE as part
+    # of the new workflow.
+    $dbh->bz_alter_column('products', 'allows_unconfirmed',
+        { TYPE => 'BOOLEAN', NOTNULL => 1, DEFAULT => 'TRUE' });
+
+    # 2010-10-09 LpSolit@gmail.com - Bug 505165
+    $dbh->bz_alter_column('flags', 'setter_id', {TYPE => 'INT3', NOTNULL => 1});
+
     ################################################################
     # New --TABLE-- changes should go *** A B O V E *** this point #
     ################################################################
@@ -649,14 +685,14 @@ sub _add_bug_vote_cache {
     # (P.S. All is not lost; it appears that the latest betas of MySQL 
     # support a new table format which will allow 32 indices.)
 
-    $dbh->bz_drop_column('bugs', 'area');
-    if (!$dbh->bz_column_info('bugs', 'votes')) {
+    if ($dbh->bz_column_info('bugs', 'area')) {
+        $dbh->bz_drop_column('bugs', 'area');
         $dbh->bz_add_column('bugs', 'votes', {TYPE => 'INT3', NOTNULL => 1,
                                               DEFAULT => 0});
         $dbh->bz_add_index('bugs', 'bugs_votes_idx', [qw(votes)]);
+        $dbh->bz_add_column('products', 'votesperuser',
+                            {TYPE => 'INT2', NOTNULL => 1}, 0);
     }
-    $dbh->bz_add_column('products', 'votesperuser',
-                        {TYPE => 'INT2', NOTNULL => 1}, 0);
 }
 
 sub _update_product_name_definition {
@@ -680,46 +716,6 @@ sub _update_product_name_definition {
         $dbh->bz_alter_column('products',   'product', {TYPE => 'varchar(64)'});
         $dbh->bz_alter_column('versions',   'program',
                               {TYPE => 'varchar(64)', NOTNULL => 1});
-    }
-}
-
-sub _add_bug_keyword_cache {
-    my $dbh = Bugzilla->dbh;
-    # 2000-01-16 Added a "keywords" field to the bugs table, which
-    # contains a string copy of the entries of the keywords table for this
-    # bug.  This is so that I can easily sort and display a keywords
-    # column in bug lists.
-
-    if (!$dbh->bz_column_info('bugs', 'keywords')) {
-        $dbh->bz_add_column('bugs', 'keywords',
-            {TYPE => 'MEDIUMTEXT', NOTNULL => 1, DEFAULT => "''"});
-
-        my @kwords;
-        print "Making sure 'keywords' field of table 'bugs' is empty...\n";
-        $dbh->do("UPDATE bugs SET keywords = '' WHERE keywords != ''");
-        print "Repopulating 'keywords' field of table 'bugs'...\n";
-        my $sth = $dbh->prepare("SELECT keywords.bug_id, keyworddefs.name " .
-                                  "FROM keywords, keyworddefs " .
-                                 "WHERE keyworddefs.id = keywords.keywordid " .
-                              "ORDER BY keywords.bug_id, keyworddefs.name");
-        $sth->execute;
-        my @list;
-        my $bugid = 0;
-        my @row;
-        while (1) {
-            my ($b, $k) = ($sth->fetchrow_array());
-            if (!defined $b || $b ne $bugid) {
-                if (@list) {
-                    $dbh->do("UPDATE bugs SET keywords = " .
-                             $dbh->quote(join(', ', @list)) .
-                             " WHERE bug_id = $bugid");
-                }
-                last if !$b;
-                $bugid = $b;
-                @list = ();
-            }
-            push(@list, $k);
-        }
     }
 }
 
@@ -891,9 +887,11 @@ sub _add_unique_login_name_index_to_profiles {
                            ["votes", "who"],
                            ["longdescs", "who"]) {
                 my ($table, $field) = (@$i);
-                print "   Updating $table.$field...\n";
-                $dbh->do("UPDATE $table SET $field = $u1 " .
-                          "WHERE $field = $u2");
+                if ($dbh->bz_table_info($table)) {
+                    print "   Updating $table.$field...\n";
+                    $dbh->do("UPDATE $table SET $field = $u1 " .
+                              "WHERE $field = $u2");
+                }
             }
             $dbh->do("DELETE FROM profiles WHERE userid = $u2");
         }
@@ -1051,6 +1049,7 @@ sub _copy_from_comments_to_longdescs {
     # 2000-11-27 For Bugzilla 2.5 and later. Copy data from 'comments' to
     # 'longdescs' - the new name of the comments table.
     if ($dbh->bz_table_info('comments')) {
+        print "Copying data from 'comments' to 'longdescs'...\n";
         my $quoted_when = $dbh->quote_identifier('when');
         $dbh->do("INSERT INTO longdescs (bug_when, bug_id, who, thetext)
                   SELECT $quoted_when, bug_id, who, comment
@@ -1258,6 +1257,7 @@ sub _use_ip_instead_of_hostname_in_logincookies {
     #
     # Use the ip, not the hostname, in the logincookies table
     if ($dbh->bz_column_info("logincookies", "hostname")) {
+        print "Clearing the logincookies table...\n";
         # We've changed what we match against, so all entries are now invalid
         $dbh->do("DELETE FROM logincookies");
 
@@ -1997,9 +1997,11 @@ sub _copy_old_charts_into_database {
         my $all_name = "-All-";
         my $open_name = "All Open";
 
+        $dbh->bz_start_transaction();
         my $products = $dbh->selectall_arrayref("SELECT name FROM products");
 
         foreach my $product ((map { $_->[0] } @$products), "-All-") {
+            print "$product:\n";
             # First, create the series
             my %queries;
             my %seriesids;
@@ -2048,8 +2050,9 @@ sub _copy_old_charts_into_database {
             my %data;
             my $last_date = "";
 
-            while (<$in>) {
-                if (/^(\d+\|.*)/) {
+            my @lines = <$in>;
+            while (my $line = shift @lines) {
+                if ($line =~ /^(\d+\|.*)/) {
                     my @numbers = split(/\||\r/, $1);
 
                     # Only take the first line for each date; it was possible to
@@ -2072,6 +2075,9 @@ sub _copy_old_charts_into_database {
 
             $in->close;
 
+            my $total_items = (scalar(@fields) + 1) 
+                              * scalar(keys %{ $data{'NEW'} });
+            my $count = 0;
             foreach my $field (@fields, $open_name) {
                 # Insert values into series_data: series_id, date, value
                 my %fielddata = %{$data{$field}};
@@ -2083,6 +2089,8 @@ sub _copy_old_charts_into_database {
                     # We prepared this above
                     $seriesdatasth->execute($seriesids{$field},
                                             $date, $fielddata{$date} || 0);
+                    indicate_progress({ total => $total_items, 
+                                        current => ++$count, every => 100 });
                 }
             }
 
@@ -2109,6 +2117,8 @@ sub _copy_old_charts_into_database {
                 }
             }
         }
+
+        $dbh->bz_commit_transaction();
     }
 }
 
@@ -2177,7 +2187,7 @@ sub _convert_attachments_filename_from_mediumtext {
     # and attachment.cgi now takes them out, but old ones need converting.
     my $ref = $dbh->bz_column_info("attachments", "filename");
     if ($ref->{TYPE} ne 'varchar(100)') {
-        print "Removing paths from filenames in attachments table...\n";
+        print "Removing paths from filenames in attachments table...";
 
         my $sth = $dbh->prepare("SELECT attach_id, filename FROM attachments " .
             "WHERE " . $dbh->sql_position(q{'/'}, 'filename') . " > 0 OR " .
@@ -2193,8 +2203,6 @@ sub _convert_attachments_filename_from_mediumtext {
 
         print "Done.\n";
 
-        print "Resizing attachments.filename from mediumtext to",
-              " varchar(100).\n";
         $dbh->bz_alter_column("attachments", "filename",
                               {TYPE => 'varchar(100)', NOTNULL => 1});
     }
@@ -2208,9 +2216,9 @@ sub _rename_votes_count_and_force_group_refresh {
     #
     # Renaming the 'count' column in the votes table because Sybase doesn't
     # like it
-    if ($dbh->bz_column_info('votes', 'count')) {
-        $dbh->bz_rename_column('votes', 'count', 'vote_count');
-    }
+    return if !$dbh->bz_table_info('votes');
+    return if $dbh->bz_column_info('votes', 'count');
+    $dbh->bz_rename_column('votes', 'count', 'vote_count');
 }
 
 sub _fix_group_with_empty_name {
@@ -2268,7 +2276,9 @@ sub _migrate_email_prefs_to_new_table {
                              "Reporter"  => REL_REPORTER,
                              "QAcontact" => REL_QA,
                              "CClist"    => REL_CC,
-                             "Voter"     => REL_VOTER);
+                             # REL_VOTER was "4" before it was moved to an
+                             #  extension.
+                             "Voter"     => 4);
 
         my %events = ("Removeme"    => EVT_ADDED_REMOVED,
                       "Comments"    => EVT_COMMENT,
@@ -2917,7 +2927,7 @@ sub _fix_uppercase_index_names {
     }
 }
 
-sub _initialize_workflow {
+sub _initialize_workflow_for_upgrade {
     my $old_params = shift;
     my $dbh = Bugzilla->dbh;
 
@@ -2953,6 +2963,11 @@ sub _initialize_workflow {
                   join(', ', @closed_statuses) . ')');
     }
 
+    # We only populate the workflow here if we're upgrading from a version
+    # before 4.0 (which is where init_workflow was added). This was the
+    # first schema change done for 4.0, so we check this.
+    return if $dbh->bz_column_info('bugs_activity', 'comment_id');
+
     # Populate the status_workflow table. We do nothing if the table already
     # has entries. If all bug status transitions have been deleted, the
     # workflow will be restored to its default schema.
@@ -2972,7 +2987,7 @@ sub _initialize_workflow {
         # confirmed bugs, so we use this parameter here.
         my $reassign = $old_params->{'commentonreassign'} || 0;
 
-        # This is the default workflow.
+        # This is the default workflow for upgrading installations.
         my @workflow = ([undef, 'UNCONFIRMED', $create],
                         [undef, 'NEW', $create],
                         [undef, 'ASSIGNED', $create],
@@ -3115,11 +3130,11 @@ sub _check_content_length {
           WHERE CHAR_LENGTH($field_name) > ?", {Columns=>[1,2]}, $max_length) };
 
     if (scalar keys %contents) {
-        print install_string('install_data_too_long',
-                             { column     => $field_name,
-                               id_column  => $id_field,
-                               table      => $table_name,
-                               max_length => $max_length });
+        my $error = install_string('install_data_too_long',
+                                   { column     => $field_name,
+                                     id_column  => $id_field,
+                                     table      => $table_name,
+                                     max_length => $max_length });
         foreach my $id (keys %contents) {
             my $string = $contents{$id};
             # Don't dump the whole string--it could be 16MB.
@@ -3127,9 +3142,9 @@ sub _check_content_length {
                 $string = substr($string, 0, 30) . "..." 
                          . substr($string, -30) . "\n";
             }
-            print "$id: $string\n";
+            $error .= "$id: $string\n";
         }
-        exit 3;
+        die $error;
     }
 }
 
@@ -3167,11 +3182,12 @@ sub _populate_bugs_fulltext {
         $bug_ids ||= $dbh->selectcol_arrayref('SELECT bug_id FROM bugs');
         # If there are no bugs in the bugs table, there's nothing to populate.
         return if !@$bug_ids;
+        my $num_bugs = scalar @$bug_ids;
 
         my $command = "INSERT";
         my $where = "";
         if ($fulltext) {
-            print "Updating bugs_fulltext...\n";
+            print "Updating bugs_fulltext for $num_bugs bugs...\n";
             $where = "WHERE " . $dbh->sql_in('bugs.bug_id', $bug_ids);
             # It turns out that doing a REPLACE INTO is up to 10x faster
             # than any other possible method of updating the table, in MySQL,
@@ -3185,7 +3201,7 @@ sub _populate_bugs_fulltext {
             }
         }
         else {
-            print "Populating bugs_fulltext...";
+            print "Populating bugs_fulltext with $num_bugs entries...";
             print " (this can take a long time.)\n";
         }
         my $newline = $dbh->quote("\n");
@@ -3193,8 +3209,8 @@ sub _populate_bugs_fulltext {
          qq{$command INTO bugs_fulltext (bug_id, short_desc, comments, 
                                          comments_noprivate)
                    SELECT bugs.bug_id, bugs.short_desc, }
-                 . $dbh->sql_group_concat('longdescs.thetext', $newline)
-          . ', ' . $dbh->sql_group_concat('nopriv.thetext',    $newline) .
+                 . $dbh->sql_group_concat('longdescs.thetext', $newline, 0)
+          . ', ' . $dbh->sql_group_concat('nopriv.thetext',    $newline, 0) .
                  qq{ FROM bugs 
                           LEFT JOIN longdescs
                                  ON bugs.bug_id = longdescs.bug_id
@@ -3270,9 +3286,9 @@ sub _fix_invalid_custom_field_names {
         next if $field->name =~ /^[a-zA-Z0-9_]+$/;
         # The field name is illegal and can break the DB. Kill the field!
         $field->set_obsolete(1);
-        eval { $field->remove_from_db(); };
         print "Removing custom field '" . $field->name . "' (illegal name)... ";
-        print $@ ? "failed\n$@\n" : "succeeded\n";
+        eval { $field->remove_from_db(); };
+        print $@ ? "failed:\n$@\n" : "succeeded\n";
     }
 }
 
@@ -3354,8 +3370,10 @@ sub _add_allows_unconfirmed_to_product_table {
     if (!$dbh->bz_column_info('products', 'allows_unconfirmed')) {
         $dbh->bz_add_column('products', 'allows_unconfirmed',
             { TYPE => 'BOOLEAN', NOTNULL => 1, DEFAULT => 'FALSE' });
-        $dbh->do('UPDATE products SET allows_unconfirmed = 1 
-                   WHERE votestoconfirm > 0');
+        if ($dbh->bz_column_info('products', 'votestoconfirm')) {
+            $dbh->do('UPDATE products SET allows_unconfirmed = 1 
+                       WHERE votestoconfirm > 0');
+        }
     }
 }
 

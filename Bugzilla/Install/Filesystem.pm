@@ -32,6 +32,7 @@ use Bugzilla::Error;
 use Bugzilla::Install::Localconfig;
 use Bugzilla::Install::Util qw(install_string);
 use Bugzilla::Util;
+use Bugzilla::Hook;
 
 use File::Find;
 use File::Path;
@@ -53,6 +54,53 @@ use constant HT_DEFAULT_DENY => <<EOT;
 # in a subdirectory
 deny from all
 EOT
+
+###############
+# Permissions #
+###############
+
+# Used by the permissions "constants" below.
+sub _suexec { Bugzilla->localconfig->{'use_suexec'}     };
+sub _group  { Bugzilla->localconfig->{'webservergroup'} };
+
+# Writeable by the owner only.
+use constant OWNER_WRITE => 0600;
+# Executable by the owner only.
+use constant OWNER_EXECUTE => 0700;
+# A directory which is only writeable by the owner.
+use constant DIR_OWNER_WRITE => 0700;
+
+# A cgi script that the webserver can execute.
+sub WS_EXECUTE { _group() ? 0750 : 0755 };
+# A file that is read by cgi scripts, but is not ever read
+# directly by the webserver.
+sub CGI_READ { _group() ? 0640 : 0644 };
+# A file that is written to by cgi scripts, but is not ever
+# read or written directly by the webserver.
+sub CGI_WRITE { _group() ? 0660 : 0666 };
+# A file that is served directly by the web server.
+sub WS_SERVE { (_group() and !_suexec()) ? 0640 : 0644 };
+
+# A directory whose contents can be read or served by the
+# webserver (so even directories containing cgi scripts
+# would have this permission).
+sub DIR_WS_SERVE { (_group() and !_suexec()) ? 0750 : 0755 };
+# A directory that is read by cgi scripts, but is never accessed
+# directly by the webserver
+sub DIR_CGI_READ { _group() ? 0750 : 0755 };
+# A directory that is written to by cgi scripts, but where the
+# scripts never needs to overwrite files created by other
+# users.
+sub DIR_CGI_WRITE { _group() ? 0770 : 01777 };
+# A directory that is written to by cgi scripts, where the
+# scripts need to overwrite files created by other users.
+sub DIR_CGI_OVERWRITE { _group() ? 0770 : 0777 };
+
+# This can be combined (using "|") with other permissions for 
+# directories that, in addition to their normal permissions (such
+# as DIR_CGI_WRITE) also have content served directly from them
+# (or their subdirectories) to the user, via the webserver.
+sub DIR_ALSO_WS_SERVE { _suexec() ? 0001 : 0 };
 
 # This looks like a constant because it effectively is, but
 # it has to call other subroutines and read the current filesystem,
@@ -83,37 +131,6 @@ sub FILESYSTEM {
         $localconfig =~ s/\.\Q$ENV{PROJECT}\E$//;
     }
 
-    my $ws_group      = Bugzilla->localconfig->{'webservergroup'};
-    my $use_suexec    = Bugzilla->localconfig->{'use_suexec'};
-
-    # The set of permissions that we use:
-
-    # FILES
-    # Executable by the web server
-    my $ws_executable = $ws_group ? 0750 : 0755;
-    # Executable by the owner only.
-    my $owner_executable = 0700;
-    # Readable by the web server.
-    my $ws_readable = ($ws_group && !$use_suexec) ? 0640 : 0644;
-    # Readable by the owner only.
-    my $owner_readable = 0600;
-    # Writeable by the web server.
-    my $ws_writeable = $ws_group ? 0660 : 0666;
-
-    # Script-readable files that should not be world-readable under suexec.
-    my $script_readable = $use_suexec ? 0640 : $ws_readable;
-
-    # DIRECTORIES
-    # Readable by the web server.
-    my $ws_dir_readable  = ($ws_group && !$use_suexec) ? 0750 : 0755;
-    # Readable only by the owner.
-    my $owner_dir_readable = 0700;
-    # Writeable by the web server.
-    my $ws_dir_writeable = $ws_group ? 0770 : 01777;
-    # The web server can overwrite files owned by other users, 
-    # in this directory.
-    my $ws_dir_full_control = $ws_group ? 0770 : 0777;
-
     # Note: When being processed by checksetup, these have their permissions
     # set in this order: %all_dirs, %recurse_dirs, %all_files.
     #
@@ -124,45 +141,50 @@ sub FILESYSTEM {
 
     # --- FILE PERMISSIONS (Non-created files) --- #
     my %files = (
-        '*'               => { perms => $ws_readable },
-        '*.cgi'           => { perms => $ws_executable },
-        'whineatnews.pl'  => { perms => $ws_executable },
-        'collectstats.pl' => { perms => $ws_executable },
-        'checksetup.pl'   => { perms => $owner_executable },
-        'importxml.pl'    => { perms => $ws_executable },
-        'runtests.pl'     => { perms => $owner_executable },
-        'testserver.pl'   => { perms => $ws_executable },
-        'whine.pl'        => { perms => $ws_executable },
-        'customfield.pl'  => { perms => $owner_executable },
-        'email_in.pl'     => { perms => $ws_executable },
-        'sanitycheck.pl'  => { perms => $ws_executable },
-        'jobqueue.pl'     => { perms => $owner_executable },
-        'migrate.pl'      => { perms => $owner_executable },
-        'install-module.pl' => { perms => $owner_executable },
+        '*'               => { perms => OWNER_WRITE },
+        # Some .pl files are WS_EXECUTE because we want
+        # users to be able to cron them or otherwise run
+        # them as a secure user, like the webserver owner.
+        '*.cgi'           => { perms => WS_EXECUTE },
+        'whineatnews.pl'  => { perms => WS_EXECUTE },
+        'collectstats.pl' => { perms => WS_EXECUTE },
+        'importxml.pl'    => { perms => WS_EXECUTE },
+        'testserver.pl'   => { perms => WS_EXECUTE },
+        'whine.pl'        => { perms => WS_EXECUTE },
+        'email_in.pl'     => { perms => WS_EXECUTE },
+        'sanitycheck.pl'  => { perms => WS_EXECUTE },
+        'checksetup.pl'   => { perms => OWNER_EXECUTE },
+        'runtests.pl'     => { perms => OWNER_EXECUTE },
+        'jobqueue.pl'     => { perms => OWNER_EXECUTE },
+        'migrate.pl'      => { perms => OWNER_EXECUTE },
+        'install-module.pl' => { perms => OWNER_EXECUTE },
 
-        # Set the permissions for localconfig the same across all
-        # PROJECTs.
-        $localconfig       => { perms => $script_readable },
-        "$localconfig.*"   => { perms => $script_readable },
-        "$localconfig.old" => { perms => $owner_readable },
+        'Bugzilla.pm'   => { perms => CGI_READ },
+        "$localconfig*" => { perms => CGI_READ },
+        'bugzilla.dtd'  => { perms => WS_SERVE },
+        'mod_perl.pl'   => { perms => WS_SERVE },
+        'robots.txt'    => { perms => WS_SERVE },
+        '.htaccess'     => { perms => WS_SERVE },
 
-        'contrib/README'       => { perms => $owner_readable },
-        'contrib/*/README'     => { perms => $owner_readable },
-        'docs/makedocs.pl'     => { perms => $owner_executable },
-        'docs/style.css'       => { perms => $ws_readable },
-        'docs/*/rel_notes.txt' => { perms => $ws_readable },
-        'docs/*/README.docs'   => { perms => $owner_readable },
-        "$datadir/params" => { perms => $ws_writeable },
-        "$datadir/old-params.txt" => { perms => $owner_readable },
-        "$extensionsdir/create.pl" => { perms => $owner_executable },
+        'contrib/README'       => { perms => OWNER_WRITE },
+        'contrib/*/README'     => { perms => OWNER_WRITE },
+        'docs/bugzilla.ent'    => { perms => OWNER_WRITE },
+        'docs/makedocs.pl'     => { perms => OWNER_EXECUTE },
+        'docs/style.css'       => { perms => WS_SERVE },
+        'docs/*/rel_notes.txt' => { perms => WS_SERVE },
+        'docs/*/README.docs'   => { perms => OWNER_WRITE },
+        "$datadir/params"      => { perms => CGI_WRITE },
+        "$datadir/old-params.txt"  => { perms => OWNER_WRITE },
+        "$extensionsdir/create.pl" => { perms => OWNER_EXECUTE },
+        "$extensionsdir/*/*.pl"    => { perms => WS_EXECUTE },
     );
 
     # Directories that we want to set the perms on, but not
     # recurse through. These are directories we didn't create
     # in checkesetup.pl.
     my %non_recurse_dirs = (
-        '.'  => $ws_dir_readable,
-        docs => $ws_dir_readable,
+        '.'  => DIR_WS_SERVE,
+        docs => DIR_WS_SERVE,
     );
 
     # This sets the permissions for each item inside each of these 
@@ -171,52 +193,66 @@ sub FILESYSTEM {
     # the webserver.
     my %recurse_dirs = (
         # Writeable directories
-        "$datadir/template" => { files => $ws_readable, 
-                                  dirs => $ws_dir_full_control },
-         $attachdir         => { files => $ws_writeable,
-                                  dirs => $ws_dir_writeable },
-         $webdotdir         => { files => $ws_writeable,
-                                  dirs => $ws_dir_writeable },
-         $graphsdir         => { files => $ws_writeable,
-                                  dirs => $ws_dir_writeable },
+        "$datadir/template" => { files => CGI_READ,
+                                  dirs => DIR_CGI_OVERWRITE },
+         $attachdir         => { files => CGI_WRITE,
+                                  dirs => DIR_CGI_WRITE },
+         $webdotdir         => { files => WS_SERVE,
+                                  dirs => DIR_CGI_WRITE | DIR_ALSO_WS_SERVE },
+         $graphsdir         => { files => WS_SERVE,
+                                  dirs => DIR_CGI_WRITE | DIR_ALSO_WS_SERVE },
 
          # Readable directories
-         "$datadir/mining"     => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         "$libdir/Bugzilla"    => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         $extlib               => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         $templatedir          => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         $extensionsdir        => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         images                => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         css                   => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         js                    => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         $skinsdir             => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         t                     => { files => $owner_readable,
-                                     dirs => $owner_dir_readable },
-         'docs/*/html'         => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         'docs/*/pdf'          => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         'docs/*/txt'          => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         'docs/*/images'       => { files => $ws_readable,
-                                     dirs => $ws_dir_readable },
-         'docs/lib'            => { files => $owner_readable,
-                                     dirs => $owner_dir_readable },
-         'docs/*/xml'          => { files => $owner_readable,
-                                     dirs => $owner_dir_readable },
-         'contrib'             => { files => $owner_executable,
-                                     dirs => $owner_dir_readable, },
-         '.bzr'                => { files => $owner_readable,
-                                     dirs => $owner_dir_readable },
+         "$datadir/mining"     => { files => CGI_READ,
+                                     dirs => DIR_CGI_READ },
+         "$libdir/Bugzilla"    => { files => CGI_READ,
+                                     dirs => DIR_CGI_READ },
+         $extlib               => { files => CGI_READ,
+                                     dirs => DIR_CGI_READ },
+         $templatedir          => { files => CGI_READ,
+                                     dirs => DIR_CGI_READ },
+         # Directories in the extensions/ dir are WS_SERVE so that
+         # the web/ directories can be served by the web server.
+         # But, for extra security, we deny direct webserver access to
+         # the lib/ and template/ directories of extensions.
+         $extensionsdir        => { files => CGI_READ,
+                                     dirs => DIR_WS_SERVE },
+         "$extensionsdir/*/lib" => { files => CGI_READ,
+                                      dirs => DIR_CGI_READ },
+         "$extensionsdir/*/template" => { files => CGI_READ,
+                                           dirs => DIR_CGI_READ },
+
+         # Content served directly by the webserver
+         images                => { files => WS_SERVE,
+                                     dirs => DIR_WS_SERVE },
+         js                    => { files => WS_SERVE,
+                                     dirs => DIR_WS_SERVE },
+         $skinsdir             => { files => WS_SERVE,
+                                     dirs => DIR_WS_SERVE },
+         'docs/*/html'         => { files => WS_SERVE,
+                                     dirs => DIR_WS_SERVE },
+         'docs/*/pdf'          => { files => WS_SERVE,
+                                     dirs => DIR_WS_SERVE },
+         'docs/*/txt'          => { files => WS_SERVE,
+                                     dirs => DIR_WS_SERVE },
+         'docs/*/images'       => { files => WS_SERVE,
+                                     dirs => DIR_WS_SERVE },
+         "$extensionsdir/*/web" => { files => WS_SERVE,
+                                     dirs => DIR_WS_SERVE },
+
+         # Directories only for the owner, not for the webserver.
+         '.bzr'                => { files => OWNER_WRITE,
+                                    dirs  => DIR_OWNER_WRITE },
+         t                     => { files => OWNER_WRITE,
+                                     dirs => DIR_OWNER_WRITE },
+         xt                    => { files => OWNER_WRITE,
+                                     dirs => DIR_OWNER_WRITE },
+         'docs/lib'            => { files => OWNER_WRITE,
+                                     dirs => DIR_OWNER_WRITE },
+         'docs/*/xml'          => { files => OWNER_WRITE,
+                                     dirs => DIR_OWNER_WRITE },
+         'contrib'             => { files => OWNER_EXECUTE,
+                                     dirs => DIR_OWNER_WRITE, },
     );
 
     # --- FILES TO CREATE --- #
@@ -224,49 +260,38 @@ sub FILESYSTEM {
     # The name of each directory that we should actually *create*,
     # pointing at its default permissions.
     my %create_dirs = (
-        $datadir                => $ws_dir_full_control,
-        "$datadir/mining"       => $ws_dir_readable,
-        "$datadir/extensions"   => $ws_dir_readable,
-        $attachdir              => $ws_dir_writeable,
-        $extensionsdir          => $ws_dir_readable,
-        $graphsdir              => $ws_dir_writeable,
-        $webdotdir              => $ws_dir_writeable,
-        "$skinsdir/custom"      => $ws_dir_readable,
-        "$skinsdir/contrib"     => $ws_dir_readable,
+        # This is DIR_ALSO_WS_SERVE because it contains $webdotdir.
+        $datadir                => DIR_CGI_OVERWRITE | DIR_ALSO_WS_SERVE,
+        # Directories that are read-only for cgi scripts
+        "$datadir/mining"       => DIR_CGI_READ,
+        "$datadir/extensions"   => DIR_CGI_READ,
+        $extensionsdir          => DIR_CGI_READ,
+        # Directories that cgi scripts can write to.
+        $attachdir              => DIR_CGI_WRITE,
+        $graphsdir              => DIR_CGI_WRITE | DIR_ALSO_WS_SERVE,
+        $webdotdir              => DIR_CGI_WRITE | DIR_ALSO_WS_SERVE,
+        # Directories that contain content served directly by the web server.
+        "$skinsdir/custom"      => DIR_WS_SERVE,
+        "$skinsdir/contrib"     => DIR_WS_SERVE,
     );
 
     # The name of each file, pointing at its default permissions and
     # default contents.
     my %create_files = (
-        "$datadir/extensions/additional" => { perms    => $ws_readable, 
+        "$datadir/extensions/additional" => { perms    => CGI_READ, 
                                               contents => '' },
         # We create this file so that it always has the right owner
         # and permissions. Otherwise, the webserver creates it as
         # owned by itself, which can cause problems if jobqueue.pl
         # or something else is not running as the webserver or root.
-        "$datadir/mailer.testfile" => { perms    => $ws_writeable,
+        "$datadir/mailer.testfile" => { perms    => CGI_WRITE,
                                         contents => '' },
     );
-
-    # Each standard stylesheet has an associated custom stylesheet that
-    # we create. Also, we create placeholders for standard stylesheets
-    # for contrib skins which don't provide them themselves.
-    foreach my $skin_dir ("$skinsdir/custom", <$skinsdir/contrib/*>) {
-        next if basename($skin_dir) =~ /^cvs$/i;
-        $create_dirs{"$skin_dir/yui"} = $ws_dir_readable;
-        foreach my $base_css (<$skinsdir/standard/*.css>) {
-            _add_custom_css($skin_dir, basename($base_css), \%create_files, $ws_readable);
-        }
-        foreach my $dir_css (<$skinsdir/standard/*/*.css>) {
-            $dir_css =~ s{.+?([^/]+/[^/]+)$}{$1};
-            _add_custom_css($skin_dir, $dir_css, \%create_files, $ws_readable);
-        }
-    }
 
     # Because checksetup controls the creation of index.html separately
     # from all other files, it gets its very own hash.
     my %index_html = (
-        'index.html' => { perms => $ws_readable, contents => <<EOT
+        'index.html' => { perms => WS_SERVE, contents => <<EOT
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
@@ -283,29 +308,40 @@ EOT
     # Because checksetup controls the .htaccess creation separately
     # by a localconfig variable, these go in a separate variable from
     # %create_files.
+    #
+    # Note that these get WS_SERVE as their permission
+    # because they're *read* by the webserver, even though they're not
+    # actually, themselves, served.
     my %htaccess = (
-        "$attachdir/.htaccess"       => { perms    => $ws_readable,
+        "$attachdir/.htaccess"       => { perms    => WS_SERVE,
                                           contents => HT_DEFAULT_DENY },
-        "$libdir/Bugzilla/.htaccess" => { perms    => $ws_readable,
+        "$libdir/Bugzilla/.htaccess" => { perms    => WS_SERVE,
                                           contents => HT_DEFAULT_DENY },
-        "$extlib/.htaccess"          => { perms    => $ws_readable,
+        "$extlib/.htaccess"          => { perms    => WS_SERVE,
                                           contents => HT_DEFAULT_DENY },
-        "$templatedir/.htaccess"     => { perms    => $ws_readable,
+        "$templatedir/.htaccess"     => { perms    => WS_SERVE,
                                           contents => HT_DEFAULT_DENY },
-        'contrib/.htaccess'          => { perms    => $ws_readable,
+        'contrib/.htaccess'          => { perms    => WS_SERVE,
                                           contents => HT_DEFAULT_DENY },
-        't/.htaccess'                => { perms    => $ws_readable,
+        't/.htaccess'                => { perms    => WS_SERVE,
+                                          contents => HT_DEFAULT_DENY },
+        'xt/.htaccess'               => { perms    => WS_SERVE,
+                                          contents => HT_DEFAULT_DENY },
+        "$datadir/.htaccess"         => { perms    => WS_SERVE,
                                           contents => HT_DEFAULT_DENY },
 
-        '.htaccess' => { perms => $ws_readable, contents => <<EOT
-# Don't allow people to retrieve non-cgi executable files or our private data
-<FilesMatch ^(.*\\.pm|.*\\.pl|.*localconfig.*)\$>
-  deny from all
+        "$graphsdir/.htaccess" => { perms => WS_SERVE, contents => <<EOT
+# Allow access to .png and .gif files.
+<FilesMatch (\\.gif|\\.png)\$>
+  Allow from all
 </FilesMatch>
+
+# And no directory listings, either.
+Deny from all
 EOT
         },
 
-        "$webdotdir/.htaccess" => { perms => $ws_readable, contents => <<EOT
+        "$webdotdir/.htaccess" => { perms => WS_SERVE, contents => <<EOT
 # Restrict access to .dot files to the public webdot server at research.att.com
 # if research.att.com ever changes their IP, or if you use a different
 # webdot server, you'll need to edit this
@@ -323,28 +359,16 @@ EOT
 Deny from all
 EOT
         },
-
-        # Even though $datadir may not (and should not) be accessible from the 
-        # web server, we can't know for sure, so create the .htaccess anyway. 
-        # It's harmless if it isn't accessible...
-        "$datadir/.htaccess" => { perms    => $ws_readable, contents => <<EOT
-# Nothing in this directory is retrievable unless overridden by an .htaccess
-# in a subdirectory.
-deny from all
-EOT
-        },
-
-        "$graphsdir/.htaccess" => { perms => $ws_readable, contents => <<EOT
-# Allow access to .png and .gif files.
-<FilesMatch (\\.gif|\\.png)\$>
-  Allow from all
-</FilesMatch>
-
-# And no directory listings, either.
-Deny from all
-EOT
-        },
     );
+
+    Bugzilla::Hook::process('install_filesystem', {
+        files            => \%files,
+        create_dirs      => \%create_dirs,
+        non_recurse_dirs => \%non_recurse_dirs,
+        recurse_dirs     => \%recurse_dirs,
+        create_files     => \%create_files,
+        htaccess         => \%htaccess,
+    });
 
     my %all_files = (%create_files, %htaccess, %index_html, %files);
     my %all_dirs  = (%create_dirs, %non_recurse_dirs);
@@ -442,44 +466,57 @@ EOT
         print "Removing duplicates directory...\n";
         rmtree("$datadir/duplicates");
     }
+
+    _remove_empty_css_files();
+    _convert_single_file_skins();
 }
 
-# A simple helper for creating "empty" CSS files.
-sub _add_custom_css {
-    my ($skin_dir, $path, $create_files, $perms) = @_;
-    $create_files->{"$skin_dir/$path"} = { perms => $perms, contents => <<EOT
+sub _remove_empty_css_files {
+    my $skinsdir = bz_locations()->{'skinsdir'};
+    foreach my $css_file (glob("$skinsdir/custom/*.css"),
+                          glob("$skinsdir/contrib/*/*.css"))
+    {
+        _remove_empty_css($css_file);
+    }
+}
+
+# A simple helper for the update code that removes "empty" CSS files.
+sub _remove_empty_css {
+    my ($file) = @_;
+    my $basename = basename($file);
+    my $empty_contents = <<EOT;
 /*
- * Custom rules for $path.
+ * Custom rules for $basename.
  * The rules you put here override rules in that stylesheet.
  */
 EOT
+    if (length($empty_contents) == -s $file) {
+        open(my $fh, '<', $file) or warn "$file: $!";
+        my $file_contents;
+        { local $/; $file_contents = <$fh>; }
+        if ($file_contents eq $empty_contents) {
+            print install_string('file_remove', { name => $file }), "\n";
+            unlink $file or warn "$file: $!";
+        }
     };
+}
+
+# We used to allow a single css file in the skins/contrib/ directory
+# to be a whole skin.
+sub _convert_single_file_skins {
+    my $skinsdir = bz_locations()->{'skinsdir'};
+    foreach my $skin_file (glob "$skinsdir/contrib/*.css") {
+        my $dir_name = $skin_file;
+        $dir_name =~ s/\.css$//;
+        mkdir $dir_name or warn "$dir_name: $!";
+        _rename_file($skin_file, "$dir_name/global.css");
+    }
 }
 
 sub create_htaccess {
     _create_files(%{FILESYSTEM()->{htaccess}});
 
     # Repair old .htaccess files
-    my $htaccess = new IO::File('.htaccess', 'r') || die ".htaccess: $!";
-    my $old_data;
-    { local $/; $old_data = <$htaccess>; }
-    $htaccess->close;
-
-    my $repaired = 0;
-    if ($old_data =~ s/\|localconfig\|/\|.*localconfig.*\|/) {
-        $repaired = 1;
-    }
-    if ($old_data !~ /\(\.\*\\\.pm\|/) {
-        $old_data =~ s/\(/(.*\\.pm\|/;
-        $repaired = 1;
-    }
-    if ($repaired) {
-        print "Repairing .htaccess...\n";
-        $htaccess = new IO::File('.htaccess', 'w') || die $!;
-        print $htaccess $old_data;
-        $htaccess->close;
-    }
-
 
     my $webdot_dir = bz_locations()->{'webdotdir'};
     # The public webdot IP address changed.
@@ -499,7 +536,7 @@ sub create_htaccess {
 
 sub _rename_file {
     my ($from, $to) = @_;
-    print "Renaming $from to $to...\n";
+    print install_string('file_rename', { from => $from, to => $to }), "\n";
     if (-e $to) {
         warn "$to already exists, not moving\n";
     }

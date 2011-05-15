@@ -26,7 +26,7 @@ package Bugzilla::Install::Requirements;
 use strict;
 
 use Bugzilla::Constants;
-use Bugzilla::Install::Util qw(vers_cmp install_string 
+use Bugzilla::Install::Util qw(vers_cmp install_string bin_loc 
                                extension_requirement_packages);
 use List::Util qw(max);
 use Safe;
@@ -48,6 +48,34 @@ our @EXPORT = qw(
 # This is how many *'s are in the top of each "box" message printed
 # by checksetup.pl.
 use constant TABLE_WIDTH => 71;
+
+# Optional Apache modules that have no Perl component to them.
+# If these are installed, Bugzilla has additional functionality.
+#
+# The keys are the names of the modules, the values are what the module
+# is called in the output of "apachectl -t -D DUMP_MODULES".
+use constant APACHE_MODULES => { 
+    mod_headers => 'headers_module',
+    mod_env     => 'env_module',
+    mod_expires => 'expires_module',
+};
+
+# These are all of the binaries that we could possibly use that can
+# give us info about which Apache modules are installed.
+# If we can't use "apachectl", the "httpd" binary itself takes the same
+# parameters. Note that on Debian and Gentoo, there is an "apache2ctl",
+# but it takes different parameters on each of those two distros, so we
+# don't use apache2ctl.
+use constant APACHE => qw(apachectl httpd apache2 apache);
+
+# If we don't find any of the above binaries in the normal PATH,
+# these are extra places we look.
+use constant APACHE_PATH => [qw(
+    /usr/sbin 
+    /usr/local/sbin
+    /usr/libexec
+    /usr/local/libexec
+)];
 
 # The below two constants are subroutines so that they can implement
 # a hook. Other than that they are actually constants.
@@ -98,7 +126,7 @@ sub REQUIRED_MODULES {
     {
         package => 'DBI',
         module  => 'DBI',
-        version => '1.41'
+        version => (vers_cmp($perl_ver, '5.13.3') > -1) ? '1.614' : '1.41'
     },
     # 2.22 fixes various problems related to UTF8 strings in hash keys,
     # as well as line endings on Windows.
@@ -116,23 +144,18 @@ sub REQUIRED_MODULES {
     {
         package => 'Email-MIME',
         module  => 'Email::MIME',
-        version => '1.861'
-    },
-    {
-        package => 'Email-MIME-Encodings',
-        module  => 'Email::MIME::Encodings',
-        # Fixes bug 486206
-        version => '1.313',
-    },
-    {
-        package => 'Email-MIME-Modifier',
-        module  => 'Email::MIME::Modifier',
-        version => '1.442'
+        # This fixes a memory leak in walk_parts that affected jobqueue.pl.
+        version => '1.904'
     },
     {
         package => 'URI',
         module  => 'URI',
         version => 0
+    },
+    {
+        package => 'List-MoreUtils',
+        module  => 'List::MoreUtils',
+        version => 0.22,
     },
     );
 
@@ -142,6 +165,7 @@ sub REQUIRED_MODULES {
 };
 
 sub OPTIONAL_MODULES {
+    my $perl_ver = sprintf('%vd', $^V);
     my @modules = (
     {
         package => 'GD',
@@ -222,9 +246,9 @@ sub OPTIONAL_MODULES {
     {
         package => 'SOAP-Lite',
         module  => 'SOAP::Lite',
-        # 0.710.04 is required for correct UTF-8 handling, but .04 and .05 are
-        # affected by bug 468009.
-        version => '0.710.06',
+        # Fixes various bugs, including 542931 and 552353 + stops
+        # throwing warnings with Perl 5.12.
+        version => '0.712',
         feature => ['xmlrpc'],
     },
     {
@@ -232,6 +256,13 @@ sub OPTIONAL_MODULES {
         module  => 'JSON::RPC',
         version => 0,
         feature => ['jsonrpc'],
+    },
+    {
+        package => 'JSON-XS',
+        module  => 'JSON::XS',
+        # 2.0 is the first version that will work with JSON::RPC.
+        version => '2.0',
+        feature => ['jsonrpc_faster'],
     },
     {
         package => 'Test-Taint',
@@ -243,7 +274,7 @@ sub OPTIONAL_MODULES {
         # We need the 'utf8_mode' method of HTML::Parser, for HTML::Scrubber.
         package => 'HTML-Parser',
         module  => 'HTML::Parser',
-        version => '3.40',
+        version => (vers_cmp($perl_ver, '5.13.3') > -1) ? '3.67' : '3.40',
         feature => ['html_desc'],
     },
     {
@@ -289,12 +320,31 @@ sub OPTIONAL_MODULES {
         feature => ['mod_perl'],
     },
     {
+        package => 'Apache-SizeLimit',
+        module  => 'Apache2::SizeLimit',
+        # 0.93 fixes problems on Linux and Windows, and changes the
+        # syntax used by SizeLimit.
+        version => '0.93',
+        feature => ['mod_perl'],
+    },
+    {
         package => 'Math-Random-Secure',
         module  => 'Math::Random::Secure',
+        # This is the first version that installs properly on Windows.
         version => '0.05',
         feature => ['rand_security'],
     },
     );
+
+    if (ON_WINDOWS) {
+        # SizeLimit needs Win32::API to work on Windows.
+        push(@modules, {
+            package => 'Win32-API',
+            module  => 'Win32::API',
+            version => 0,
+            feature => ['mod_perl'],
+        });
+    }
 
     my $extra_modules = _get_extension_requirements('OPTIONAL_MODULES');
     push(@modules, @$extra_modules);
@@ -351,6 +401,8 @@ sub check_requirements {
     print "\n", install_string('checking_optional'), "\n" if $output;
     my $missing_optional = _check_missing(OPTIONAL_MODULES, $output);
 
+    my $missing_apache = _missing_apache_modules(APACHE_MODULES, $output);
+
     # If we're running on Windows, reset the input line terminator so that
     # console input works properly - loading CGI tends to mess it up
     $/ = "\015\012" if ON_WINDOWS;
@@ -361,6 +413,7 @@ sub check_requirements {
         one_dbd  => $have_one_dbd,
         missing  => $missing,
         optional => $missing_optional,
+        apache   => $missing_apache,
         any_missing => !$pass || scalar(@$missing_optional),
     };
 }
@@ -379,15 +432,52 @@ sub _check_missing {
     return \@missing;
 }
 
-# Returns the build ID of ActivePerl. If several versions of
-# ActivePerl are installed, it won't be able to know which one
-# you are currently running. But that's our best guess.
-sub _get_activestate_build_id {
-    eval 'use Win32::TieRegistry';
-    return 0 if $@;
-    my $key = Win32::TieRegistry->new('LMachine\Software\ActiveState\ActivePerl')
-      or return 0;
-    return $key->GetValue("CurrentVersion");
+sub _missing_apache_modules {
+    my ($modules, $output) = @_;
+    my $apachectl = _get_apachectl();
+    return [] if !$apachectl;
+    my $command = "$apachectl -t -D DUMP_MODULES";
+    my $cmd_info = `$command 2>&1`;
+    # If apachectl returned a value greater than 0, then there was an
+    # error parsing Apache's configuration, and we can't check modules.
+    my $retval = $?;
+    if ($retval > 0) {
+        print STDERR install_string('apachectl_failed', 
+            { command => $command, root => ROOT_USER }), "\n";
+        return [];
+    }
+    my @missing;
+    foreach my $module (keys %$modules) {
+        my $ok = _check_apache_module($module, $modules->{$module}, 
+                                      $cmd_info, $output);
+        push(@missing, $module) if !$ok;
+    }
+    return \@missing;
+}
+
+sub _get_apachectl {
+    foreach my $bin_name (APACHE) {
+        my $bin = bin_loc($bin_name);
+        return $bin if $bin;
+    }
+    # Try again with a possibly different path.
+    foreach my $bin_name (APACHE) {
+        my $bin = bin_loc($bin_name, APACHE_PATH);
+        return $bin if $bin;
+    }
+    return undef;
+}
+
+sub _check_apache_module {
+    my ($module, $config_name, $mod_info, $output) = @_;
+    my $ok;
+    if ($mod_info =~ /^\s+\Q$config_name\E\b/m) {
+        $ok = 1;
+    }
+    if ($output) {
+        _checking_for({ package => $module, ok => $ok });
+    }
+    return $ok;
 }
 
 sub print_module_instructions {
@@ -426,27 +516,41 @@ sub print_module_instructions {
         }
     }
 
-    # We only print the PPM repository note if we have to.
-    if ((!$output && @{$check_results->{missing}})
-        || ($output && $check_results->{any_missing}))
-    {
-        if (ON_WINDOWS) {
-            my $perl_ver = sprintf('%vd', $^V);
-            
-            # URL when running Perl 5.8.x.
-            my $url_to_theory58S = 'http://theoryx5.uwinnipeg.ca/ppms';
-            # Packages for Perl 5.10 are not compatible with Perl 5.8.
-            if (vers_cmp($perl_ver, '5.10') > -1) {
-                $url_to_theory58S = 'http://cpan.uwinnipeg.ca/PPMPackages/10xx/';
-            }
-            print colored(install_string('ppm_repo_add', 
-                                 { theory_url => $url_to_theory58S }), 'red');
-            # ActivePerls older than revision 819 require an additional command.
-            if (_get_activestate_build_id() < 819) {
-                print install_string('ppm_repo_up');
-            }
-        }
+    if (my @missing = @{ $check_results->{apache} }) {
+        print install_string('modules_message_apache');
+        my $missing_string = join(', ', @missing);
+        my $size = TABLE_WIDTH - 7;
+        printf "*    \%-${size}s *\n", $missing_string;
+        my $spaces = TABLE_WIDTH - 2;
+        print "*", (' ' x $spaces), "*\n";
+    }
 
+    my $need_module_instructions =  
+        ( (!$output and @{$check_results->{missing}})
+          or ($output and $check_results->{any_missing}) ) ? 1 : 0;
+
+    # We only print the PPM repository note if we have to.
+    if ($need_module_instructions and ON_ACTIVESTATE) {
+        my $perl_ver = sprintf('%vd', $^V);
+            
+        # URL when running Perl 5.8.x.
+        my $url_to_theory58S = 'http://theoryx5.uwinnipeg.ca/ppms';
+        # Packages for Perl 5.10 are not compatible with Perl 5.8.
+        if (vers_cmp($perl_ver, '5.10') > -1) {
+            $url_to_theory58S = 'http://cpan.uwinnipeg.ca/PPMPackages/10xx/';
+        }
+        print colored(
+            install_string('ppm_repo_add', 
+                           { theory_url => $url_to_theory58S }),
+            COLOR_ERROR);
+
+        # ActivePerls older than revision 819 require an additional command.
+        if (ON_ACTIVESTATE < 819) {
+            print install_string('ppm_repo_up');
+        }
+    }
+
+    if ($need_module_instructions or @{ $check_results->{apache} }) {
         # If any output was required, we want to close the "table"
         print "*" x TABLE_WIDTH . "\n";
     }
@@ -473,20 +577,21 @@ sub print_module_instructions {
     }
 
     if (my @missing = @{$check_results->{missing}}) {
-        print colored(install_string('commands_required'), 'red') . "\n";
+        print colored(install_string('commands_required'), COLOR_ERROR), "\n";
         foreach my $package (@missing) {
             my $command = install_command($package);
             print "    $command\n";
         }
     }
 
-    if ($output && $check_results->{any_missing} && !ON_WINDOWS
+    if ($output && $check_results->{any_missing} && !ON_ACTIVESTATE
         && !$check_results->{hide_all}) 
     {
         print install_string('install_all', { perl => $^X });
     }
     if (!$check_results->{pass}) {
-        print colored(install_string('installation_failed'), 'red') . "\n\n";
+        print colored(install_string('installation_failed'), COLOR_ERROR),
+              "\n\n";
     }
 }
 
@@ -504,14 +609,16 @@ sub check_graphviz {
 
     return 1 if (Bugzilla->params->{'webdotbase'} =~ /^https?:/);
 
-    printf("Checking for %15s %-9s ", "GraphViz", "(any)") if $output;
+    my $return;
+    $return = 1 if -x Bugzilla->params->{'webdotbase'};
 
-    my $return = 0;
-    if(-x Bugzilla->params->{'webdotbase'}) {
-        print "ok: found\n" if $output;
-        $return = 1;
-    } else {
-        print "not a valid executable: " . Bugzilla->params->{'webdotbase'} . "\n";
+    if ($output) {
+        _checking_for({ package => 'GraphViz', ok => $return });
+    }
+
+    if (!$return) {
+        print "not a valid executable: " . Bugzilla->params->{'webdotbase'}
+              . "\n";
     }
 
     my $webdotdir = bz_locations()->{'webdotdir'};
@@ -542,6 +649,10 @@ sub have_vers {
     my $wanted  = $params->{version};
 
     eval "require $module;";
+    # Don't let loading a module change the output-encoding of STDOUT
+    # or STDERR. (CGI.pm tries to set "binmode" on these file handles when
+    # it's loaded, and other modules may do the same in the future.)
+    Bugzilla::Install::Util::set_output_encoding();
 
     # VERSION is provided by UNIVERSAL::, and can be called even if
     # the module isn't loaded.
@@ -558,17 +669,6 @@ sub have_vers {
         $vnum = $1;
     }
 
-    my $vstr;
-    if ($vnum eq "-1") { # string compare just in case it's non-numeric
-        $vstr = install_string('module_not_found');
-    }
-    elsif (vers_cmp($vnum,"0") > -1) {
-        $vstr = install_string('module_found', { ver => $vnum });
-    }
-    else {
-        $vstr = install_string('module_unknown_version');
-    }
-
     my $vok = (vers_cmp($vnum,$wanted) > -1);
     my $blacklisted;
     if ($vok && $params->{blacklist}) {
@@ -577,24 +677,57 @@ sub have_vers {
     }
 
     if ($output) {
-        my $ok           = $vok ? install_string('module_ok') : '';
-        my $black_string = $blacklisted ? install_string('blacklisted') : '';
-        my $want_string  = $wanted ? "v$wanted" : install_string('any');
-
-        $ok = "$ok:" if $ok;
-        my $str = sprintf "%s %19s %-9s $ok $vstr $black_string\n",
-                    install_string('checking_for'), $package, "($want_string)";
-        print $vok ? $str : colored($str, 'red');
+        _checking_for({ 
+            package => $package, ok => $vok, wanted => $wanted,
+            found   => $vnum, blacklisted => $blacklisted
+        });
     }
     
     return $vok ? 1 : 0;
+}
+
+sub _checking_for {
+    my ($params) = @_;
+    my ($package, $ok, $wanted, $blacklisted, $found) = 
+        @$params{qw(package ok wanted blacklisted found)};
+
+    my $ok_string = $ok ? install_string('module_ok') : '';
+
+    # If we're actually checking versions (like for Perl modules), then
+    # we have some rather complex logic to determine what we want to 
+    # show. If we're not checking versions (like for GraphViz) we just
+    # show "ok" or "not found".
+    if (exists $params->{found}) {
+        my $found_string;
+        # We do a string compare in case it's non-numeric.
+        if ($found and $found eq "-1") {
+            $found_string = install_string('module_not_found');
+        }
+        elsif ($found) {
+            $found_string = install_string('module_found', { ver => $found });
+        }
+        else {
+            $found_string = install_string('module_unknown_version');
+        }
+        $ok_string = $ok ? "$ok_string: $found_string" : $found_string;
+    }
+    elsif (!$ok) {
+        $ok_string = install_string('module_not_found');
+    }
+
+    my $black_string = $blacklisted ? install_string('blacklisted') : '';
+    my $want_string  = $wanted ? "v$wanted" : install_string('any');
+
+    my $str = sprintf "%s %20s %-11s $ok_string $black_string\n",
+                install_string('checking_for'), $package, "($want_string)";
+    print $ok ? $str : colored($str, COLOR_ERROR);
 }
 
 sub install_command {
     my $module = shift;
     my ($command, $package);
 
-    if (ON_WINDOWS) {
+    if (ON_ACTIVESTATE) {
         $command = 'ppm install %s';
         $package = $module->{package};
     }
@@ -711,10 +844,12 @@ a hashref in the format of items from L</REQUIRED_MODULES>.
 
 =item C<optional> - The same as C<missing>, but for optional modules.
 
+=item C<apache> - The name of each optional Apache module that is missing.
+
 =item C<have_one_dbd> - True if at least one C<DBD::> module is installed.
 
-=item C<any_missing> - True if there are any missing modules, even optional
-modules.
+=item C<any_missing> - True if there are any missing Perl modules, even
+optional modules.
 
 =back
 

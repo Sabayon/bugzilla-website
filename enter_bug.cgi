@@ -153,15 +153,10 @@ if ($product_name eq '') {
         $product = $enterable_products[0];
     }
 }
-else {
-    # Do not use Bugzilla::Product::check_product() here, else the user
-    # could know whether the product doesn't exist or is not accessible.
-    $product = new Bugzilla::Product({'name' => $product_name});
-}
 
 # We need to check and make sure that the user has permission
 # to enter a bug against this product.
-$user->can_enter_product($product ? $product->name : $product_name, THROW_ERROR);
+$product = $user->can_enter_product($product || $product_name, THROW_ERROR);
 
 ##############################################################################
 # Useful Subroutines
@@ -416,7 +411,8 @@ foreach my $field (@enter_bug_fields) {
 }
 
 # This allows the Field visibility and value controls to work with the
-# Product field as a parent.
+# Classification and Product fields as a parent.
+$default{'classification'} = $product->classification->name;
 $default{'product'} = $product->name;
 
 if ($cloned_bug_id) {
@@ -456,14 +452,14 @@ if ($cloned_bug_id) {
     my $bug_desc = $cloned_bug->comments({ order => 'oldest_to_newest' })->[0];
     my $isprivate = $bug_desc->is_private;
 
-    $vars->{'comment'}        = "";
-    $vars->{'commentprivacy'} = 0;
+    $vars->{'comment'} = "";
+    $vars->{'comment_is_private'} = 0;
 
     if (!$isprivate || Bugzilla->user->is_insider) {
         # We use "body" to avoid any format_comment text, which would be
         # pointless to clone.
-        $vars->{'comment'}        = $bug_desc->body;
-        $vars->{'commentprivacy'} = $isprivate;
+        $vars->{'comment'} = $bug_desc->body;
+        $vars->{'comment_is_private'} = $isprivate;
     }
 
 } # end of cloned bug entry form
@@ -488,7 +484,7 @@ else {
     $vars->{'cc'}             = join(', ', $cgi->param('cc'));
 
     $vars->{'comment'}        = formvalue('comment');
-    $vars->{'commentprivacy'} = formvalue('commentprivacy');
+    $vars->{'comment_is_private'} = formvalue('comment_is_private');
 
 } # end of normal/bookmarked entry form
 
@@ -508,14 +504,17 @@ else {
 # parameter.
 $vars->{'version'} = [map($_->name, @{$product->versions})];
 
+my $version_cookie = $cgi->cookie("VERSION-" . $product->name);
+
 if ( ($cloned_bug_id) &&
      ($product->name eq $cloned_bug->product ) ) {
     $default{'version'} = $cloned_bug->version;
 } elsif (formvalue('version')) {
     $default{'version'} = formvalue('version');
-} elsif (defined $cgi->cookie("VERSION-" . $product->name) &&
-    lsearch($vars->{'version'}, $cgi->cookie("VERSION-" . $product->name)) != -1) {
-    $default{'version'} = $cgi->cookie("VERSION-" . $product->name);
+} elsif (defined $version_cookie
+         and grep { $_ eq $version_cookie } @{ $vars->{'version'} })
+{
+    $default{'version'} = $version_cookie;
 } else {
     $default{'version'} = $vars->{'version'}->[$#{$vars->{'version'}}];
 }
@@ -531,100 +530,52 @@ if ( Bugzilla->params->{'usetargetmilestone'} ) {
 }
 
 # Construct the list of allowable statuses.
-my $initial_statuses = Bugzilla::Status->can_change_to();
+my @statuses = @{ Bugzilla::Status->can_change_to() };
 # Exclude closed states from the UI, even if the workflow allows them.
 # The back-end code will still accept them, though.
-@$initial_statuses = grep { $_->is_open } @$initial_statuses;
+@statuses = grep { $_->is_open } @statuses;
 
-my @status = map { $_->name } @$initial_statuses;
 # UNCONFIRMED is illegal if allows_unconfirmed is false.
 if (!$product->allows_unconfirmed) {
-    @status = grep {$_ ne 'UNCONFIRMED'} @status;
+    @statuses = grep { $_->name ne 'UNCONFIRMED' } @statuses;
 }
-scalar(@status) || ThrowUserError('no_initial_bug_status');
+scalar(@statuses) || ThrowUserError('no_initial_bug_status');
 
 # If the user has no privs...
 unless ($has_editbugs || $has_canconfirm) {
     # ... use UNCONFIRMED if available, else use the first status of the list.
-    my $bug_status = (grep {$_ eq 'UNCONFIRMED'} @status) ? 'UNCONFIRMED' : $status[0];
-    @status = ($bug_status);
+    my ($unconfirmed) = grep { $_->name eq 'UNCONFIRMED' } @statuses;
+
+    # Because of an apparent Perl bug, "$unconfirmed || $statuses[0]" doesn't
+    # work, so we're using an "?:" operator. See bug 603314 for details.
+    @statuses = ($unconfirmed ? $unconfirmed : $statuses[0]);
 }
 
-$vars->{'bug_status'} = \@status;
+$vars->{'bug_status'} = \@statuses;
 
 # Get the default from a template value if it is legitimate.
 # Otherwise, and only if the user has privs, set the default
 # to the first confirmed bug status on the list, if available.
 
-if (formvalue('bug_status') && (lsearch(\@status, formvalue('bug_status')) >= 0)) {
+my $picked_status = formvalue('bug_status');
+if ($picked_status and grep($_->name eq $picked_status, @statuses)) {
     $default{'bug_status'} = formvalue('bug_status');
-} elsif (scalar @status == 1) {
-    $default{'bug_status'} = $status[0];
+} elsif (scalar @statuses == 1) {
+    $default{'bug_status'} = $statuses[0]->name;
 }
 else {
-    $default{'bug_status'} = ($status[0] ne 'UNCONFIRMED') ? $status[0] : $status[1];
+    $default{'bug_status'} = ($statuses[0]->name ne 'UNCONFIRMED') 
+                             ? $statuses[0]->name : $statuses[1]->name;
 }
 
-my $grouplist = $dbh->selectall_arrayref(
-                  q{SELECT DISTINCT groups.id, groups.name, groups.description,
-                                    membercontrol, othercontrol
-                      FROM groups
-                 LEFT JOIN group_control_map
-                        ON group_id = id AND product_id = ?
-                     WHERE isbuggroup != 0 AND isactive != 0
-                  ORDER BY description}, undef, $product->id);
-
-my @groups;
-
-foreach my $row (@$grouplist) {
-    my ($id, $groupname, $description, $membercontrol, $othercontrol) = @$row;
-    # Only include groups if the entering user will have an option.
-    next if ((!$membercontrol) 
-               || ($membercontrol == CONTROLMAPNA) 
-               || ($membercontrol == CONTROLMAPMANDATORY)
-               || (($othercontrol != CONTROLMAPSHOWN) 
-                    && ($othercontrol != CONTROLMAPDEFAULT)
-                    && (!Bugzilla->user->in_group($groupname)))
-             );
-    my $check;
-
-    # If this is a cloned bug, 
-    # AND the product for this bug is the same as for the original
-    #   THEN set a group's checkbox if the original also had it on
-    # ELSE IF this is a bookmarked template
-    #   THEN set a group's checkbox if was set in the bookmark
-    # ELSE
-    #   set a groups's checkbox based on the group control map
-    #
-    if ( ($cloned_bug_id) &&
-         ($product->name eq $cloned_bug->product ) ) {
-        foreach my $i (0..(@{$cloned_bug->groups} - 1) ) {
-            if ($cloned_bug->groups->[$i]->{'bit'} == $id) {
-                $check = $cloned_bug->groups->[$i]->{'ison'};
-            }
-        }
-    }
-    elsif(formvalue("maketemplate") ne "") {
-        $check = formvalue("bit-$id", 0);
-    }
-    else {
-        # Checkbox is checked by default if $control is a default state.
-        $check = (($membercontrol == CONTROLMAPDEFAULT)
-                 || (($othercontrol == CONTROLMAPDEFAULT)
-                      && (!Bugzilla->user->in_group($groupname))));
-    }
-
-    my $group = 
-    {
-        'bit' => $id , 
-        'checked' => $check , 
-        'description' => $description 
-    };
-
-    push @groups, $group;        
+my @groups = $cgi->param('groups');
+if ($cloned_bug) {
+    my @clone_groups = map { $_->name } @{ $cloned_bug->groups_in };
+    # It doesn't matter if there are duplicate names, since all we check
+    # for in the template is whether or not the group is set.
+    push(@groups, @clone_groups);
 }
-
-$vars->{'group'} = \@groups;
+$default{'groups'} = \@groups;
 
 Bugzilla::Hook::process('enter_bug_entrydefaultvars', { vars => $vars });
 

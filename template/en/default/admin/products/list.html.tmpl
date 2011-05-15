@@ -37,22 +37,11 @@
   title = "Select product $classification_title"
 %]
 
-[% edit_contentlink = BLOCK %]
-  editproducts.cgi?action=edit&amp;product=%%name%%
-[% END %]
-[% delete_contentlink = BLOCK %]
-  editproducts.cgi?action=del&amp;product=%%name%%
-[% END %]
-[% bug_count_contentlink = BLOCK %]
-  buglist.cgi?product=%%name%%
-[% END %]
-
-
 [% columns = [
      { 
        name => "name"
        heading => "Edit product..."
-       contentlink => edit_contentlink
+       contentlink => 'editproducts.cgi?action=edit&amp;product=%%name%%'
      },
      { 
        name => "description"
@@ -64,22 +53,7 @@
        heading => "Open For New $terms.Bugs"
        yesno_field => 1
      },
-     { 
-       name => "votesperuser"
-       heading => "Votes Per User"
-       align => 'right'
-     },
-     { 
-       name => "maxvotesperbug"
-       heading => "Maximum Votes Per $terms.Bug"
-       align => 'right'
-     },
-     { 
-       name => "votestoconfirm"
-       heading => "Votes To Confirm"
-       align => 'right'
-     } ]
-%]
+] %]
 
 [% IF showbugcounts %]
 
@@ -87,7 +61,7 @@
        name => "bug_count"
        heading => "$terms.Bug Count"
        align => 'right'
-       contentlink => bug_count_contentlink
+       contentlink => 'buglist.cgi?product=%%name%%'
      })
   %]
 
@@ -96,7 +70,7 @@
 [% columns.push({
        heading => "Action"
        content => "Delete"
-       contentlink => delete_contentlink
+       contentlink => 'editproducts.cgi?action=del&amp;product=%%name%%'
      })
 %]
 

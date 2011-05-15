@@ -26,6 +26,8 @@ use Bugzilla::Install::Util qw(vers_cmp);
 use Bugzilla::Util;
 use Bugzilla::Error;
 
+use Scalar::Util qw(blessed);
+
 ################################
 #####   Initialization     #####
 ################################
@@ -44,10 +46,9 @@ use constant DB_COLUMNS => qw(
     product_id
 );
 
-use constant REQUIRED_CREATE_FIELDS => qw(
-    name
-    product
-);
+use constant REQUIRED_FIELD_MAP => {
+    product_id => 'product',
+};
 
 use constant UPDATE_COLUMNS => qw(
     value
@@ -55,10 +56,11 @@ use constant UPDATE_COLUMNS => qw(
 
 use constant VALIDATORS => {
     product => \&_check_product,
+    value   => \&_check_value,
 };
 
-use constant UPDATE_VALIDATORS => {
-    value => \&_check_value,
+use constant VALIDATOR_DEPENDENCIES => {
+    value => ['product'],
 };
 
 ################################
@@ -103,12 +105,8 @@ sub new_from_list {
 sub run_create_validators {
     my $class  = shift;
     my $params = $class->SUPER::run_create_validators(@_);
-
     my $product = delete $params->{product};
     $params->{product_id} = $product->id;
-    $params->{value} = $class->_check_value($params->{name}, $product);
-    delete $params->{name};
-
     return $params;
 }
 
@@ -171,14 +169,14 @@ sub product {
 sub set_name { $_[0]->set('value', $_[1]); }
 
 sub _check_value {
-    my ($invocant, $name, $product) = @_;
+    my ($invocant, $name, undef, $params) = @_;
+    my $product = blessed($invocant) ? $invocant->product : $params->{product};
 
     $name = trim($name);
     $name || ThrowUserError('version_blank_name');
     # Remove unprintable characters
     $name = clean_text($name);
 
-    $product = $invocant->product if (ref $invocant);
     my $version = new Bugzilla::Version({ product => $product, name => $name });
     if ($version && (!ref $invocant || $version->id != $invocant->id)) {
         ThrowUserError('version_already_exists', { name    => $version->name,
@@ -189,6 +187,8 @@ sub _check_value {
 
 sub _check_product {
     my ($invocant, $product) = @_;
+    $product || ThrowCodeError('param_required',
+                    { function => "$invocant->create", param => 'product' });
     return Bugzilla->user->check_can_admin_product($product->name);
 }
 
@@ -211,7 +211,7 @@ Bugzilla::Version - Bugzilla product version class.
     my $product = $version->product;
 
     my $version = Bugzilla::Version->create(
-        { name => $name, product => $product });
+        { value => $name, product => $product });
 
     $version->set_name($new_name);
     $version->update();

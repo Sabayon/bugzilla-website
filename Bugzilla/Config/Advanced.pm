@@ -32,6 +32,8 @@
 package Bugzilla::Config::Advanced;
 use strict;
 
+use Bugzilla::Config::Common;
+
 our $sortkey = 1700;
 
 use constant get_param_list => (
@@ -51,6 +53,14 @@ use constant get_param_list => (
    name => 'proxy_url',
    type => 't',
    default => ''
+  },
+
+  {
+   name => 'strict_transport_security',
+   type => 's',
+   choices => ['off', 'this_domain_only', 'include_subdomains'],
+   default => 'off',
+   checker => \&check_multi
   },
 );
 

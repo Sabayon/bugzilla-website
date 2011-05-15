@@ -90,7 +90,7 @@ END
 #     bug_status => {
 #         # Translate "Handled" into "RESOLVED".
 #         "Handled"     => "RESOLVED",
-#         "In Progress" => "ASSIGNED",
+#         "In Progress" => "IN_PROGRESS",
 #     },
 #
 #     priority => {
@@ -323,7 +323,7 @@ sub reset_serial_values {
     );
     my @select_fields = grep { $_->is_select } (values %{ $self->bug_fields });
     foreach my $field (@select_fields) {
-        next if $field->name eq 'product';
+        next if $field->is_abnormal;
         $reset{$field->name} = 'id';
     }
     
@@ -573,6 +573,7 @@ sub insert_users {
     }
 }
 
+# XXX This should also insert Classifications.
 sub insert_products {
     my ($self, $products) = @_;
     foreach my $product (@$products) {
@@ -639,6 +640,7 @@ sub create_legal_values {
     }
     
     foreach my $field (@select_fields) {
+        next if $field->is_abnormal;
         my $name = $field->name;
         foreach my $value (keys %{ $values{$name} }) {
             next if Bugzilla::Field::Choice->type($field)->new({ name => $value });
@@ -654,7 +656,7 @@ sub create_legal_values {
             next if new Bugzilla::Version({ product => $prod_obj,
                                             name    => $version });
             my $created = Bugzilla::Version->create({ product => $prod_obj,
-                                                      name    => $version });
+                                                      value   => $version });
             my $field = $self->bug_fields->{version};
             print get_text('migrate_value_created', { product => $prod_obj,
                                                       field   => $field,
@@ -663,8 +665,8 @@ sub create_legal_values {
         foreach my $milestone (keys %{ $product_values{$product}->{target_milestone} }) {
             next if new Bugzilla::Milestone({ product => $prod_obj,
                                               name    => $milestone });
-            my $created = Bugzilla::Milestone->create({ product => $prod_obj,
-                                                        name => $milestone });
+            my $created = Bugzilla::Milestone->create(
+                { product => $prod_obj, value => $milestone });
             my $field = $self->bug_fields->{target_milestone};
             print get_text('migrate_value_created', { product => $prod_obj,
                                                       field   => $field,
@@ -709,8 +711,8 @@ sub insert_bugs {
         $self->debug($bug, 3);
 
         foreach my $field (@standard_drop_downs) {
+            next if $field->is_abnormal;
             my $field_name = $field->name;
-            next if $field_name eq 'product';
             if (!defined $bug->{$field_name}) {
                 # If there's a default value for this, then just let create()
                 # pick it.
@@ -740,7 +742,7 @@ sub insert_bugs {
         my ($set_status, $set_resolution);
         if (defined $bug->{resolution}) {
             $set_resolution = Bugzilla::Field::Choice->type('resolution')
-                              ->new({ name => $bug->{resolution} });
+                              ->new({ name => delete $bug->{resolution} });
         }
         if (!$allowed_statuses{lc($bug->{bug_status})}) {
             $set_status = new Bugzilla::Status({ name => $bug->{bug_status} });

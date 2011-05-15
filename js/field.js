@@ -16,10 +16,85 @@
  *
  * Contributor(s): Max Kanat-Alexander <mkanat@bugzilla.org>
  *                 Guy Pyrzak <guy.pyrzak@gmail.com>
+ *                 Reed Loden <reed@reedloden.com>
  */
 
 /* This library assumes that the needed YUI libraries have been loaded 
    already. */
+
+var bz_no_validate_enter_bug = false;
+function validateEnterBug(theform) {
+    // This is for the "bookmarkable templates" button.
+    if (bz_no_validate_enter_bug) {
+        // Set it back to false for people who hit the "back" button
+        bz_no_validate_enter_bug = false;
+        return true;
+    }
+
+    var component = theform.component;
+    var short_desc = theform.short_desc;
+    var version = theform.version;
+    var bug_status = theform.bug_status;
+    var description = theform.comment;
+    var attach_data = theform.data;
+    var attach_desc = theform.description;
+
+    var current_errors = YAHOO.util.Dom.getElementsByClassName(
+        'validation_error_text', null, theform);
+    for (var i = 0; i < current_errors.length; i++) {
+        current_errors[i].parentNode.removeChild(current_errors[i]);
+    }
+    var current_error_fields = YAHOO.util.Dom.getElementsByClassName(
+        'validation_error_field', null, theform);
+    for (var i = 0; i < current_error_fields.length; i++) {
+        var field = current_error_fields[i];
+        YAHOO.util.Dom.removeClass(field, 'validation_error_field');
+    }
+
+    var focus_me;
+
+    // These are checked in the reverse order that they appear on the page,
+    // so that the one closest to the top of the form will be focused.
+    if (attach_data.value && YAHOO.lang.trim(attach_desc.value) == '') {
+        _errorFor(attach_desc, 'attach_desc');
+        focus_me = attach_desc;
+    }
+    var check_description = status_comment_required[bug_status.value];
+    if (check_description && YAHOO.lang.trim(description.value) == '') {
+        _errorFor(description, 'description');
+        focus_me = description;
+    }
+    if (YAHOO.lang.trim(short_desc.value) == '') {
+        _errorFor(short_desc);
+        focus_me = short_desc;
+    }
+    if (version.selectedIndex < 0) {
+        _errorFor(version);
+        focus_me = version;
+    }
+    if (component.selectedIndex < 0) {
+        _errorFor(component);
+        focus_me = component;
+    }
+
+    if (focus_me) {
+        focus_me.focus();
+        return false;
+    }
+
+    return true;
+}
+
+function _errorFor(field, name) {
+    if (!name) name = field.id;
+    var string_name = name + '_required';
+    var error_text = BUGZILLA.string[string_name];
+    var new_node = document.createElement('div');
+    YAHOO.util.Dom.addClass(new_node, 'validation_error_text');
+    new_node.innerHTML = error_text;
+    YAHOO.util.Dom.insertAfter(new_node, field);
+    YAHOO.util.Dom.addClass(field, 'validation_error_field');
+}
 
 function createCalendar(name) {
     var cal = new YAHOO.widget.Calendar('calendar_' + name, 
@@ -365,12 +440,26 @@ function boldOnChange(e, field_id){
     }
 }
 
-function updateCommentTagControl(checkbox, form) {
+function updateCommentTagControl(checkbox, field) {
     if (checkbox.checked) {
-        form.comment.className='bz_private';
+        YAHOO.util.Dom.addClass(field, 'bz_private');
     } else {
-        form.comment.className='';
+        YAHOO.util.Dom.removeClass(field, 'bz_private');
     }
+}
+
+/**
+ * Reset the value of the classification field and fire an event change
+ * on it.  Called when the product changes, in case the classification
+ * field (which is hidden) controls the visibility of any other fields.
+ */
+function setClassification() {
+    var classification = document.getElementById('classification');
+    var product = document.getElementById('product');
+    var selected_product = product.value; 
+    var select_classification = all_classifications[selected_product];
+    classification.value = select_classification;
+    bz_fireEvent(classification, 'change');
 }
 
 /**
@@ -560,3 +649,114 @@ function browserCanHideOptions(aSelect) {
 }
 
 /* (end) option hiding code */
+
+// A convenience function to sanitize raw text for harmful HTML before outputting
+function _escapeHTML(text) {
+    return text.replace(/&/g, '&amp;').
+                replace(/</g, '&lt;').
+                replace(/>/g, '&gt;');
+}
+
+/**
+ * The Autoselect
+ */
+YAHOO.bugzilla.userAutocomplete = {
+    counter : 0,
+    dataSource : null,
+    generateRequest : function ( enteredText ){ 
+      YAHOO.bugzilla.userAutocomplete.counter = 
+                                   YAHOO.bugzilla.userAutocomplete.counter + 1;
+      YAHOO.util.Connect.setDefaultPostHeader('application/json', true);
+      var json_object = {
+          method : "User.get",
+          id : YAHOO.bugzilla.userAutocomplete.counter,
+          params : [ { 
+            match : [ decodeURIComponent(enteredText) ],
+            include_fields : [ "name", "real_name" ]
+          } ]
+      };
+      var stringified =  YAHOO.lang.JSON.stringify(json_object);
+      var debug = { msg: "json-rpc obj debug info", "json obj": json_object, 
+                    "param" : stringified}
+      YAHOO.bugzilla.userAutocomplete.debug_helper( debug );
+      return stringified;
+    },
+    resultListFormat : function(oResultData, enteredText, sResultMatch) {
+        return ( _escapeHTML(oResultData.real_name) + " (" +  _escapeHTML(oResultData.name) + ")");
+    },
+    debug_helper : function ( ){
+        /* used to help debug any errors that might happen */
+        if( typeof(console) !== 'undefined' && console != null && arguments.length > 0 ){
+            console.log("debug helper info:", arguments);
+        }
+        return true;
+    },    
+    init_ds : function(){
+        this.dataSource = new YAHOO.util.XHRDataSource("jsonrpc.cgi");
+        this.dataSource.connTimeout = 30000;
+        this.dataSource.connMethodPost = true;
+        this.dataSource.connXhrMode = "cancelStaleRequests";
+        this.dataSource.maxCacheEntries = 5;
+        this.dataSource.responseSchema = {
+            resultsList : "result.users",
+            metaFields : { error: "error", jsonRpcId: "id"},
+            fields : [
+                { key : "name" },
+                { key : "real_name"}
+            ]
+        };
+    },
+    init : function( field, container, multiple ) {
+        if( this.dataSource == null ){
+            this.init_ds();  
+        }            
+        var userAutoComp = new YAHOO.widget.AutoComplete( field, container, 
+                                this.dataSource );
+        // other stuff we might want to do with the autocomplete goes here
+        userAutoComp.maxResultsDisplayed = BUGZILLA.param.maxusermatches;
+        userAutoComp.generateRequest = this.generateRequest;
+        userAutoComp.formatResult = this.resultListFormat;
+        userAutoComp.doBeforeLoadData = this.debug_helper;
+        userAutoComp.minQueryLength = 3;
+        userAutoComp.autoHighlight = false;
+        // this is a throttle to determine the delay of the query from typing
+        // set this higher to cause fewer calls to the server
+        userAutoComp.queryDelay = 0.05;
+        userAutoComp.useIFrame = true;
+        userAutoComp.resultTypeList = false;
+        if( multiple == true ){
+            userAutoComp.delimChar = [","];
+        }
+        
+    }
+};
+
+YAHOO.bugzilla.keywordAutocomplete = {
+    dataSource : null,
+    init_ds : function(){
+        this.dataSource = new YAHOO.util.LocalDataSource( YAHOO.bugzilla.keyword_array );
+    },
+    init : function( field, container ) {
+        if( this.dataSource == null ){
+            this.init_ds();
+        }
+        var keywordAutoComp = new YAHOO.widget.AutoComplete(field, container, this.dataSource);
+        keywordAutoComp.maxResultsDisplayed = YAHOO.bugzilla.keyword_array.length;
+        keywordAutoComp.minQueryLength = 0;
+        keywordAutoComp.useIFrame = true;
+        keywordAutoComp.delimChar = [","," "];
+        keywordAutoComp.resultTypeList = false;
+        keywordAutoComp.queryDelay = 0;
+        /*  Causes all the possibilities in the keyword to appear when a user 
+         *  focuses on the textbox 
+         */
+        keywordAutoComp.textboxFocusEvent.subscribe( function(){
+            var sInputValue = YAHOO.util.Dom.get('keywords').value;
+            if( sInputValue.length === 0 ){
+                this.sendQuery(sInputValue);
+                this.collapseContainer();
+                this.expandContainer();
+            }
+        });
+    }
+};

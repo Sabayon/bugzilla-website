@@ -27,6 +27,7 @@ use strict;
 use lib qw(. lib);
 
 use Bugzilla;
+use Bugzilla::BugMail;
 use Bugzilla::Constants;
 use Bugzilla::Search;
 use Bugzilla::Util;
@@ -218,21 +219,6 @@ sub DoEmail {
 
     @watchers = sort { lc($a) cmp lc($b) } @watchers;
     $vars->{'watchers'} = \@watchers;
-
-    ###########################################################################
-    # Role-based preferences
-    ###########################################################################
-    my $sth = $dbh->prepare("SELECT relationship, event " . 
-                            "FROM email_setting " . 
-                            "WHERE user_id = ?");
-    $sth->execute($user->id);
-
-    my %mail;
-    while (my ($relationship, $event) = $sth->fetchrow_array()) {
-        $mail{$relationship}{$event} = 1;
-    }
-
-    $vars->{'mail'} = \%mail;      
 }
 
 sub SaveEmail {
@@ -247,52 +233,63 @@ sub SaveEmail {
     ###########################################################################
     $dbh->bz_start_transaction();
 
-    # Delete all the user's current preferences
-    $dbh->do("DELETE FROM email_setting WHERE user_id = ?", undef, $user->id);
+    my $sth_insert = $dbh->prepare('INSERT INTO email_setting
+                                    (user_id, relationship, event) VALUES (?, ?, ?)');
 
-    # Repopulate the table - first, with normal events in the 
+    my $sth_delete = $dbh->prepare('DELETE FROM email_setting
+                                    WHERE user_id = ? AND relationship = ? AND event = ?');
+    # Load current email preferences into memory before updating them.
+    my $settings = $user->mail_settings;
+
+    # Update the table - first, with normal events in the
     # relationship/event matrix.
-    # Note: the database holds only "off" email preferences, as can be implied 
-    # from the name of the table - profiles_nomail.
-    foreach my $rel (RELATIONSHIPS) {
+    my %relationships = Bugzilla::BugMail::relationships();
+    foreach my $rel (keys %relationships) {
+        next if ($rel == REL_QA && !Bugzilla->params->{'useqacontact'});
         # Positive events: a ticked box means "send me mail."
         foreach my $event (POS_EVENTS) {
-            if (defined($cgi->param("email-$rel-$event"))
-                && $cgi->param("email-$rel-$event") == 1)
-            {
-                $dbh->do("INSERT INTO email_setting " . 
-                         "(user_id, relationship, event) " . 
-                         "VALUES (?, ?, ?)",
-                         undef, ($user->id, $rel, $event));
+            my $is_set = $cgi->param("email-$rel-$event");
+            if ($is_set xor $settings->{$rel}{$event}) {
+                if ($is_set) {
+                    $sth_insert->execute($user->id, $rel, $event);
+                }
+                else {
+                    $sth_delete->execute($user->id, $rel, $event);
+                }
             }
         }
         
         # Negative events: a ticked box means "don't send me mail."
         foreach my $event (NEG_EVENTS) {
-            if (!defined($cgi->param("neg-email-$rel-$event")) ||
-                $cgi->param("neg-email-$rel-$event") != 1) 
-            {
-                $dbh->do("INSERT INTO email_setting " . 
-                         "(user_id, relationship, event) " . 
-                         "VALUES (?, ?, ?)",
-                         undef, ($user->id, $rel, $event));
+            my $is_set = $cgi->param("neg-email-$rel-$event");
+            if (!$is_set xor $settings->{$rel}{$event}) {
+                if (!$is_set) {
+                    $sth_insert->execute($user->id, $rel, $event);
+                }
+                else {
+                    $sth_delete->execute($user->id, $rel, $event);
+                }
             }
         }
     }
 
     # Global positive events: a ticked box means "send me mail."
     foreach my $event (GLOBAL_EVENTS) {
-        if (defined($cgi->param("email-" . REL_ANY . "-$event"))
-            && $cgi->param("email-" . REL_ANY . "-$event") == 1)
-        {
-            $dbh->do("INSERT INTO email_setting " . 
-                     "(user_id, relationship, event) " . 
-                     "VALUES (?, ?, ?)",
-                     undef, ($user->id, REL_ANY, $event));
+        my $is_set = $cgi->param("email-" . REL_ANY . "-$event");
+        if ($is_set xor $settings->{+REL_ANY}{$event}) {
+            if ($is_set) {
+                $sth_insert->execute($user->id, REL_ANY, $event);
+            }
+            else {
+                $sth_delete->execute($user->id, REL_ANY, $event);
+            }
         }
     }
 
     $dbh->bz_commit_transaction();
+
+    # We have to clear the cache about email preferences.
+    delete $user->{'mail_settings'};
 
     ###########################################################################
     # User watching
@@ -504,7 +501,8 @@ if (!Bugzilla->user->id) {
 }
 Bugzilla->login(LOGIN_REQUIRED);
 
-$vars->{'changes_saved'} = $cgi->param('dosave');
+my $save_changes = $cgi->param('dosave');
+$vars->{'changes_saved'} = $save_changes;
 
 my $current_tab_name = $cgi->param('tab') || "settings";
 
@@ -514,22 +512,22 @@ trick_taint($current_tab_name);
 $vars->{'current_tab_name'} = $current_tab_name;
 
 my $token = $cgi->param('token');
-check_token_data($token, 'edit_user_prefs') if $cgi->param('dosave');
+check_token_data($token, 'edit_user_prefs') if $save_changes;
 
 # Do any saving, and then display the current tab.
 SWITCH: for ($current_tab_name) {
     /^account$/ && do {
-        SaveAccount() if $cgi->param('dosave');
+        SaveAccount() if $save_changes;
         DoAccount();
         last SWITCH;
     };
     /^settings$/ && do {
-        SaveSettings() if $cgi->param('dosave');
+        SaveSettings() if $save_changes;
         DoSettings();
         last SWITCH;
     };
     /^email$/ && do {
-        SaveEmail() if $cgi->param('dosave');
+        SaveEmail() if $save_changes;
         DoEmail();
         last SWITCH;
     };
@@ -538,15 +536,24 @@ SWITCH: for ($current_tab_name) {
         last SWITCH;
     };
     /^saved-searches$/ && do {
-        SaveSavedSearches() if $cgi->param('dosave');
+        SaveSavedSearches() if $save_changes;
         DoSavedSearches();
         last SWITCH;
     };
+    # Extensions must set it to 1 to confirm the tab is valid.
+    my $handled = 0;
+    Bugzilla::Hook::process('user_preferences',
+                            { 'vars'       => $vars,
+                              save_changes => $save_changes,
+                              current_tab  => $current_tab_name,
+                              handled      => \$handled });
+    last SWITCH if $handled;
+
     ThrowUserError("unknown_tab",
                    { current_tab_name => $current_tab_name });
 }
 
-delete_token($token) if $cgi->param('dosave');
+delete_token($token) if $save_changes;
 if ($current_tab_name ne 'permissions') {
     $vars->{'token'} = issue_session_token('edit_user_prefs');
 }

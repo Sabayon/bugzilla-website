@@ -186,6 +186,8 @@ takes a C<modules> parameter, just like L</auth_login_methods>.
 
 =head2 bug_columns
 
+B<DEPRECATED> Use L</object_columns> instead.
+
 This allows you to add new fields that will show up in every L<Bugzilla::Bug>
 object. Note that you will also need to use the L</bug_fields> hook in
 conjunction with this hook to make this work.
@@ -256,6 +258,69 @@ string.
 =item C<changes> 
 
 The hash of changed fields. C<< $changes->{field} = [old, new] >>
+
+=back
+
+=head2 bug_check_can_change_field
+
+This hook controls what fields users are allowed to change. You can add code
+here for site-specific policy changes and other customizations. 
+
+This hook is only executed if the field's new and old values differ. 
+
+Any denies take priority over any allows. So, if another extension denies
+a change but yours allows the change, the other extension's deny will
+override your extension's allow.
+
+Params:
+
+=over
+
+=item C<bug>
+
+L<Bugzilla::Bug> - The current bug object that this field is changing on.
+
+=item C<field>
+
+The name (from the C<fielddefs> table) of the field that we are checking.
+
+=item C<new_value>
+
+The new value that the field is being changed to.
+
+=item C<old_value>
+
+The old value that the field is being changed from.
+
+=item C<priv_results>
+
+C<array> - This is how you explicitly allow or deny a change. You should only
+push something into this array if you want to explicitly allow or explicitly
+deny the change, and thus skip all other permission checks that would otherwise
+happen after this hook is called. If you don't care about the field change,
+then don't push anything into the array.
+
+The pushed value should be a choice from the following constants:
+
+=over
+
+=item C<PRIVILEGES_REQUIRED_NONE>
+
+No privileges required. This explicitly B<allows> a change.
+
+=item C<PRIVILEGES_REQUIRED_REPORTER>
+
+User is not the reporter, assignee or an empowered user, so B<deny>.
+
+=item C<PRIVILEGES_REQUIRED_ASSIGNEE>
+
+User is not the assignee or an empowered user, so B<deny>.
+
+=item C<PRIVILEGES_REQUIRED_EMPOWERED>
+
+User is not a sufficiently empowered user, so B<deny>.
+
+=back
 
 =back
 
@@ -367,6 +432,29 @@ The definition is structured as:
 
 =back
 
+=head2 search_operator_field_override
+
+This allows you to modify L<Bugzilla::Search/OPERATOR_FIELD_OVERRIDE>,
+which determines the search functions for fields. It allows you to specify
+custom search functionality for certain fields. 
+
+See L<Bugzilla::Search/OPERATOR_FIELD_OVERRIDE> for reference and see
+the code in the example extension.
+
+Note that the interface to this hook is B<UNSTABLE> and it may change in the
+future.
+
+Params:
+
+=over
+
+=item C<operators> - See L<Bugzilla::Search/OPERATOR_FIELD_OVERRIDE> to get
+an idea of the structure.
+
+=item C<search> - The L<Bugzilla::Search> object.
+
+=back
+
 =head2 bugmail_recipients
 
 This allows you to modify the list of users who are going to be receiving
@@ -406,23 +494,45 @@ as though he were on the CC list:
 (We use C<+> in front of C<REL_CC> so that Perl interprets it as a constant
 instead of as a string.)
 
+=item C<diffs>
+
+This is a list of hashes, each hash representing a change to the bug. Each 
+hash has the following members: C<field_name>, C<bug_when>, C<old>, C<new> 
+and C<who> (a L<Bugzilla::User>). If appropriate, there will also be 
+C<attach_id> or C<comment_id>; if either is present, there will be 
+C<isprivate>. See C<_get_diffs> in F<Bugzilla/BugMail.pm> to see exactly how 
+it is populated. Warning: the format and existence of the "diffs" parameter 
+is subject to change in future releases of Bugzilla.
+
 =back
 
 
-=head2 colchange_columns
+=head2 bugmail_relationships
 
-This happens in F<colchange.cgi> right after the list of possible display
-columns have been defined and gives you the opportunity to add additional
-display columns to the list of selectable columns.
+There are various sorts of "relationships" that a user can have to a bug,
+such as Assignee, CC, etc. If you want to add a new type of relationship,
+you should use this hook.
 
 Params:
 
 =over
 
-=item C<columns> - An arrayref containing an array of column IDs.  Any IDs
-added by this hook must have been defined in the the L</buglist_columns> hook.
+=item C<relationships>
+
+A hashref, where the keys are numbers and the values are strings.
+
+The keys represent a numeric identifier for the relationship. The
+numeric identifier should be a negative number between -1 and -127.
+The number must be unique across all extensions. (Negative numbers
+are used so as not to conflict with relationship identifiers in Bugzilla
+itself.)
+
+The value is the "name" of this relationship that will show up in email
+headers in bugmails. The "name" should be short and should contain no
+spaces.
 
 =back
+
 
 =head2 config_add_panels
 
@@ -603,6 +713,99 @@ time should be printed.
 
 =back
 
+=head2 install_filesystem
+
+Allows for additional files and directories to be added to the
+list of files and directories already managed by checksetup.pl.
+You will be able to also set the permissions for the files and
+directories using this hook.  You are also able to set or change 
+permissions for current files and directories using this hook.
+You are also able to create appropriate htaccess files for the 
+any directories to secure its contents. For examples see 
+L<FILESYSTEM> in L<Bugzilla::Install::Filesystem>.
+
+Params:
+
+=over
+
+=item C<files>
+
+Hash reference of files that are already present when your extension was
+installed but need to have specific permissions set. Each file key
+points to another hash reference containing the following settings.
+
+Params:
+
+=over
+
+=item C<perms> - Permissions to be set on the file.
+
+=back
+
+=item C<create_dirs>
+
+Hash reference containing the name of each directory that will be created,
+pointing at its default permissions.
+
+=item C<non_recurse_dirs>
+
+Hash reference containing directories that we want to set the perms on, but not
+recurse through. These are directories not created in checksetup.pl. Each directory
+key's value is the permissions to be set on the directory.
+
+=item C<recurse_dirs>
+
+Hash reference of directories that will have permissions set for each item inside 
+each of the directories, including the directory itself. Each directory key
+points to another hash reference containing the following settings.
+
+Params:
+
+=over
+
+=item C<files> - Permissions to be set on any files beneath the directory.
+
+=item C<dirs> - Permissions to be set on the directory itself and any directories
+beneath it.
+
+=back
+
+=item C<create_files>
+
+Hash reference of additional files to be created. Each file key points to another
+hash reference containing the following settings.
+
+Params:
+
+=over
+
+=item C<perms> - The permissions to be set on the file itself.
+
+=item C<contents> - The contents to be added to the file or leave blank for an
+empty file.
+
+=back
+
+=item C<htaccess>
+
+Hash reference containing htaccess files to be created. You can set the permissions
+for the htaccess as well as the contents of the file. Each file key points to another 
+hash reference containing the following settings.
+
+Params:
+
+=over
+
+=item C<perms> - Permissions to be set on the htaccess file.
+
+=item C<contents> - Contents of the htaccess file. It can be set manually or
+use L<HT_DEFAULT_DENY> defined in L<Bugzilla::Install::Filesystem> to deny all
+by default.
+
+=back
+
+=back
+
 =head2 install_update_db
 
 This happens at the very end of all the tables being updated
@@ -707,6 +910,44 @@ The name of the field being updated in the object.
 =item C<value> 
 
 The value being set on the object.
+
+=back
+
+=head2 object_columns
+
+This hook allows you to add new "fields" to existing Bugzilla objects,
+that correspond to columns in their tables.
+
+For example, if you added an C<example> column to the "bugs" table, you
+would have to also add an C<example> field to the C<Bugzilla::Bug> object
+in order to access that data via Bug objects.
+
+Don't do anything slow inside this hook--it's called several times on
+every page of Bugzilla.
+
+Params:
+
+=over
+
+=item C<class>
+
+The name of the class that this hook is being called on. You can check this 
+like C<< if ($class->isa('Some::Class')) >> in your code, to add new
+fields only for certain classes.
+
+=item C<columns>
+
+An arrayref. Add the string names of columns to this array to add new
+values to objects. 
+
+For example, if you add an C<example> column to a particular table
+(using L</install_update_db>), and then push the string C<example> into 
+this array for the object that uses that table, then you can access the
+information in that column via C<< $object->{example} >> on all objects
+of that type.
+
+This arrayref does not contain the standard column names--you cannot modify
+or remove standard object columns using this hook.
 
 =back
 
@@ -832,6 +1073,61 @@ L<Bugzilla::Object/update> returns.
 
 =back
 
+=head2 object_update_columns
+
+If you've added fields to bugs via L</object_columns>, then this
+hook allows you to say which of those columns should be updated in the
+database when L<Bugzilla::Object/update> is called on the object.
+
+If you don't use this hook, then your custom columns won't be modified in
+the database by Bugzilla.
+
+Params:
+
+=over
+
+=item C<object>
+
+The object that is about to be updated. You should check this
+like C<< if ($object->isa('Some::Class')) >> in your code, to modify
+the "update columns" only for certain classes.
+
+=item C<columns>
+
+An arrayref. Add the string names of columns to this array to allow
+that column to be updated when C<update()> is called on the object.
+
+This arrayref does not contain the standard column names--you cannot stop
+standard columns from being updated by using this hook.
+
+=back
+
+=head2 object_validators
+
+Allows you to add new items to L<Bugzilla::Object/VALIDATORS> for
+particular classes.
+
+Params:
+
+=over
+
+=item C<class>
+
+The name of the class that C<VALIDATORS> was called on. You can check this 
+like C<< if ($class->isa('Some::Class')) >> in your code, to add
+validators only for certain classes.
+
+=item C<validators>
+
+A hashref, where the keys are database columns and the values are subroutine
+references. You can add new validators or modify existing ones. If you modify
+an existing one, you should remember to call the original validator
+inside of your modified validator. (This way, several extensions can all
+modify the same validator.)
+
+=back
+
+
 =head2 page_before_template
 
 This is a simple way to add your own pages to Bugzilla. This hooks C<page.cgi>,
@@ -866,6 +1162,24 @@ your template.
 
 =back
 
+
+=head2 post_bug_after_creation
+
+B<DEPRECATED> (Use L</bug_end_of_create> instead.)
+
+This happens after a bug is created and before bug mail is sent
+during C<post_bug.cgi>. Note that this only happens during C<post_bug.cgi>,
+it doesn't happen during any of the other methods of creating a bug.
+
+Params:
+
+=over
+
+=item C<vars> - The template vars hashref.
+
+=back
+
+
 =head2 product_confirm_delete
 
 B<DEPRECATED> - Use L</template_before_process> instead.
@@ -880,6 +1194,41 @@ Params:
 
 =back
 
+=head2 product_end_of_create
+
+Called right after a new product has been created, allowing additional
+changes to be made to the new product's attributes. This occurs inside of
+a database transaction, so if the hook throws an error, all previous
+changes will be rolled back, including the creation of the new product.
+(However, note that such rollbacks should not normally be used, as
+some databases that Bugzilla supports have very bad rollback performance.
+If you want to validate input and throw errors before the Product is created,
+use L</object_end_of_create_validators> instead, or add a validator 
+using L</object_validators>.)
+
+Params:
+
+=over
+
+=item C<product> - The new L<Bugzilla::Product> object that was just created.
+
+=back
+
+=head2 quicksearch_map
+
+This hook allows you to alter the Quicksearch syntax to include e.g. special 
+searches for custom fields you have.
+
+Params:
+
+=over
+
+=item C<map> - a hash where the key is the name you want to use in 
+Quicksearch, and the value is the name from the C<fielddefs> table that you 
+want it to map to. You can modify existing mappings or add new ones.
+
+=back
+
 =head2 sanitycheck_check
 
 This hook allows for extra sanity checks to be added, for use by
@@ -891,25 +1240,6 @@ Params:
 
 =item C<status> - a CODEREF that allows status messages to be displayed
 to the user. (F<sanitycheck.cgi>'s C<Status>)
-
-=back
-
-=head2 product_end_of_create
-
-Called right after a new product has been created, allowing additional
-changes to be made to the new product's attributes. This occurs inside of
-a database transaction, so if the hook throws an error, all previous
-changes will be rolled back, including the creation of the new product.
-(However, note that such rollbacks should not normally be used, as
-some databases that Bugzilla supports have very bad rollback performance.
-If you want to validate input and throw errors before the Product is created,
-use L</object_end_of_create_validators> instead.)
-
-Params:
-
-=over
-
-=item C<product> - The new L<Bugzilla::Product> object that was just created.
 
 =back
 
@@ -990,6 +1320,49 @@ C<bug/show.html.tmpl>).
 A L<Template::Context> object. Usually you will not have to use this, but
 if you need information about the template itself (other than just its
 name), you can get it from here.
+
+=back
+
+=head2 user_preferences
+
+This hook allows you to add additional panels to the User Preferences page,
+and validate data displayed and returned from these panels. It works in
+combination with the C<tabs> hook available in the
+F<template/en/default/account/prefs/prefs.html.tmpl> template. To make it
+work, you must define two templates in your extension:
+F<extensions/Foo/template/en/default/hook/account/prefs/prefs-tabs.html.tmpl>
+contains a list of additional panels to include.
+F<extensions/Foo/template/en/default/account/prefs/bar.html.tmpl> contains
+the content of the panel itself. See the C<Example> extension to see how
+things work.
+
+Params:
+
+=over
+
+=item C<current_tab>
+
+The name of the current panel being viewed by the user. You should always
+make sure that the name of the panel matches what you expect it to be.
+Else you could be interacting with the panel of another extension.
+
+=item C<save_changes>
+
+A boolean which is true when data should be validated and the DB updated
+accordingly. This means the user clicked the "Submit Changes" button.
+
+=item C<handled>
+
+This is a B<reference> to a scalar, not a scalar. (So you would set it like
+C<$$handled = 1>, not like C<$handled = 1>.) Set this to a true value to let
+Bugzilla know that the passed-in panel is valid and that you have handled it.
+(Otherwise, Bugzilla will throw an error that the panel is invalid.) Don't set
+this to true if you didn't handle the panel listed in C<current_tab>.
+
+=item C<vars>
+
+You can add as many new key/value pairs as you want to this hashref.
+It will be passed to the template.
 
 =back
 

@@ -25,6 +25,7 @@ use base qw(Bugzilla::WebService);
 use Bugzilla;
 use Bugzilla::Constants;
 use Bugzilla::Error;
+use Bugzilla::Group;
 use Bugzilla::User;
 use Bugzilla::Util qw(trim);
 use Bugzilla::Token;
@@ -35,6 +36,10 @@ use constant LOGIN_EXEMPT => {
     login => 1,
     offer_account_by_email => 1,
 };
+
+use constant READ_ONLY => qw(
+    get
+);
 
 ##############
 # User Login #
@@ -133,6 +138,11 @@ sub create {
 sub get {
     my ($self, $params) = validate(@_, 'names', 'ids');
 
+    defined($params->{names}) || defined($params->{ids})
+        || defined($params->{match})
+        || ThrowCodeError('params_required', 
+               { function => 'User.get', params => ['ids', 'names', 'match'] });
+
     my @user_objects;
     @user_objects = map { Bugzilla::User->check($_) } @{ $params->{names} }
                     if $params->{names};
@@ -152,11 +162,13 @@ sub get {
         if ($params->{match}) {
             ThrowUserError('user_access_by_match_denied');
         }
+        my $in_group = $self->_filter_users_by_group(
+            \@user_objects, $params);
         @users = map {filter $params, {
                      id        => $self->type('int', $_->id),
                      real_name => $self->type('string', $_->name), 
                      name      => $self->type('string', $_->login),
-                 }} @user_objects;
+                 }} @$in_group;
 
         return { users => \@users };
     }
@@ -186,8 +198,9 @@ sub get {
     if ($params->{'maxusermatches'}) {
         $limit = $params->{'maxusermatches'} + 1;
     }
+    my $exclude_disabled = $params->{'include_disabled'} ? 0 : 1;
     foreach my $match_string (@{ $params->{'match'} || [] }) {
-        my $matched = Bugzilla::User::match($match_string, $limit);
+        my $matched = Bugzilla::User::match($match_string, $limit, $exclude_disabled);
         foreach my $user (@$matched) {
             if (!$unique_users{$user->id}) {
                 push(@user_objects, $user);
@@ -195,7 +208,9 @@ sub get {
             }
         }
     }
-    
+   
+    my $in_group = $self->_filter_users_by_group(
+        \@user_objects, $params); 
     if (Bugzilla->user->in_group('editusers')) {
         @users =
             map {filter $params, {
@@ -206,7 +221,7 @@ sub get {
                 can_login => $self->type('boolean', $_->is_disabled ? 0 : 1),
                 email_enabled     => $self->type('boolean', $_->email_enabled),
                 login_denied_text => $self->type('string', $_->disabledtext),
-            }} @user_objects;
+            }} @$in_group;
 
     }    
     else {
@@ -217,10 +232,37 @@ sub get {
                 name      => $self->type('string', $_->login),
                 email     => $self->type('string', $_->email),
                 can_login => $self->type('boolean', $_->is_disabled ? 0 : 1),
-            }} @user_objects;
+            }} @$in_group;
     }
 
     return { users => \@users };
+}
+
+sub _filter_users_by_group {
+    my ($self, $users, $params) = @_;
+    my ($group_ids, $group_names) = @$params{qw(group_ids groups)};
+
+    # If no groups are specified, we return all users.
+    return $users if (!$group_ids and !$group_names);
+
+    my @groups = map { Bugzilla::Group->check({ id => $_ }) } 
+                     @{ $group_ids || [] };
+    my @name_groups = map { Bugzilla::Group->check($_) } 
+                          @{ $group_names || [] };
+    push(@groups, @name_groups);
+    
+
+    my @in_group = grep { $self->_user_in_any_group($_, \@groups) }
+                        @$users;
+    return \@in_group;
+}
+
+sub _user_in_any_group {
+    my ($self, $user, $groups) = @_;
+    foreach my $group (@$groups) {
+        return 1 if $user->in_group($group);
+    }
+    return 0;
 }
 
 1;
@@ -241,11 +283,9 @@ log in/out using an existing account.
 See L<Bugzilla::WebService> for a description of how parameters are passed,
 and what B<STABLE>, B<UNSTABLE>, and B<EXPERIMENTAL> mean.
 
-=head2 Logging In and Out
+=head1 Logging In and Out
 
-=over
-
-=item C<login> 
+=head2 login
 
 B<STABLE>
 
@@ -308,7 +348,7 @@ A login or password parameter was not provided.
 
 =back
 
-=item C<logout> 
+=head2 logout
 
 B<STABLE>
 
@@ -326,13 +366,9 @@ Log out the user. Does nothing if there is no user logged in.
 
 =back
 
-=back
+=head1 Account Creation
 
-=head2 Account Creation
-
-=over
-
-=item C<offer_account_by_email> 
+=head2 offer_account_by_email
 
 B<STABLE>
 
@@ -373,7 +409,7 @@ An account with that email address already exists in Bugzilla.
 
 =back
 
-=item C<create> 
+=head2 create
 
 B<STABLE>
 
@@ -436,13 +472,9 @@ password is under three characters.)
 
 =back
 
-=back
+=head1 User Info
 
-=head2 User Info
-
-=over
-
-=item C<get> 
+=head2 get
 
 B<STABLE>
 
@@ -473,7 +505,9 @@ Logged-out users cannot pass this parameter to this function. If they try,
 they will get an error. Logged-in users will get an error if they specify
 the id of a user they cannot see.
 
-=item C<names> (array) - An array of login names (strings).
+=item C<names> (array)
+
+An array of login names (strings).
 
 =item C<match> (array)
 
@@ -493,6 +527,23 @@ Logged-out users cannot use this argument, and an error will be thrown
 if they try. (This is to make it harder for spammers to harvest email
 addresses from Bugzilla, and also to enforce the user visibility
 restrictions that are implemented on some Bugzillas.)
+
+=item C<group_ids> (array)
+
+=item C<groups> (array)
+
+C<group_ids> is an array of numeric ids for groups that a user can be in.
+C<groups> is an array of names of groups that a user can be in.
+If these are specified, they limit the return value to users who are
+in I<any> of the groups specified.
+
+=item C<include_disabled> (boolean)
+
+By default, when using the C<match> parameter, disabled users are excluded
+from the returned results unless their full username is identical to the
+match string. Setting C<include_disabled> to C<true> will include disabled
+users in the returned results even if their username doesn't fully match
+the input string.
 
 =back
 
@@ -547,9 +598,10 @@ C<real_name>, C<email>, and C<can_login> items.
 
 =over
 
-=item 51 (Bad Login Name)
+=item 51 (Bad Login Name or Group Name)
 
-You passed an invalid login name in the "names" array.
+You passed an invalid login name in the "names" array or a bad
+group name/id in the C<groups>/C<group_ids> arguments.
 
 =item 304 (Authorization Required)
 
@@ -569,7 +621,10 @@ function.
 
 =item Added in Bugzilla B<3.4>.
 
-=back
+=item C<group_ids> and C<groups> were added in Bugzilla B<4.0>.
+
+=item C<include_disabled> added in Bugzilla B<4.0>. Default behavior 
+for C<match> has changed to only returning enabled accounts.
 
 =back
 

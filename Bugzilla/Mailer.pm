@@ -48,8 +48,6 @@ use Encode qw(encode);
 use Encode::MIME::Header;
 use Email::Address;
 use Email::MIME;
-# Loading this gives us encoding_set.
-use Email::MIME::Modifier;
 use Email::Send;
 
 sub MessageToMTA {
@@ -145,8 +143,6 @@ sub MessageToMTA {
                 push(@args, "-f$from_email") if $from_email;
             }
         }
-        push(@args, "-ODeliveryMode=deferred")
-            if !Bugzilla->params->{"sendmailnow"};
     }
     else {
         # Sendmail will automatically append our hostname to the From
@@ -159,7 +155,7 @@ sub MessageToMTA {
         
         # Sendmail adds a Date: header also, but others may not.
         if (!defined $email->header('Date')) {
-            $email->header_set('Date', time2str("%a, %e %b %Y %T %z", time()));
+            $email->header_set('Date', time2str("%a, %d %b %Y %T %z", time()));
         }
     }
 
@@ -212,7 +208,9 @@ sub build_thread_marker {
         $threadingmarker = "Message-ID: <bug-$bug_id-$user_id$sitespec>";
     }
     else {
-        $threadingmarker = "In-Reply-To: <bug-$bug_id-$user_id$sitespec>" .
+        my $rand_bits = generate_random_password(10);
+        $threadingmarker = "Message-ID: <bug-$bug_id-$user_id-$rand_bits$sitespec>" .
+                           "\nIn-Reply-To: <bug-$bug_id-$user_id$sitespec>" .
                            "\nReferences: <bug-$bug_id-$user_id$sitespec>";
     }
 

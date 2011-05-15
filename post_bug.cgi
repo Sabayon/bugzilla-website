@@ -103,13 +103,6 @@ if (defined $cgi->param('maketemplate')) {
 
 umask 0;
 
-# Group Validation
-my @selected_groups;
-foreach my $group (grep(/^bit-\d+$/, $cgi->param())) {
-    $group =~ /^bit-(\d+)$/;
-    push(@selected_groups, $1);
-}
-
 # The format of the initial comment can be structured by adding fields to the
 # enter_bug template and then referencing them in the comment template.
 my $comment;
@@ -136,7 +129,7 @@ push(@bug_fields, qw(
 
     alias
     blocked
-    commentprivacy
+    comment_is_private
     bug_file_loc
     bug_severity
     bug_status
@@ -158,7 +151,7 @@ foreach my $field (@bug_fields) {
     $bug_params{$field} = $cgi->param($field);
 }
 $bug_params{'cc'}          = [$cgi->param('cc')];
-$bug_params{'groups'}      = \@selected_groups;
+$bug_params{'groups'}      = [$cgi->param('groups')];
 $bug_params{'comment'}     = $comment;
 
 my @multi_selects = grep {$_->type == FIELD_TYPE_MULTI_SELECT && $_->enter_bug}
@@ -191,7 +184,7 @@ if (defined $cgi->param('version')) {
 
 # Add an attachment if requested.
 if (defined($cgi->upload('data')) || $cgi->param('attachurl')) {
-    $cgi->param('isprivate', $cgi->param('commentprivacy'));
+    $cgi->param('isprivate', $cgi->param('comment_is_private'));
 
     # Must be called before create() as it may alter $cgi->param('ispatch').
     my $content_type = Bugzilla::Attachment::get_content_type();
@@ -224,7 +217,8 @@ if (defined($cgi->upload('data')) || $cgi->param('attachurl')) {
         $attachment->set_flags($flags, $new_flags);
         $attachment->update($timestamp);
         my $comment = $bug->comments->[0];
-        $comment->set_type(CMT_ATTACHMENT_CREATED, $attachment->id);
+        $comment->set_all({ type => CMT_ATTACHMENT_CREATED, 
+                            extra_data => $attachment->id });
         $comment->update();
     }
     else {
@@ -251,7 +245,7 @@ if ($token) {
              ("createbug:$id", $token));
 }
 
-my $recipients = { changer => $user->login };
+my $recipients = { changer => $user };
 my $bug_sent = Bugzilla::BugMail::Send($id, $recipients);
 $bug_sent->{type} = 'created';
 $bug_sent->{id}   = $id;
