@@ -106,6 +106,13 @@
     [% SET yui = yui_resolve_deps(yui, yui_deps) %]
     [% SET css_sets = css_files(style_urls, yui, yui_css) %]
 
+    [%# CSS cascade - Sabayon Header %]
+        <link rel="stylesheet" href="http://static.sabayon.org/site/css/reset-min.css" type="text/css" />
+        <link rel="stylesheet" href="http://static.sabayon.org/site/css/global.css" type="text/css" />
+        <link rel="stylesheet" href="http://static.sabayon.org/site/css/global_menu.css" type="text/css" />
+        <link rel="stylesheet" href="http://static.sabayon.org/site/css/global_styles.css" type="text/css" />
+        <link rel="stylesheet" href="http://static.sabayon.org/site/css/style.css" type="text/css"/>
+
     [%# CSS cascade, part 1: Standard Bugzilla stylesheet set (persistent).
       # Always present.
       #%]
