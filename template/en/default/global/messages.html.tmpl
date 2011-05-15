@@ -144,7 +144,7 @@
 
   [% ELSIF message_tag == "buglist_query_gone" %]
     [% title = "Search is gone" %]
-    [% link  = "Go back to the search page." %]
+    [% link  = "Un-forget the search" %]
     OK, the <b>[% namedcmd FILTER html %]</b> search is gone.
 
   [% ELSIF message_tag == "buglist_sorted_by_relevance" %]
@@ -455,10 +455,6 @@
   [% ELSIF message_tag == "keyword_deleted" %]
     [% title = "Keyword Deleted" %]
     The <em>[% keyword.name FILTER html %]</em> keyword has been deleted.
-    <b>After you have finished editing keywords, you need to
-    <a href="sanitycheck.cgi?rebuildkeywordcache=1">rebuild the keyword
-    cache</a></b> (on a very large installation of [% terms.Bugzilla %],
-    this can take several minutes).
 
   [% ELSIF message_tag == "keyword_updated" %]
     [% title = "Keyword Updated" %]
@@ -467,13 +463,7 @@
       been saved:
       <ul>
         [% IF changes.name.defined %]
-          <li>
-            Keyword renamed to <em>[% keyword.name FILTER html %]</em>.
-            <b>After you have finished editing keywords, you need to
-            <a href="sanitycheck.cgi?rebuildkeywordcache=1">rebuild
-            the keyword cache</a></b> (on a very large installation
-            of [% terms.Bugzilla %], this can take several minutes).
-          </li>
+          <li>Keyword renamed to <em>[% keyword.name FILTER html %]</em>.</li>
         [% END %]
         [% IF changes.description.defined %]
           <li>Description updated to <em>[% keyword.description FILTER html %]</em></li>
@@ -568,7 +558,7 @@
       [% FOREACH param = param_changed %]
         Changed <em>[% param FILTER html %]</em><br>
         [% IF param == 'utf8' && Param('utf8') %]
-          <strong>You must now re-run checksetup.pl.</strong><br>
+          <strong>You must now re-run <kbd>checksetup.pl</kbd>.</strong><br>
         [% END %]
       [% END %]
     [% ELSE %]
@@ -724,6 +714,9 @@
     running under Windows.
     Verify that the file permissions in your [% terms.Bugzilla %] directory are
     suitable for your system. Avoid unnecessary write access.
+
+  [% ELSIF message_tag == "install_workflow_init" %]
+    Setting up the default status workflow...
 
   [% ELSIF message_tag == "product_created" %]
     [% title = "Product Created" %]

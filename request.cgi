@@ -113,7 +113,7 @@ sub queue {
                 products.name, components.name,
                 flags.attach_id, attachments.description,
                 requesters.realname, requesters.login_name,
-                requestees.realname, requestees.login_name,
+                requestees.realname, requestees.login_name, COUNT(privs.group_id),
     " . $dbh->sql_date_format('flags.modification_date', '%Y.%m.%d %H:%i') .
     # Use the flags and flagtypes tables for information about the flags,
     # the bugs and attachments tables for target info, the profiles tables
@@ -141,6 +141,8 @@ sub queue {
                   ON bgmap.bug_id = bugs.bug_id
                  AND bgmap.group_id NOT IN (" .
                      $user->groups_as_string . ")
+           LEFT JOIN bug_group_map AS privs
+                  ON privs.bug_id = bugs.bug_id
            LEFT JOIN cc AS ccmap
                   ON ccmap.who = $userid
                  AND ccmap.bug_id = bugs.bug_id
@@ -292,7 +294,8 @@ sub queue {
           'attach_summary'  => $data[8] ,
           'requester'       => ($data[9] ? "$data[9] <$data[10]>" : $data[10]) , 
           'requestee'       => ($data[11] ? "$data[11] <$data[12]>" : $data[12]) , 
-          'created'         => $data[13]
+          'restricted'      => $data[13] ? 1 : 0,
+          'created'         => $data[14]
         };
         push(@requests, $request);
     }
@@ -329,8 +332,7 @@ sub validateStatus {
     return if !defined $status;
 
     grep($status eq $_, qw(? +- + - all))
-      || ThrowCodeError("flag_status_invalid",
-                        { status => $status });
+      || ThrowUserError("flag_status_invalid", { status => $status });
     trick_taint($status);
     return $status;
 }
@@ -340,8 +342,7 @@ sub validateGroup {
     return if !defined $group;
 
     grep($group eq $_, qw(requester requestee category type))
-      || ThrowCodeError("request_queue_group_invalid", 
-                        { group => $group });
+      || ThrowUserError("request_queue_group_invalid", { group => $group });
     trick_taint($group);
     return $group;
 }

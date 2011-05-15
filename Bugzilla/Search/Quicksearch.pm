@@ -31,6 +31,7 @@ use Bugzilla::Field;
 use Bugzilla::Util;
 
 use List::Util qw(min max);
+use List::MoreUtils qw(firstidx);
 
 use base qw(Exporter);
 @Bugzilla::Search::Quicksearch::EXPORT = qw(quicksearch);
@@ -99,6 +100,8 @@ sub FIELD_MAP {
                         bug_severity bug_status
                         status_whiteboard
                         cclist_accessible reporter_accessible)};
+
+    Bugzilla::Hook::process('quicksearch_map', {'map' => \%full_map} );
 
     $cache->{quicksearch_fields} = \%full_map;
 
@@ -275,8 +278,8 @@ sub _handle_status_and_resolution {
     elsif ($words->[0] eq 'OPEN') {
         shift @$words;
     }
-    elsif ($words->[0] =~ /^[A-Z]+(,[A-Z]+)*$/) {
-        # e.g. NEW,ASSI,REOP,FIX
+    elsif ($words->[0] =~ /^[A-Z_]+(,[_A-Z]+)*$/) {
+        # e.g. CON,IN_PR,FIX
         undef %states;
         if (matchPrefixes(\%states,
                           \%resolutions,
@@ -342,12 +345,6 @@ sub _handle_special_first_chars {
 
 sub _handle_field_names {
     my ($or_operand, $negate, $unknownFields, $ambiguous_fields) = @_;
-    
-    # votes:xx ("at least xx votes")
-    if ($or_operand =~ /^votes:([0-9]+)$/) {
-        addChart('votes', 'greaterthan', $1 - 1, $negate);
-        return 1;
-    }
     
     # Flag and requestee shortcut
     if ($or_operand =~ /^(?:flag:)?([^\?]+\?)([^\?]*)$/) {
@@ -447,9 +444,9 @@ sub _special_field_syntax {
         my $legal_priorities = get_legal_field_values('priority');
 
         # If Pn exists explicitly, use it.
-        my $start = lsearch($legal_priorities, "P$p_start");
+        my $start = firstidx { $_ eq "P$p_start" } @$legal_priorities;
         my $end;
-        $end = lsearch($legal_priorities, "P$p_end") if defined $p_end;
+        $end = firstidx { $_ eq "P$p_end" } @$legal_priorities if defined $p_end;
 
         # If Pn doesn't exist explicitly, then we mean the nth priority.
         if ($start == -1) {
@@ -470,19 +467,6 @@ sub _special_field_syntax {
         addChart('priority', 'anyexact', $prios, $negate);
         return 1;
     }
-
-    # Votes (votes>xx)
-    if ($word =~ m/^votes>([0-9]+)$/) {
-        addChart('votes', 'greaterthan', $1, $negate);
-        return 1;
-    }
-    
-    # Votes (votes>=xx, votes=>xx)
-    if ($word =~ m/^votes(>=|=>)([0-9]+)$/) {
-        addChart('votes', 'greaterthan', $2-1, $negate);
-        return 1;
-    }
-
     return 0;    
 }
 

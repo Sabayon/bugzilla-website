@@ -36,8 +36,8 @@ use base qw(Exporter);
                              html_quote url_quote xml_quote
                              css_class_quote html_light_quote url_decode
                              i_am_cgi correct_urlbase remote_ip
-                             lsearch do_ssl_redirect_if_required use_attachbase
-                             diff_arrays
+                             do_ssl_redirect_if_required use_attachbase
+                             diff_arrays on_main_db
                              trim wrap_hard wrap_comment find_wrap_point
                              format_time format_time_decimal validate_date
                              validate_time datetime_from
@@ -306,18 +306,6 @@ sub use_attachbase {
             && $attachbase ne Bugzilla->params->{'sslbase'}) ? 1 : 0;
 }
 
-sub lsearch {
-    my ($list,$item) = (@_);
-    my $count = 0;
-    foreach my $i (@$list) {
-        if ($i eq $item) {
-            return $count;
-        }
-        $count++;
-    }
-    return -1;
-}
-
 sub diff_arrays {
     my ($old_ref, $new_ref) = @_;
 
@@ -457,7 +445,7 @@ sub datetime_from {
 
     # strptime() counts years from 1900, and months from 0 (January).
     # We have to fix both values.
-    my $dt = DateTime->new({
+    my %args = (
         year   => $time[5] + 1900,
         month  => $time[4] + 1,
         day    => $time[3],
@@ -465,12 +453,21 @@ sub datetime_from {
         minute => $time[1],
         # DateTime doesn't like fractional seconds.
         # Also, sometimes seconds are undef.
-        second => int($time[0] || 0),
+        second => defined($time[0]) ? int($time[0]) : undef,
         # If a timezone was specified, use it. Otherwise, use the
         # local timezone.
         time_zone => Bugzilla->local_timezone->offset_as_string($time[6]) 
                      || Bugzilla->local_timezone,
-    });
+    );
+
+    # If something wasn't specified in the date, it's best to just not
+    # pass it to DateTime at all. (This is important for doing datetime_from
+    # on the deadline field, which is usually just a date with no time.)
+    foreach my $arg (keys %args) {
+        delete $args{$arg} if !defined $args{$arg};
+    }
+
+    my $dt = new DateTime(\%args);
 
     # Now display the date using the given timezone,
     # or the user's timezone if none is given.
@@ -651,9 +648,20 @@ sub is_7bit_clean {
 }
 
 sub clean_text {
-    my ($dtext) = shift;
-    $dtext =~  s/[\x00-\x1F\x7F]+/ /g;   # change control characters into a space
+    my $dtext = shift;
+    if ($dtext) {
+        # change control characters into a space
+        $dtext =~ s/[\x00-\x1F\x7F]+/ /g;
+    }
     return trim($dtext);
+}
+
+sub on_main_db (&) {
+    my $code = shift;
+    my $original_dbh = Bugzilla->dbh;
+    Bugzilla->request_cache->{dbh} = Bugzilla->dbh_main;
+    $code->();
+    Bugzilla->request_cache->{dbh} = $original_dbh;
 }
 
 sub get_text {
@@ -675,7 +683,7 @@ sub template_var {
     my $name = shift;
     my $cache = Bugzilla->request_cache->{util_template_var} ||= {};
     my $template = Bugzilla->template_inner;
-    my $lang = Bugzilla->request_cache->{language};
+    my $lang = $template->context->{bz_language};
     return $cache->{$lang}->{$name} if defined $cache->{$lang};
     my %vars;
     # Note: If we suddenly start needing a lot of template_var variables,
@@ -727,9 +735,6 @@ Bugzilla::Util - Generic utility functions for bugzilla
   my $is_cgi   = i_am_cgi();
   my $urlbase  = correct_urlbase();
 
-  # Functions for searching
-  $loc = lsearch(\@arr, $val);
-
   # Data manipulation
   ($removed, $added) = diff_arrays(\@old, \@new);
 
@@ -751,6 +756,11 @@ Bugzilla::Util - Generic utility functions for bugzilla
   # Validation Functions
   validate_email_syntax($email);
   validate_date($date);
+
+  # DB-related functions
+  on_main_db {
+     ... code here ...
+  };
 
 =head1 DESCRIPTION
 
@@ -865,21 +875,6 @@ current setting for the C<ssl_redirect> parameter.
 
 Returns true if an alternate host is used to display attachments; false
 otherwise.
-
-=back
-
-=head2 Searching
-
-Functions for searching within a set of values.
-
-=over 4
-
-=item C<lsearch($list, $item)>
-
-Returns the position of C<$item> in C<$list>. C<$list> must be a list
-reference.
-
-If the item is not in the list, returns -1.
 
 =back
 
@@ -1069,5 +1064,22 @@ Untaints C<$email> if successful.
 
 Make sure the date has the correct format and returns 1 if
 the check is successful, else returns 0.
+
+=back
+
+=head2 Database
+
+=over
+
+=item C<on_main_db>
+
+Runs a block of code always on the main DB. Useful for when you're inside
+a subroutine and need to do some writes to the database, but don't know
+if Bugzilla is currently using the shadowdb or not. Used like:
+
+ on_main_db {
+     my $dbh = Bugzilla->dbh;
+     $dbh->do("INSERT ...");
+ }
 
 =back

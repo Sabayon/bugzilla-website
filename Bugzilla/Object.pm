@@ -29,6 +29,7 @@ use Bugzilla::Util;
 use Bugzilla::Error;
 
 use Date::Parse;
+use List::MoreUtils qw(part);
 
 use constant NAME_FIELD => 'name';
 use constant ID_FIELD   => 'id';
@@ -37,6 +38,10 @@ use constant LIST_ORDER => NAME_FIELD;
 use constant UPDATE_VALIDATORS => {};
 use constant NUMERIC_COLUMNS   => ();
 use constant DATE_COLUMNS      => ();
+use constant VALIDATOR_DEPENDENCIES => {};
+# XXX At some point, this will be joined with FIELD_MAP.
+use constant REQUIRED_FIELD_MAP  => {};
+use constant EXTRA_REQUIRED_FIELDS => ();
 
 # This allows the JSON-RPC interface to return Bugzilla::Object instances
 # as though they were hashes. In the future, this may be modified to return
@@ -64,7 +69,7 @@ sub _init {
     my $class = shift;
     my ($param) = @_;
     my $dbh = Bugzilla->dbh;
-    my $columns = join(',', $class->DB_COLUMNS);
+    my $columns = join(',', $class->_get_db_columns);
     my $table   = $class->DB_TABLE;
     my $name_field = $class->NAME_FIELD;
     my $id_field   = $class->ID_FIELD;
@@ -251,7 +256,7 @@ sub match {
 sub _do_list_select {
     my ($class, $where, $values, $postamble) = @_;
     my $table = $class->DB_TABLE;
-    my $cols  = join(',', $class->DB_COLUMNS);
+    my $cols  = join(',', $class->_get_db_columns);
     my $order = $class->LIST_ORDER;
 
     my $sql = "SELECT $cols FROM $table";
@@ -288,7 +293,8 @@ sub set {
     my ($self, $field, $value) = @_;
 
     # This method is protected. It's used to help implement set_ functions.
-    caller->isa('Bugzilla::Object')
+    my $caller = caller;
+    $caller->isa('Bugzilla::Object') || $caller->isa('Bugzilla::Extension')
         || ThrowCodeError('protection_violation', 
                           { caller     => caller,
                             superclass => __PACKAGE__,
@@ -298,7 +304,7 @@ sub set {
                             { object => $self, field => $field,
                               value => $value });
 
-    my %validators = (%{$self->VALIDATORS}, %{$self->UPDATE_VALIDATORS});
+    my %validators = (%{$self->_get_validators}, %{$self->UPDATE_VALIDATORS});
     if (exists $validators{$field}) {
         my $validator = $validators{$field};
         $value = $self->$validator($value, $field);
@@ -317,12 +323,21 @@ sub set {
 
 sub set_all {
     my ($self, $params) = @_;
-    foreach my $key (keys %$params) {
+
+    # Don't let setters modify the values in $params for the caller.
+    my %field_values = %$params;
+
+    my @sorted_names = $self->_sort_by_dep(keys %field_values);
+    foreach my $key (@sorted_names) {
+        # It's possible for one set_ method to delete a key from $params
+        # for another set method, so if that's happened, we don't call the
+        # other set method.
+        next if !exists $field_values{$key};
         my $method = "set_$key";
-        $self->$method($params->{$key});
+        $self->$method($field_values{$key}, \%field_values);
     }
-    Bugzilla::Hook::process('object_end_of_set_all', { object => $self,
-                                                       params => $params });
+    Bugzilla::Hook::process('object_end_of_set_all', 
+                            { object => $self, params => \%field_values });
 }
 
 sub update {
@@ -335,11 +350,17 @@ sub update {
     $dbh->bz_start_transaction();
 
     my $old_self = $self->new($self->id);
-    
+   
+    my @all_columns = $self->UPDATE_COLUMNS;
+    my @hook_columns;
+    Bugzilla::Hook::process('object_update_columns',
+                            { object => $self, columns => \@hook_columns });
+    push(@all_columns, @hook_columns);
+
     my %numeric = map { $_ => 1 } $self->NUMERIC_COLUMNS;
     my %date    = map { $_ => 1 } $self->DATE_COLUMNS;
     my (@update_columns, @values, %changes);
-    foreach my $column ($self->UPDATE_COLUMNS) {
+    foreach my $column (@all_columns) {
         my ($old, $new) = ($old_self->{$column}, $self->{$column});
         # This has to be written this way in order to allow us to set a field
         # from undef or to undef, and avoid warnings about comparing an undef
@@ -434,30 +455,30 @@ sub check_required_create_fields {
     Bugzilla::Hook::process('object_before_create', { class => $class,
                                                       params => $params });
 
-    foreach my $field ($class->REQUIRED_CREATE_FIELDS) {
-        ThrowCodeError('param_required',
-            { function => "${class}->create", param => $field })
-            if !exists $params->{$field};
+    my @check_fields = $class->_required_create_fields();
+    foreach my $field (@check_fields) {
+        $params->{$field} = undef if !exists $params->{$field};
     }
 }
 
 sub run_create_validators {
     my ($class, $params) = @_;
 
-    my $validators = $class->VALIDATORS;
+    my $validators = $class->_get_validators;
+    my %field_values = %$params;
 
-    my %field_values;
-    # We do the sort just to make sure that validation always
-    # happens in a consistent order.
-    foreach my $field (sort keys %$params) {
+    my @sorted_names = $class->_sort_by_dep(keys %field_values);
+    foreach my $field (@sorted_names) {
         my $value;
         if (exists $validators->{$field}) {
             my $validator = $validators->{$field};
-            $value = $class->$validator($params->{$field}, $field);
+            $value = $class->$validator($field_values{$field}, $field,
+                                        \%field_values);
         }
         else {
-            $value = $params->{$field};
+            $value = $field_values{$field};
         }
+
         # We want people to be able to explicitly set fields to NULL,
         # and that means they can be set to undef.
         trick_taint($value) if defined $value && !ref($value);
@@ -506,6 +527,132 @@ sub get_all {
 
 sub check_boolean { return $_[1] ? 1 : 0 }
 
+###################
+# General Helpers #
+###################
+
+# Sorts fields according to VALIDATOR_DEPENDENCIES. This is not a
+# traditional topological sort, because a "dependency" does not
+# *have* to be in the list--it just has to be earlier than its dependent
+# if it *is* in the list.
+sub _sort_by_dep {
+    my ($invocant, @fields) = @_;
+
+    my $dependencies = $invocant->VALIDATOR_DEPENDENCIES;
+    my ($has_deps, $no_deps) = part { $dependencies->{$_} ? 0 : 1 } @fields;
+
+    # For fields with no dependencies, we sort them alphabetically,
+    # so that validation always happens in a consistent order.
+    # Fields with no dependencies come at the start of the list.
+    my @result = sort @{ $no_deps || [] };
+
+    # Fields with dependencies all go at the end of the list, and if
+    # they have dependencies on *each other*, then they have to be
+    # sorted properly. We go through $has_deps in sorted order to be
+    # sure that fields always validate in a consistent order.
+    foreach my $field (sort @{ $has_deps || [] }) {
+        if (!grep { $_ eq $field } @result) {
+            _insert_dep_field($field, $has_deps, $dependencies, \@result);
+        }
+    }
+    return @result;
+}
+
+sub _insert_dep_field {
+    my ($field, $insert_me, $dependencies, $result, $loop_tracking) = @_;
+
+    if ($loop_tracking->{$field}) {
+        ThrowCodeError('object_dep_sort_loop', 
+                       { field => $field, 
+                         considered => [keys %$loop_tracking] });
+    }
+    $loop_tracking->{$field} = 1;
+
+    my $required_fields = $dependencies->{$field};
+    # Imagine Field A requires field B...
+    foreach my $required_field (@$required_fields) {
+        # If our dependency is already satisfied, we're good.
+        next if grep { $_ eq $required_field } @$result;
+
+        # If our dependency is not in the remaining fields to insert,
+        # then we're also OK.
+        next if !grep { $_ eq $required_field } @$insert_me;
+
+        # So, at this point, we know that Field B is in $insert_me.
+        # So let's put the required field into the result.
+        _insert_dep_field($required_field, $insert_me, $dependencies,
+                          $result, $loop_tracking);
+    }
+    push(@$result, $field);
+}
+
+####################
+# Constant Helpers #
+####################
+
+# For some classes, some constants take time to generate, so we cache them
+# and only access them through the below methods. This also allows certain
+# hooks to only run once per request instead of multiple times on each
+# page.
+
+sub _get_db_columns {
+    my $invocant = shift;
+    my $class = ref($invocant) || $invocant;
+    my $cache = Bugzilla->request_cache;
+    my $cache_key = "object_${class}_db_columns";
+    return @{ $cache->{$cache_key} } if $cache->{$cache_key};
+    # Currently you can only add new columns using object_columns, not
+    # remove or modify existing columns, because removing columns would
+    # almost certainly cause Bugzilla to function improperly.
+    my @add_columns;
+    Bugzilla::Hook::process('object_columns',
+                            { class => $class, columns => \@add_columns });
+    my @columns = ($invocant->DB_COLUMNS, @add_columns);
+    $cache->{$cache_key} = \@columns;
+    return @{ $cache->{$cache_key} };
+}
+
+# This method is private and should only be called by Bugzilla::Object.
+sub _get_validators {
+    my $invocant = shift;
+    my $class = ref($invocant) || $invocant;
+    my $cache = Bugzilla->request_cache;
+    my $cache_key = "object_${class}_validators";
+    return $cache->{$cache_key} if $cache->{$cache_key};
+    # We copy this into a hash so that the hook doesn't modify the constant.
+    # (That could be bad in mod_perl.)
+    my %validators = %{ $invocant->VALIDATORS };
+    Bugzilla::Hook::process('object_validators', 
+                            { class => $class, validators => \%validators });
+    $cache->{$cache_key} = \%validators;
+    return $cache->{$cache_key};
+}
+
+# These are all the fields that need to be checked, always, when
+# calling create(), because they have no DEFAULT and they are marked
+# NOT NULL.
+sub _required_create_fields {
+    my $class = shift;
+    my $dbh = Bugzilla->dbh;
+    my $table = $class->DB_TABLE;
+
+    my @columns = $dbh->bz_table_columns($table);
+    my @required;
+    foreach my $column (@columns) {
+        my $def = $dbh->bz_column_info($table, $column);
+        if ($def->{NOTNULL} and !defined $def->{DEFAULT}
+            # SERIAL fields effectively have a DEFAULT, but they're not
+            # listed as having a DEFAULT in DB::Schema.
+            and $def->{TYPE} !~ /serial/i) 
+        {
+            my $field = $class->REQUIRED_FIELD_MAP->{$column} || $column;
+            push(@required, $field);
+        }
+    }
+    push(@required, $class->EXTRA_REQUIRED_FIELDS);
+    return @required;
+}
+
 1;
 
 __END__
@@ -552,6 +699,12 @@ for C<Bugzilla::Keyword> this would be C<keyworddefs>.
 The names of the columns that you want to read out of the database
 and into this object. This should be an array.
 
+I<Note>: Though normally you will never need to access this constant's data 
+directly in your subclass, if you do, you should access it by calling the
+C<_get_db_columns> method instead of accessing the constant directly. (The
+only exception to this rule is calling C<SUPER::DB_COLUMNS> from within
+your own C<DB_COLUMNS> subroutine in a subclass.)
+
 =item C<NAME_FIELD>
 
 The name of the column that should be considered to be the unique
@@ -570,11 +723,6 @@ of this object in the database. Defaults to 'id'.
 The order that C<new_from_list> and C<get_all> should return objects
 in. This should be the name of a database column. Defaults to
 L</NAME_FIELD>.
-
-=item C<REQUIRED_CREATE_FIELDS>
-
-The list of fields that B<must> be specified when the user calls
-C<create()>. This should be an array.
 
 =item C<VALIDATORS>
 
@@ -606,11 +754,68 @@ here must not appear in L</VALIDATORS>.
 
 L<Bugzilla::Bug> has good examples in its code of when to use this.
 
+=item C<VALIDATOR_DEPENDENCIES>
+
+During L</create> and L</set_all>, validators are normally called in
+a somewhat-random order.  If you need one field to be validated and set
+before another field, this constant is how you do it, by saying that
+one field "depends" on the value of other fields.
+
+This is a hashref, where the keys are field names and the values are
+arrayrefs of field names. You specify what fields a field depends on using
+the arrayrefs. So, for example, to say that a C<component> field depends
+on the C<product> field being set, you would do:
+
+ component => ['product']
+
 =item C<UPDATE_COLUMNS>
 
 A list of columns to update when L</update> is called.
 If a field can't be changed, it shouldn't be listed here. (For example,
 the L</ID_FIELD> usually can't be updated.)
+
+=item C<REQUIRED_FIELD_MAP>
+
+This is a hashref that maps database column names to L</create> argument
+names. You only need to specify values for fields where the argument passed
+to L</create> has a different name in the database than it does in the
+L</create> arguments. (For example, L<Bugzilla::Bug/create> takes a
+C<product> argument, but the column name in the C<bugs> table is
+C<product_id>.)
+
+=item C<EXTRA_REQUIRED_FIELDS>
+
+Normally, Bugzilla::Object automatically figures out which fields
+are required for L</create>. It then I<always> runs those fields' validators,
+even if those fields weren't passed as arguments to L</create>. That way,
+any default values or required checks can be done for those fields by
+the validators.
+
+L</create> figures out which fields are required by looking for database
+columns in the L</DB_TABLE> that are NOT NULL and have no DEFAULT set.
+However, there are some fields that this check doesn't work for:
+
+=over
+
+=item *
+
+Fields that have database defaults (or are marked NULL in the database)
+but actually have different defaults specified by validators. (For example,
+the qa_contact field in the C<bugs> table can be NULL, so it won't be
+caught as being required. However, in reality it defaults to the
+component's initial_qa_contact.)
+
+=item * 
+
+Fields that have defaults that should be set by validators, but are
+actually stored in a table different from L</DB_TABLE> (like the "cc"
+field for bugs, which defaults to the "initialcc" of the Component, but won't
+be caught as a normal required field because it's in a separate table.) 
+
+=back
+
+Any field matching the above criteria needs to have its name listed in
+this constant. For an example of use, see the code of L<Bugzilla::Bug>.
 
 =item C<NUMERIC_COLUMNS>
 
@@ -785,17 +990,13 @@ Description: Creates a new item in the database.
              are invalid.
 
 Params:      C<$params> - hashref - A value to put in each database
-               field for this object. Certain values must be set (the 
-               ones specified in L</REQUIRED_CREATE_FIELDS>), and
-               the function will throw a Code Error if you don't set
-               them.
+             field for this object.
 
 Returns:     The Object just created in the database.
 
 Notes:       In order for this function to work in your subclass,
              your subclass's L</ID_FIELD> must be of C<SERIAL>
-             type in the database. Your subclass also must
-             define L</REQUIRED_CREATE_FIELDS> and L</VALIDATORS>.
+             type in the database.
 
              Subclass Implementors: This function basically just
              calls L</check_required_create_fields>, then
@@ -810,8 +1011,10 @@ Notes:       In order for this function to work in your subclass,
 
 =item B<Description>
 
-Part of L</create>. Throws an error if any of the L</REQUIRED_CREATE_FIELDS>
-have not been specified in C<$params>
+Part of L</create>. Modifies the incoming C<$params> argument so that
+any field that does not have a database default will be checked
+later by L</run_create_validators>, even if that field wasn't specified
+as an argument to L</create>.
 
 =item B<Params>
 

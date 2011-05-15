@@ -30,6 +30,8 @@ use Bugzilla::Error;
 use Bugzilla::User;
 use Bugzilla::Util;
 
+use Scalar::Util qw(blessed);
+
 ###############################
 ####    Initialization     ####
 ###############################
@@ -57,11 +59,12 @@ use constant ID_FIELD => 'comment_id';
 use constant LIST_ORDER => 'bug_when';
 
 use constant VALIDATORS => {
+    extra_data => \&_check_extra_data,
     type => \&_check_type,
 };
 
-use constant UPDATE_VALIDATORS => {
-    extra_data => \&_check_extra_data,
+use constant VALIDATOR_DEPENDENCIES => {
+    extra_data => ['type'],
 };
 
 #########################
@@ -154,9 +157,8 @@ sub body_full {
 sub set_extra_data { $_[0]->set('extra_data', $_[1]); }
 
 sub set_type {
-    my ($self, $type, $extra_data) = @_;
+    my ($self, $type) = @_;
     $self->set('type', $type);
-    $self->set_extra_data($extra_data);
 }
 
 ##############
@@ -164,9 +166,10 @@ sub set_type {
 ##############
 
 sub _check_extra_data {
-    my ($invocant, $extra_data, $type) = @_;
-    $type = $invocant->type if ref $invocant;
-    if ($type == CMT_NORMAL or $type == CMT_POPULAR_VOTES) {
+    my ($invocant, $extra_data, undef, $params) = @_;
+    my $type = blessed($invocant) ? $invocant->type : $params->{type};
+
+    if ($type == CMT_NORMAL) {
         if (defined $extra_data) {
             ThrowCodeError('comment_extra_data_not_allowed',
                            { type => $type, extra_data => $extra_data });
@@ -175,9 +178,6 @@ sub _check_extra_data {
     else {
         if (!defined $extra_data) {
             ThrowCodeError('comment_extra_data_required', { type => $type });
-        }
-        if ($type == CMT_MOVED_TO) {
-            $extra_data = Bugzilla::User->check($extra_data)->login;
         }
         elsif ($type == CMT_ATTACHMENT_CREATED 
                or $type == CMT_ATTACHMENT_UPDATED) 
@@ -205,6 +205,22 @@ sub _check_type {
         or ThrowCodeError('comment_type_invalid', { type => $original });
     return $type;
 }
+
+sub count {
+    my ($self) = @_;
+
+    return $self->{'count'} if defined $self->{'count'};
+
+    my $dbh = Bugzilla->dbh;
+    ($self->{'count'}) = $dbh->selectrow_array(
+        "SELECT COUNT(*)
+           FROM longdescs 
+          WHERE bug_id = ? 
+                AND bug_when <= ?",
+        undef, $self->bug_id, $self->creation_ts);
+
+    return --$self->{'count'};
+}   
 
 1;
 
@@ -261,6 +277,10 @@ C<0> otherwise.
 
 L<Bugzilla::User> who created the comment.
 
+=item C<count>
+
+C<int> The position this comment is located in the full list of comments for a bug starting from 0.
+
 =item C<body_full>
 
 =over
@@ -290,8 +310,6 @@ C<boolean>. C<1> if the comment should be returned word-wrapped.
 A string, the full text of the comment as it would be displayed to an end-user.
 
 =back
-
-
 
 =back
 

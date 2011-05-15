@@ -76,7 +76,7 @@ sub parse_mail {
     debug_print('Parsing Email');
     $input_email = Email::MIME->new($mail_text);
     
-    my %fields;
+    my %fields = %{ $switch{'default'} || {} };
     Bugzilla::Hook::process('email_in_before_parse', { mail => $input_email,
                                                        fields => \%fields });
 
@@ -140,6 +140,11 @@ sub parse_mail {
     }
     $fields{'comment'} = $comment;
 
+    my %override = %{ $switch{'override'} || {} };
+    foreach my $key (keys %override) {
+        $fields{$key} = $override{$key};
+    }
+
     debug_print("Parsed Fields:\n" . Dumper(\%fields), 2);
 
     return \%fields;
@@ -150,33 +155,6 @@ sub post_bug {
     debug_print('Posting a new bug...');
 
     my $user = Bugzilla->user;
-
-    # Bugzilla::Bug->create throws a confusing CodeError if
-    # the REQUIRED_CREATE_FIELDS are missing, but much more
-    # sensible errors if the fields exist but are just undef.
-    foreach my $field (Bugzilla::Bug::REQUIRED_CREATE_FIELDS) {
-        $fields->{$field} = undef if !exists $fields->{$field};
-    }
-
-    # Restrict the bug to groups marked as Default.
-    # We let Bug->create throw an error if the product is
-    # not accessible, to throw the correct message.
-    $fields->{product} = '' if !defined $fields->{product};
-    my $product = new Bugzilla::Product({ name => $fields->{product} });
-    if ($product) {
-        my @gids;
-        my $controls = $product->group_controls;
-        foreach my $gid (keys %$controls) {
-            if (($controls->{$gid}->{membercontrol} == CONTROLMAPDEFAULT
-                 && $user->in_group_id($gid))
-                || ($controls->{$gid}->{othercontrol} == CONTROLMAPDEFAULT
-                    && !$user->in_group_id($gid)))
-            {
-                push(@gids, $gid);
-            }
-        }
-        $fields->{groups} = \@gids;
-    }
 
     my ($retval, $non_conclusive_fields) =
       Bugzilla::User::match_field({
@@ -267,7 +245,8 @@ sub handle_attachments {
         # and this is our first attachment, then we make the comment an 
         # "attachment created" comment.
         if ($comment and !$comment->type and !$update_comment) {
-            $comment->set_type(CMT_ATTACHMENT_CREATED, $obj->id);
+            $comment->set_all({ type       => CMT_ATTACHMENT_CREATED, 
+                                extra_data => $obj->id });
             $update_comment = 1;
         }
         else {
@@ -407,7 +386,7 @@ sub die_handler {
 
 $SIG{__DIE__} = \&die_handler;
 
-GetOptions(\%switch, 'help|h', 'verbose|v+');
+GetOptions(\%switch, 'help|h', 'verbose|v+', 'default=s%', 'override=s%');
 $switch{'verbose'} ||= 0;
 
 # Print the help message if that switch was selected.
@@ -449,7 +428,7 @@ handle_attachments($bug, $attachments, $comment);
 # to wait for $bug->update() to be fully used in email_in.pl first. So
 # currently, process_bug.cgi does the mail sending for bugs, and this does
 # any mail sending for attachments after the first one.
-Bugzilla::BugMail::Send($bug->id, { changer => Bugzilla->user->login });
+Bugzilla::BugMail::Send($bug->id, { changer => Bugzilla->user });
 debug_print("Sent bugmail");
 
 
@@ -461,13 +440,22 @@ email_in.pl - The Bugzilla Inbound Email Interface
 
 =head1 SYNOPSIS
 
- ./email_in.pl [-vvv] < email.txt
+./email_in.pl [-vvv] [--default name=value] [--override name=value] < email.txt
 
- Reads an email on STDIN (the standard input).
+Reads an email on STDIN (the standard input).
 
-  Options:
-    --verbose (-v) - Make the script print more to STDERR.
-                     Specify multiple times to print even more.
+Options:
+
+   --verbose (-v)        - Make the script print more to STDERR.
+                           Specify multiple times to print even more.
+
+   --default name=value  - Specify defaults for field values, like
+                           product=TestProduct. Can be specified multiple
+                           times to specify defaults for multiple fields.
+
+   --override name=value - Override field values specified in the email,
+                           like product=TestProduct. Can be specified
+                           multiple times to override multiple fields.
 
 =head1 DESCRIPTION
 

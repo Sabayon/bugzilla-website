@@ -84,21 +84,21 @@ use File::Basename;
     QUERY_LIST
     LIST_OF_BUGS
 
+    SAVE_NUM_SEARCHES
+
     COMMENT_COLS
     MAX_COMMENT_LENGTH
 
     CMT_NORMAL
     CMT_DUPE_OF
     CMT_HAS_DUPE
-    CMT_POPULAR_VOTES
-    CMT_MOVED_TO
     CMT_ATTACHMENT_CREATED
     CMT_ATTACHMENT_UPDATED
 
     THROW_ERROR
     
     RELATIONSHIPS
-    REL_ASSIGNEE REL_QA REL_REPORTER REL_CC REL_VOTER REL_GLOBAL_WATCHER
+    REL_ASSIGNEE REL_QA REL_REPORTER REL_CC REL_GLOBAL_WATCHER
     REL_ANY
     
     POS_EVENTS
@@ -126,6 +126,11 @@ use File::Basename;
     FIELD_TYPE_DATETIME
     FIELD_TYPE_BUG_ID
     FIELD_TYPE_BUG_URLS
+    FIELD_TYPE_KEYWORDS
+
+    EMPTY_DATETIME_REGEX
+
+    ABNORMAL_SELECTS
 
     TIMETRACKING_FIELDS
 
@@ -134,11 +139,15 @@ use File::Basename;
     USAGE_MODE_XMLRPC
     USAGE_MODE_EMAIL
     USAGE_MODE_JSON
+    USAGE_MODE_TEST
 
     ERROR_MODE_WEBPAGE
     ERROR_MODE_DIE
     ERROR_MODE_DIE_SOAP_FAULT
     ERROR_MODE_JSON_RPC
+    ERROR_MODE_TEST
+
+    COLOR_ERROR
 
     INSTALLATION_MODE_INTERACTIVE
     INSTALLATION_MODE_NON_INTERACTIVE
@@ -146,12 +155,14 @@ use File::Basename;
     DB_MODULE
     ROOT_USER
     ON_WINDOWS
+    ON_ACTIVESTATE
 
     MAX_TOKEN_AGE
     MAX_LOGINCOOKIE_AGE
     MAX_SUDO_TOKEN_AGE
     MAX_LOGIN_ATTEMPTS
     LOGIN_LOCKOUT_INTERVAL
+    MAX_STS_AGE
 
     SAFE_PROTOCOLS
     LEGAL_CONTENT_TYPES
@@ -168,11 +179,17 @@ use File::Basename;
     MAX_FIELD_VALUE_SIZE
     MAX_FREETEXT_LENGTH
     MAX_BUG_URL_LENGTH
+    MAX_POSSIBLE_DUPLICATES
 
     PASSWORD_DIGEST_ALGORITHM
     PASSWORD_SALT_LENGTH
     
     CGI_URI_LIMIT
+
+    PRIVILEGES_REQUIRED_NONE
+    PRIVILEGES_REQUIRED_REPORTER
+    PRIVILEGES_REQUIRED_ASSIGNEE
+    PRIVILEGES_REQUIRED_EMPOWERED
 );
 
 @Bugzilla::Constants::EXPORT_OK = qw(contenttypes);
@@ -180,7 +197,7 @@ use File::Basename;
 # CONSTANTS
 #
 # Bugzilla version
-use constant BUGZILLA_VERSION => "3.6.4";
+use constant BUGZILLA_VERSION => "4.0.1";
 
 # These are unique values that are unlikely to match a string or a number,
 # to be used in criteria for match() functions and other things. They start
@@ -274,6 +291,9 @@ use constant DEFAULT_MILESTONE => '---';
 use constant QUERY_LIST => 0;
 use constant LIST_OF_BUGS => 1;
 
+# How many of the user's most recent searches to save.
+use constant SAVE_NUM_SEARCHES => 10;
+
 # The column length for displayed (and wrapped) bug comments.
 use constant COMMENT_COLS => 80;
 # Used in _check_comment(). Gives the max length allowed for a comment.
@@ -283,8 +303,8 @@ use constant MAX_COMMENT_LENGTH => 65535;
 use constant CMT_NORMAL => 0;
 use constant CMT_DUPE_OF => 1;
 use constant CMT_HAS_DUPE => 2;
-use constant CMT_POPULAR_VOTES => 3;
-use constant CMT_MOVED_TO => 4;
+# Type 3 was CMT_POPULAR_VOTES, which moved to the Voting extension.
+# Type 4 was CMT_MOVED_TO, which moved to the OldBugMove extension.
 use constant CMT_ATTACHMENT_CREATED => 5;
 use constant CMT_ATTACHMENT_UPDATED => 6;
 
@@ -296,11 +316,20 @@ use constant REL_ASSIGNEE           => 0;
 use constant REL_QA                 => 1;
 use constant REL_REPORTER           => 2;
 use constant REL_CC                 => 3;
-use constant REL_VOTER              => 4;
+# REL 4 was REL_VOTER, before it was moved ino an extension.
 use constant REL_GLOBAL_WATCHER     => 5;
 
-use constant RELATIONSHIPS => REL_ASSIGNEE, REL_QA, REL_REPORTER, REL_CC, 
-                              REL_VOTER, REL_GLOBAL_WATCHER;
+# We need these strings for the X-Bugzilla-Reasons header
+# Note: this hash uses "," rather than "=>" to avoid auto-quoting of the LHS.
+# This should be accessed through Bugzilla::BugMail::relationships() instead
+# of being accessed directly.
+use constant RELATIONSHIPS => {
+    REL_ASSIGNEE      , "AssignedTo",
+    REL_REPORTER      , "Reporter",
+    REL_QA            , "QAcontact",
+    REL_CC            , "CC",
+    REL_GLOBAL_WATCHER, "GlobalWatcher"
+};
                               
 # Used for global events like EVT_FLAG_REQUESTED
 use constant REL_ANY                => 100;
@@ -366,6 +395,17 @@ use constant FIELD_TYPE_TEXTAREA  => 4;
 use constant FIELD_TYPE_DATETIME  => 5;
 use constant FIELD_TYPE_BUG_ID  => 6;
 use constant FIELD_TYPE_BUG_URLS => 7;
+use constant FIELD_TYPE_KEYWORDS => 8;
+
+use constant EMPTY_DATETIME_REGEX => qr/^[0\-:\sA-Za-z]+$/; 
+
+# See the POD for Bugzilla::Field/is_abnormal to see why these are listed
+# here.
+use constant ABNORMAL_SELECTS => qw(
+    classification
+    product
+    component
+);
 
 # The fields from fielddefs that are blocked from non-timetracking users.
 # work_time is sometimes called actual_time.
@@ -385,6 +425,10 @@ use constant MAX_LOGIN_ATTEMPTS => 5;
 # If the maximum login attempts occur during this many minutes, the
 # account is locked.
 use constant LOGIN_LOCKOUT_INTERVAL => 30;
+
+# The maximum number of seconds the Strict-Transport-Security header
+# will remain valid. Default is one week.
+use constant MAX_STS_AGE => 604800;
 
 # Protocols which are considered as safe.
 use constant SAFE_PROTOCOLS => ('afs', 'cid', 'ftp', 'gopher', 'http', 'https',
@@ -414,6 +458,7 @@ use constant USAGE_MODE_CMDLINE    => 1;
 use constant USAGE_MODE_XMLRPC     => 2;
 use constant USAGE_MODE_EMAIL      => 3;
 use constant USAGE_MODE_JSON       => 4;
+use constant USAGE_MODE_TEST       => 5;
 
 # Error modes. Default set by Bugzilla->usage_mode (so ERROR_MODE_WEBPAGE
 # usually). Use with Bugzilla->error_mode.
@@ -421,6 +466,10 @@ use constant ERROR_MODE_WEBPAGE        => 0;
 use constant ERROR_MODE_DIE            => 1;
 use constant ERROR_MODE_DIE_SOAP_FAULT => 2;
 use constant ERROR_MODE_JSON_RPC       => 3;
+use constant ERROR_MODE_TEST           => 4;
+
+# The ANSI colors of messages that command-line scripts use
+use constant COLOR_ERROR => 'red';
 
 # The various modes that checksetup.pl can run in.
 use constant INSTALLATION_MODE_INTERACTIVE => 0;
@@ -438,6 +487,8 @@ use constant DB_MODULE => {
                     version => '4.00',
                 },
                 name => 'MySQL'},
+    # Also see Bugzilla::DB::Pg::bz_check_server_version, which has special
+    # code to require DBD::Pg 2.17.2 for PostgreSQL 9 and above.
     'pg'    => {db => 'Bugzilla::DB::Pg', db_version => '8.00.0000',
                 dbd => {
                     package => 'DBD-Pg',
@@ -456,6 +507,8 @@ use constant DB_MODULE => {
 
 # True if we're on Win32.
 use constant ON_WINDOWS => ($^O =~ /MSWin32/i);
+# True if we're using ActiveState Perl (as opposed to Strawberry) on Windows.
+use constant ON_ACTIVESTATE => eval { &Win32::BuildNumber };
 
 # The user who should be considered "root" when we're giving
 # instructions to Bugzilla administrators.
@@ -489,6 +542,10 @@ use constant MAX_FREETEXT_LENGTH => 255;
 # The longest a bug URL in a BUG_URLS field can be.
 use constant MAX_BUG_URL_LENGTH => 255;
 
+# The largest number of possible duplicates that Bug::possible_duplicates
+# will return.
+use constant MAX_POSSIBLE_DUPLICATES => 25;
+
 # This is the name of the algorithm used to hash passwords before storing
 # them in the database. This can be any string that is valid to pass to
 # Perl's "Digest" module. Note that if you change this, it won't take
@@ -502,6 +559,15 @@ use constant PASSWORD_SALT_LENGTH => 8;
 # via POST such as buglist.cgi. This value determines whether the redirect
 # can be safely done or not based on the web server's URI length setting.
 use constant CGI_URI_LIMIT => 8000;
+
+# If the user isn't allowed to change a field, we must tell him who can.
+# We store the required permission set into the $PrivilegesRequired
+# variable which gets passed to the error template.
+
+use constant PRIVILEGES_REQUIRED_NONE      => 0;
+use constant PRIVILEGES_REQUIRED_REPORTER  => 1;
+use constant PRIVILEGES_REQUIRED_ASSIGNEE  => 2;
+use constant PRIVILEGES_REQUIRED_EMPOWERED => 3;
 
 sub bz_locations {
     # We know that Bugzilla/Constants.pm must be in %INC at this point.

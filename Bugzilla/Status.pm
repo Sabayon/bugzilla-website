@@ -23,7 +23,10 @@ use strict;
 package Bugzilla::Status;
 
 use Bugzilla::Error;
-
+# This subclasses Bugzilla::Field::Choice instead of implementing 
+# ChoiceInterface, because a bug status literally is a special type
+# of Field::Choice, not just an object that happens to have the same
+# methods.
 use base qw(Bugzilla::Field::Choice Exporter);
 @Bugzilla::Status::EXPORT = qw(
     BUG_STATE_OPEN
@@ -238,7 +241,7 @@ Bugzilla::Status - Bug status class.
 
     use Bugzilla::Status;
 
-    my $bug_status = new Bugzilla::Status({name => 'ASSIGNED'});
+    my $bug_status = new Bugzilla::Status({ name => 'IN_PROGRESS' });
     my $bug_status = new Bugzilla::Status(4);
 
     my @closed_bug_statuses = closed_bug_statuses();

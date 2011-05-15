@@ -15,9 +15,9 @@
 # Contributor(s): Tiago R. Mello <timello@async.com.br>
 #                 Frédéric Buclin <LpSolit@gmail.com>
 
-use strict;
-
 package Bugzilla::Product;
+use strict;
+use base qw(Bugzilla::Field::ChoiceInterface Bugzilla::Object);
 
 use Bugzilla::Constants;
 use Bugzilla::Util;
@@ -31,10 +31,9 @@ use Bugzilla::Install::Requirements;
 use Bugzilla::Mailer;
 use Bugzilla::Series;
 use Bugzilla::Hook;
+use Bugzilla::FlagType;
 
-# Currently, we only implement enough of the Bugzilla::Field::Choice
-# interface to control the visibility of other fields.
-use base qw(Bugzilla::Field::Choice);
+use Scalar::Util qw(blessed);
 
 use constant DEFAULT_CLASSIFICATION_ID => 1;
 
@@ -43,10 +42,6 @@ use constant DEFAULT_CLASSIFICATION_ID => 1;
 ###############################
 
 use constant DB_TABLE => 'products';
-# Reset these back to the Bugzilla::Object defaults, instead of the
-# Bugzilla::Field::Choice defaults.
-use constant NAME_FIELD => 'name';
-use constant LIST_ORDER => 'name';
 
 use constant DB_COLUMNS => qw(
    id
@@ -54,17 +49,8 @@ use constant DB_COLUMNS => qw(
    classification_id
    description
    isactive
-   votesperuser
-   maxvotesperbug
-   votestoconfirm
    defaultmilestone
    allows_unconfirmed
-);
-
-use constant REQUIRED_CREATE_FIELDS => qw(
-    name
-    description
-    version
 );
 
 use constant UPDATE_COLUMNS => qw(
@@ -72,9 +58,6 @@ use constant UPDATE_COLUMNS => qw(
     description
     defaultmilestone
     isactive
-    votesperuser
-    maxvotesperbug
-    votestoconfirm
     allows_unconfirmed
 );
 
@@ -86,9 +69,6 @@ use constant VALIDATORS => {
     version          => \&_check_version,
     defaultmilestone => \&_check_default_milestone,
     isactive         => \&Bugzilla::Object::check_boolean,
-    votesperuser     => \&_check_votes_per_user,
-    maxvotesperbug   => \&_check_votes_per_bug,
-    votestoconfirm   => \&_check_votes_to_confirm,
     create_series    => \&Bugzilla::Object::check_boolean
 };
 
@@ -116,8 +96,8 @@ sub create {
     Bugzilla->user->clear_product_cache();
 
     # Add the new version and milestone into the DB as valid values.
-    Bugzilla::Version->create({name => $version, product => $product});
-    Bugzilla::Milestone->create({ name => $product->default_milestone, 
+    Bugzilla::Version->create({ value => $version, product => $product });
+    Bugzilla::Milestone->create({ value => $product->default_milestone, 
                                   product => $product });
 
     # Create groups and series for the new product, if requested.
@@ -134,7 +114,7 @@ sub create {
 # for each product in the list, particularly with hundreds or thousands
 # of products.
 sub preload {
-    my ($products) = @_;
+    my ($products, $preload_flagtypes) = @_;
     my %prods = map { $_->id => $_ } @$products;
     my @prod_ids = keys %prods;
     return unless @prod_ids;
@@ -151,6 +131,9 @@ sub preload {
             push(@{$prods{$product_id}->{"${field}s"}}, $obj);
         }
     }
+    if ($preload_flagtypes) {
+        $_->flag_types foreach @$products;
+    }
 }
 
 sub update {
@@ -160,99 +143,6 @@ sub update {
     # Don't update the DB if something goes wrong below -> transaction.
     $dbh->bz_start_transaction();
     my ($changes, $old_self) = $self->SUPER::update(@_);
-
-    # We also have to fix votes.
-    my @msgs; # Will store emails to send to voters.
-    if ($changes->{maxvotesperbug} || $changes->{votesperuser} || $changes->{votestoconfirm}) {
-        # We cannot |use| these modules, due to dependency loops.
-        require Bugzilla::Bug;
-        import Bugzilla::Bug qw(RemoveVotes CheckIfVotedConfirmed);
-        require Bugzilla::User;
-        import Bugzilla::User qw(user_id_to_login);
-
-        # 1. too many votes for a single user on a single bug.
-        my @toomanyvotes_list = ();
-        if ($self->max_votes_per_bug < $self->votes_per_user) {
-            my $votes = $dbh->selectall_arrayref(
-                        'SELECT votes.who, votes.bug_id
-                           FROM votes
-                                INNER JOIN bugs
-                                ON bugs.bug_id = votes.bug_id
-                          WHERE bugs.product_id = ?
-                                AND votes.vote_count > ?',
-                         undef, ($self->id, $self->max_votes_per_bug));
-
-            foreach my $vote (@$votes) {
-                my ($who, $id) = (@$vote);
-                # If some votes are removed, RemoveVotes() returns a list
-                # of messages to send to voters.
-                push(@msgs, RemoveVotes($id, $who, 'votes_too_many_per_bug'));
-                my $name = user_id_to_login($who);
-
-                push(@toomanyvotes_list, {id => $id, name => $name});
-            }
-        }
-        $changes->{'too_many_votes'} = \@toomanyvotes_list;
-
-        # 2. too many total votes for a single user.
-        # This part doesn't work in the general case because RemoveVotes
-        # doesn't enforce votesperuser (except per-bug when it's less
-        # than maxvotesperbug).  See Bugzilla::Bug::RemoveVotes().
-
-        my $votes = $dbh->selectall_arrayref(
-                    'SELECT votes.who, votes.vote_count
-                       FROM votes
-                            INNER JOIN bugs
-                            ON bugs.bug_id = votes.bug_id
-                      WHERE bugs.product_id = ?',
-                     undef, $self->id);
-
-        my %counts;
-        foreach my $vote (@$votes) {
-            my ($who, $count) = @$vote;
-            if (!defined $counts{$who}) {
-                $counts{$who} = $count;
-            } else {
-                $counts{$who} += $count;
-            }
-        }
-        my @toomanytotalvotes_list = ();
-        foreach my $who (keys(%counts)) {
-            if ($counts{$who} > $self->votes_per_user) {
-                my $bug_ids = $dbh->selectcol_arrayref(
-                              'SELECT votes.bug_id
-                                 FROM votes
-                                      INNER JOIN bugs
-                                      ON bugs.bug_id = votes.bug_id
-                                WHERE bugs.product_id = ?
-                                      AND votes.who = ?',
-                               undef, ($self->id, $who));
-
-                foreach my $bug_id (@$bug_ids) {
-                    # RemoveVotes() returns a list of messages to send
-                    # in case some voters had too many votes.
-                    push(@msgs, RemoveVotes($bug_id, $who, 'votes_too_many_per_user'));
-                    my $name = user_id_to_login($who);
-
-                    push(@toomanytotalvotes_list, {id => $bug_id, name => $name});
-                }
-            }
-        }
-        $changes->{'too_many_total_votes'} = \@toomanytotalvotes_list;
-
-        # 3. enough votes to confirm
-        my $bug_list =
-          $dbh->selectcol_arrayref('SELECT bug_id FROM bugs WHERE product_id = ?
-                                    AND bug_status = ? AND votes >= ?',
-                      undef, ($self->id, 'UNCONFIRMED', $self->votes_to_confirm));
-
-        my @updated_bugs = ();
-        foreach my $bug_id (@$bug_list) {
-            my $confirmed = CheckIfVotedConfirmed($bug_id);
-            push (@updated_bugs, $bug_id) if $confirmed;
-        }
-        $changes->{'confirmed_bugs'} = \@updated_bugs;
-    }
 
     # Also update group settings.
     if ($self->{check_group_controls}) {
@@ -364,24 +254,14 @@ sub update {
                 }
             }
         }
+
+        delete $self->{groups_available};
+        delete $self->{groups_mandatory};
     }
     $dbh->bz_commit_transaction();
     # Changes have been committed.
     delete $self->{check_group_controls};
     Bugzilla->user->clear_product_cache();
-
-    # Now that changes have been committed, we can send emails to voters.
-    foreach my $msg (@msgs) {
-        MessageToMTA($msg);
-    }
-
-    # And send out emails about changed bugs
-    require Bugzilla::BugMail;
-    foreach my $bug_id (@{ $changes->{'confirmed_bugs'} || [] }) {
-        my $sent_bugmail = Bugzilla::BugMail::Send(
-            $bug_id, { changer => Bugzilla->user->login });
-        $changes->{'confirmed_bugs_sent_bugmail'}->{$bug_id} = $sent_bugmail;
-    }
 
     return $changes;
 }
@@ -540,49 +420,11 @@ sub _check_milestone_url {
     return $url;
 }
 
-sub _check_votes_per_user {
-    return _check_votes(@_, 0);
-}
-
-sub _check_votes_per_bug {
-    return _check_votes(@_, 10000);
-}
-
-sub _check_votes_to_confirm {
-    return _check_votes(@_, 0);
-}
-
-# This subroutine is only used internally by other _check_votes_* validators.
-sub _check_votes {
-    my ($invocant, $votes, $field, $default) = @_;
-
-    detaint_natural($votes);
-    # On product creation, if the number of votes is not a valid integer,
-    # we silently fall back to the given default value.
-    # If the product already exists and the change is illegal, we complain.
-    if (!defined $votes) {
-        if (ref $invocant) {
-            ThrowUserError('product_illegal_votes', {field => $field, votes => $_[1]});
-        }
-        else {
-            $votes = $default;
-        }
-    }
-    return $votes;
-}
-
 #####################################
 # Implement Bugzilla::Field::Choice #
 #####################################
 
-sub field {
-    my $invocant = shift;
-    my $class = ref $invocant || $invocant;
-    my $cache = Bugzilla->request_cache;
-    $cache->{"field_$class"} ||= new Bugzilla::Field({ name => 'product' });
-    return $cache->{"field_$class"};
-}
-
+use constant FIELD_NAME => 'product';
 use constant is_default => 0;
 
 ###############################
@@ -641,9 +483,6 @@ sub set_name { $_[0]->set('name', $_[1]); }
 sub set_description { $_[0]->set('description', $_[1]); }
 sub set_default_milestone { $_[0]->set('defaultmilestone', $_[1]); }
 sub set_is_active { $_[0]->set('isactive', $_[1]); }
-sub set_votes_per_user { $_[0]->set('votesperuser', $_[1]); }
-sub set_votes_per_bug { $_[0]->set('maxvotesperbug', $_[1]); }
-sub set_votes_to_confirm { $_[0]->set('votestoconfirm', $_[1]); }
 sub set_allows_unconfirmed { $_[0]->set('allows_unconfirmed', $_[1]); }
 
 sub set_group_controls {
@@ -773,21 +612,85 @@ sub group_controls {
     return $self->{group_controls};
 }
 
-sub groups_mandatory_for {
-    my ($self, $user) = @_;
-    my $groups = $user->groups_as_string;
+sub groups_available {
+    my ($self) = @_;
+    return $self->{groups_available} if defined $self->{groups_available};
+    my $dbh = Bugzilla->dbh;
+    my $shown = CONTROLMAPSHOWN;
+    my $default = CONTROLMAPDEFAULT;
+    my %member_groups = @{ $dbh->selectcol_arrayref(
+        "SELECT group_id, membercontrol
+           FROM group_control_map
+                INNER JOIN groups ON group_control_map.group_id = groups.id
+          WHERE isbuggroup = 1 AND isactive = 1 AND product_id = ?
+                AND (membercontrol = $shown OR membercontrol = $default)
+                AND " . Bugzilla->user->groups_in_sql(),
+        {Columns=>[1,2]}, $self->id) };
+    # We don't need to check the group membership here, because we only
+    # add these groups to the list below if the group isn't already listed
+    # for membercontrol.
+    my %other_groups = @{ $dbh->selectcol_arrayref(
+        "SELECT group_id, othercontrol
+           FROM group_control_map
+                INNER JOIN groups ON group_control_map.group_id = groups.id
+          WHERE isbuggroup = 1 AND isactive = 1 AND product_id = ?
+                AND (othercontrol = $shown OR othercontrol = $default)", 
+        {Columns=>[1,2]}, $self->id) };
+
+    # If the user is a member, then we use the membercontrol value.
+    # Otherwise, we use the othercontrol value.
+    my %all_groups = %member_groups;
+    foreach my $id (keys %other_groups) {
+        if (!defined $all_groups{$id}) {
+            $all_groups{$id} = $other_groups{$id};
+        }
+    }
+
+    my $available = Bugzilla::Group->new_from_list([keys %all_groups]);
+    foreach my $group (@$available) {
+        $group->{is_default} = 1 if $all_groups{$group->id} == $default;
+    }
+
+    $self->{groups_available} = $available;
+    return $self->{groups_available};
+}
+
+sub groups_mandatory {
+    my ($self) = @_;
+    return $self->{groups_mandatory} if $self->{groups_mandatory};
+    my $groups = Bugzilla->user->groups_as_string;
     my $mandatory = CONTROLMAPMANDATORY;
     # For membercontrol we don't check group_id IN, because if membercontrol
     # is Mandatory, the group is Mandatory for everybody, regardless of their
     # group membership.
     my $ids = Bugzilla->dbh->selectcol_arrayref(
-        "SELECT group_id FROM group_control_map
-          WHERE product_id = ?
+        "SELECT group_id 
+           FROM group_control_map
+                INNER JOIN groups ON group_control_map.group_id = groups.id
+          WHERE product_id = ? AND isactive = 1
                 AND (membercontrol = $mandatory
                      OR (othercontrol = $mandatory
                          AND group_id NOT IN ($groups)))",
         undef, $self->id);
-    return Bugzilla::Group->new_from_list($ids);
+    $self->{groups_mandatory} = Bugzilla::Group->new_from_list($ids);
+    return $self->{groups_mandatory};
+}
+
+# We don't just check groups_valid, because we want to know specifically
+# if this group can be validly set by the currently-logged-in user.
+sub group_is_settable {
+    my ($self, $group) = @_;
+    my $group_id = blessed($group) ? $group->id : $group;
+    my $is_mandatory = grep { $group_id == $_->id } 
+                            @{ $self->groups_mandatory };
+    my $is_available = grep { $group_id == $_->id }
+                            @{ $self->groups_available };
+    return ($is_mandatory or $is_available) ? 1 : 0;
+}
+
+sub group_is_valid {
+    my ($self, $group) = @_;
+    return grep($_->id == $group->id, @{ $self->groups_valid }) ? 1 : 0;
 }
 
 sub groups_valid {
@@ -876,20 +779,44 @@ sub user_has_access {
 sub flag_types {
     my $self = shift;
 
-    if (!defined $self->{'flag_types'}) {
-        $self->{'flag_types'} = {};
-        foreach my $type ('bug', 'attachment') {
-            my %flagtypes;
-            foreach my $component (@{$self->components}) {
-                foreach my $flagtype (@{$component->flag_types->{$type}}) {
-                    $flagtypes{$flagtype->{'id'}} ||= $flagtype;
-                }
+    return $self->{'flag_types'} if defined $self->{'flag_types'};
+
+    # We cache flag types to avoid useless calls to get_clusions().
+    my $cache = Bugzilla->request_cache->{flag_types_per_product} ||= {};
+    $self->{flag_types} = {};
+    my $prod_id = $self->id;
+    my $flagtypes = Bugzilla::FlagType::match({ product_id => $prod_id });
+
+    foreach my $type ('bug', 'attachment') {
+        my @flags = grep { $_->target_type eq $type } @$flagtypes;
+        $self->{flag_types}->{$type} = \@flags;
+
+        # Also populate component flag types, while we are here.
+        foreach my $comp (@{$self->components}) {
+            $comp->{flag_types} ||= {};
+            my $comp_id = $comp->id;
+
+            foreach my $flag (@flags) {
+                my $flag_id = $flag->id;
+                $cache->{$flag_id} ||= $flag;
+                my $i = $cache->{$flag_id}->inclusions_as_hash;
+                my $e = $cache->{$flag_id}->exclusions_as_hash;
+                my $included = $i->{0}->{0} || $i->{0}->{$comp_id}
+                               || $i->{$prod_id}->{0} || $i->{$prod_id}->{$comp_id};
+                my $excluded = $e->{0}->{0} || $e->{0}->{$comp_id}
+                               || $e->{$prod_id}->{0} || $e->{$prod_id}->{$comp_id};
+                push(@{$comp->{flag_types}->{$type}}, $flag) if ($included && !$excluded);
             }
-            $self->{'flag_types'}->{$type} = [sort { $a->{'sortkey'} <=> $b->{'sortkey'}
-                                                    || $a->{'name'} cmp $b->{'name'} } values %flagtypes];
         }
     }
     return $self->{'flag_types'};
+}
+
+sub classification {
+    my $self = shift;
+    $self->{'classification'} ||= 
+        new Bugzilla::Classification($self->classification_id);
+    return $self->{'classification'};
 }
 
 ###############################
@@ -899,9 +826,6 @@ sub flag_types {
 sub allows_unconfirmed { return $_[0]->{'allows_unconfirmed'}; }
 sub description       { return $_[0]->{'description'};       }
 sub is_active         { return $_[0]->{'isactive'};       }
-sub votes_per_user    { return $_[0]->{'votesperuser'};      }
-sub max_votes_per_bug { return $_[0]->{'maxvotesperbug'};    }
-sub votes_to_confirm  { return $_[0]->{'votestoconfirm'};    }
 sub default_milestone { return $_[0]->{'defaultmilestone'};  }
 sub classification_id { return $_[0]->{'classification_id'}; }
 
@@ -909,26 +833,17 @@ sub classification_id { return $_[0]->{'classification_id'}; }
 ####      Subroutines    ######
 ###############################
 
-sub check_product {
-    my ($product_name) = @_;
-
-    unless ($product_name) {
-        ThrowUserError('product_not_specified');
-    }
-    my $product = new Bugzilla::Product({name => $product_name});
-    unless ($product) {
-        ThrowUserError('product_doesnt_exist',
-                       {'product' => $product_name});
-    }
-    return $product;
-}
-
 sub check {
     my ($class, $params) = @_;
     $params = { name => $params } if !ref $params;
-    $params->{_error} = 'product_access_denied';
+    if (!$params->{allow_inaccessible}) {
+        $params->{_error} = 'product_access_denied';
+    }
     my $product = $class->SUPER::check($params);
-    if (!Bugzilla->user->can_access_product($product)) {
+
+    if (!$params->{allow_inaccessible}
+        && !Bugzilla->user->can_access_product($product))
+    {
         ThrowUserError('product_access_denied', $params);
     }
     return $product;
@@ -957,14 +872,12 @@ Bugzilla::Product - Bugzilla product class.
     my $bug_ids         = $product->bug_ids();
     my $has_access      = $product->user_has_access($user);
     my $flag_types      = $product->flag_types();
+    my $classification  = $product->classification();
 
     my $id               = $product->id;
     my $name             = $product->name;
     my $description      = $product->description;
     my isactive          = $product->is_active;
-    my votesperuser      = $product->votes_per_user;
-    my maxvotesperbug    = $product->max_votes_per_bug;
-    my votestoconfirm    = $product->votes_to_confirm;
     my $defaultmilestone = $product->default_milestone;
     my $classificationid = $product->classification_id;
     my $allows_unconfirmed = $product->allows_unconfirmed;
@@ -1005,21 +918,46 @@ below.
               a Bugzilla::Group object and the properties of group
               relative to the product.
 
-=item C<groups_mandatory_for>
+=item C<groups_available>
+
+Tells you what groups are set to Default or Shown for the 
+currently-logged-in user (taking into account both OtherControl and
+MemberControl). Returns an arrayref of L<Bugzilla::Group> objects with
+an extra hash keys set, C<is_default>, which is true if the group
+is set to Default for the currently-logged-in user.
+
+=item C<groups_mandatory>
+
+Tells you what groups are mandatory for bugs in this product, for the
+currently-logged-in user. Returns an arrayref of C<Bugzilla::Group> objects.
+
+=item C<group_is_settable>
 
 =over
 
 =item B<Description>
 
-Tells you what groups are mandatory for bugs in this product.
+Tells you whether or not the currently-logged-in user can set a group
+on a bug (whether or not they match the MemberControl/OtherControl
+settings for a group in this product). Groups that are C<Mandatory> for
+the currently-loggeed-in user are also acceptable since from Bugzilla's
+perspective, there's no problem with "setting" a Mandatory group on
+a bug. (In fact, the user I<must> set the Mandatory group on the bug.)
 
 =item B<Params>
 
-C<$user> - The user who you want to check.
+=over
 
-=item B<Returns> An arrayref of C<Bugzilla::Group> objects.
+=item C<$group> - Either a numeric group id or a L<Bugzilla::Group> object.
 
 =back
+
+=item B<Returns>
+
+C<1> if the group is valid in this product, C<0> otherwise.
+
+=back
+
 
 =item C<groups_valid>
 
@@ -1029,7 +967,9 @@ C<$user> - The user who you want to check.
 
 Returns an arrayref of L<Bugzilla::Group> objects, representing groups
 that bugs could validly be restricted to within this product. Used mostly
-by L<Bugzilla::Bug> to assure that you're adding valid groups to a bug.
+when you need the list of all possible groups that could be set in a product
+by anybody, disregarding whether or not the groups are active or who the
+currently logged-in user is.
 
 B<Note>: This doesn't check whether or not the current user can add/remove
 bugs to/from these groups. It just tells you that bugs I<could be in> these
@@ -1040,6 +980,13 @@ groups, in this product.
 =item B<Returns> An arrayref of L<Bugzilla::Group> objects.
 
 =back
+
+=item C<group_is_valid>
+
+Returns C<1> if the passed-in L<Bugzilla::Group> or group id could be set
+on a bug by I<anybody>, in this product. Even inactive groups are considered
+valid. (This is a shortcut for searching L</groups_valid> to find out if
+a group is valid in a particular product.)
 
 =item C<versions>
 
@@ -1094,6 +1041,14 @@ groups, in this product.
 
  Returns:     Two references to an array of flagtype objects.
 
+=item C<classification()>
+
+ Description: Returns the classification the product belongs to.
+
+ Params:      none.
+
+ Returns:     A Bugzilla::Classification object.
+
 =back
 
 =head1 SUBROUTINES
@@ -1106,17 +1061,11 @@ When passed an arrayref of C<Bugzilla::Product> objects, preloads their
 L</milestones>, L</components>, and L</versions>, which is much faster
 than calling those accessors on every item in the array individually.
 
+If the 2nd argument passed to C<preload> is true, flag types for these
+products and their components are also preloaded.
+
 This function is not exported, so must be called like 
 C<Bugzilla::Product::preload($products)>.
-
-=item C<check_product($product_name)>
-
- Description: Checks if the product name was passed in and if is a valid
-              product.
-
- Params:      $product_name - String with a product name.
-
- Returns:     Bugzilla::Product object.
 
 =back
 

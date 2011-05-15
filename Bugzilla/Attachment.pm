@@ -87,13 +87,10 @@ sub DB_COLUMNS {
         $dbh->sql_date_format('attachments.creation_ts', '%Y.%m.%d %H:%i') . ' AS creation_ts';
 }
 
-use constant REQUIRED_CREATE_FIELDS => qw(
-    bug
-    data
-    description
-    filename
-    mimetype
-);
+use constant REQUIRED_FIELD_MAP => {
+    bug_id => 'bug',
+};
+use constant EXTRA_REQUIRED_FIELDS => qw(data);
 
 use constant UPDATE_COLUMNS => qw(
     description
@@ -112,6 +109,10 @@ use constant VALIDATORS => {
     isurl         => \&_check_is_url,
     mimetype      => \&_check_content_type,
     store_in_file => \&_check_store_in_file,
+};
+
+use constant VALIDATOR_DEPENDENCIES => {
+    mimetype => ['ispatch', 'isurl'],
 };
 
 use constant UPDATE_VALIDATORS => {
@@ -515,6 +516,10 @@ sub _check_bug {
     my $user = Bugzilla->user;
 
     $bug = ref $invocant ? $invocant->bug : $bug;
+
+    $bug || ThrowCodeError('param_required', 
+                           { function => "$invocant->create", param => 'bug' });
+
     ($user->can_see_bug($bug->id) && $user->can_edit_product($bug->product_id))
       || ThrowUserError("illegal_attachment_edit_bug", { bug_id => $bug->id });
 
@@ -522,9 +527,15 @@ sub _check_bug {
 }
 
 sub _check_content_type {
-    my ($invocant, $content_type) = @_;
+    my ($invocant, $content_type, undef, $params) = @_;
 
-    $content_type = 'text/plain' if (ref $invocant && ($invocant->isurl || $invocant->ispatch));
+    my ($is_url, $is_patch) = @$params{qw(isurl ispatch)};
+    if (ref $invocant) {
+        $is_url = $invocant->isurl;
+        $is_patch = $invocant->ispatch;
+    }
+
+    $content_type = 'text/plain' if ($is_url || $is_patch);
     $content_type = trim($content_type);
     my $legal_types = join('|', LEGAL_CONTENT_TYPES);
     if (!$content_type or $content_type !~ /^($legal_types)\/.+$/) {
@@ -735,7 +746,7 @@ sub validate_can_edit {
                  && $user->in_group('editbugs', $product_id))) ? 1 : 0;
 }
 
-=item C<validate_obsolete($bug)>
+=item C<validate_obsolete($bug, $attach_ids)>
 
 Description: validates if attachments the user wants to mark as obsolete
              really belong to the given bug and are not already obsolete.
@@ -743,8 +754,10 @@ Description: validates if attachments the user wants to mark as obsolete
              he cannot view it (due to restrictions on it).
 
 Params:      $bug - The bug object obsolete attachments should belong to.
+             $attach_ids - The list of attachments to mark as obsolete.
 
-Returns:     1 on success. Else an error is thrown.
+Returns:     The list of attachment objects to mark as obsolete.
+             Else an error is thrown.
 
 =cut
 
@@ -778,9 +791,7 @@ sub validate_obsolete {
             ThrowCodeError('mismatched_bug_ids_on_obsolete', $vars);
         }
 
-        if ($attachment->isobsolete) {
-          ThrowCodeError('attachment_already_obsolete', $vars);
-        }
+        next if $attachment->isobsolete;
 
         push(@obsolete_attachments, $attachment);
     }
@@ -879,6 +890,8 @@ sub create {
         }
         close AH;
     }
+
+    $attachment->{bug} = $bug;
 
     # Return the new attachment object.
     return $attachment;

@@ -119,3 +119,13 @@ function set_language( value ) {
     });
     window.location.reload()
 }
+
+// This basically duplicates Bugzilla::Util::display_value for code that
+// can't go through the template and has to be in JS.
+function display_value(field, value) {
+    var field_trans = BUGZILLA.value_descs[field];
+    if (!field_trans) return value;
+    var translated = field_trans[value];
+    if (translated) return translated;
+    return value;
+}

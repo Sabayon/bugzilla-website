@@ -71,16 +71,12 @@ Bugzilla->user->in_group('admin') ||
 my $action = trim($cgi->param('action')  || '');
 my $token  = $cgi->param('token');
 
-# Fields listed here must not be edited from this interface.
-my @non_editable_fields = qw(product);
-my %block_list = map { $_ => 1 } @non_editable_fields;
-
 #
 # field = '' -> Show nice list of fields
 #
 if (!$cgi->param('field')) {
-    my @field_list = grep { !$block_list{$_->name} }
-                       Bugzilla->get_fields({ is_select => 1 });
+    my @field_list = grep { !$_->is_abnormal }
+                          Bugzilla->get_fields({ is_select => 1 });
 
     $vars->{'fields'} = \@field_list;
     $template->process("admin/fieldvalues/select-field.html.tmpl", $vars)
@@ -90,7 +86,7 @@ if (!$cgi->param('field')) {
 
 # At this point, the field must be defined.
 my $field = Bugzilla::Field->check($cgi->param('field'));
-if (!$field->is_select || $block_list{$field->name}) {
+if (!$field->is_select || $field->is_abnormal) {
     ThrowUserError('fieldname_invalid', { field => $field });
 }
 $vars->{'field'} = $field;
@@ -185,7 +181,7 @@ if ($action eq 'edit') {
 if ($action eq 'update') {
     check_token_data($token, 'edit_field_value');
     $vars->{'value_old'} = $value->name;
-    if (!($value->is_static || $value->is_default)) {
+    if ($cgi->should_set('is_active')) {
         $value->set_is_active($cgi->param('is_active'));
     }
     $value->set_name($cgi->param('value_new'));
@@ -197,10 +193,5 @@ if ($action eq 'update') {
     display_field_values($vars);
 }
 
-
-#
 # No valid action found
-#
-# We can't get here without $field being defined --
-# See the unless($field) block at the top.
-ThrowUserError('no_valid_action', { field => $field } );
+ThrowUserError('unknown_action', {action => $action});

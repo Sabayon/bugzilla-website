@@ -24,9 +24,26 @@
 
 <ul class="links">
   <li><a href="./">Home</a></li>
-  <li><a href="enter_bug.cgi">New</a></li>
-  <li><a href="describecomponents.cgi">Browse</a></li>
-  <li><a href="query.cgi">Search</a></li>
+  <li><span class="separator">| </span><a href="enter_bug.cgi">New</a></li>
+  <li><span class="separator">| </span><a href="describecomponents.cgi">Browse</a></li>
+  <li><span class="separator">| </span><a href="query.cgi">Search</a></li>
+
+  <li class="form">
+    <span class="separator">| </span>
+    <form action="buglist.cgi" method="get"
+        onsubmit="if (this.quicksearch.value == '')
+                  { alert('Please enter one or more search terms first.');
+                    return false; } return true;">
+    <input class="txt" type="text" id="quicksearch[% qs_suffix FILTER html %]" name="quicksearch" 
+           value="[% quicksearch FILTER html %]">
+    <input class="btn" type="submit" value="Search" 
+           id="find[% qs_suffix FILTER html %]">
+    [%-# Work around FF bug: keep this on one line %]</form>
+  <a href="page.cgi?id=quicksearch.html" title="Quicksearch Help">[?]</a></li>
+
+  <li><span class="separator">| </span><a href="report.cgi">Reports</a></li>
+
+  <li>
     [% IF Param('shutdownhtml') || Bugzilla.has_flags %]
       [% IF user.id %]
         <li><a href="request.cgi?requester=[% user.login FILTER url_quote %]&amp;requestee=
@@ -84,18 +101,6 @@
     [% END %]
   [% END %]
 </ul>
-
-<div id="searchbox" class="form">
-	<form action="buglist.cgi" method="get"
-	    onsubmit="if (this.quicksearch.value == '')
-	              { alert('Please enter one or more search terms first.');
-	                return false; } return true;">
-		<input class="txt" type="text" id="quicksearch[% qs_suffix FILTER html %]" name="quicksearch">
-		<input class="btn" type="submit" value="Search"
-		       id="find[% qs_suffix FILTER html %]">
-	</form>
-</div>
-
 
 [% Hook.process("link-row") %]
 [% BLOCK link_to_documentation %]

@@ -87,14 +87,6 @@ use constant DB_COLUMNS => qw(
     status
 );
 
-use constant REQUIRED_CREATE_FIELDS => qw(
-    attach_id
-    bug_id
-    setter_id
-    status
-    type_id
-);
-
 use constant UPDATE_COLUMNS => qw(
     requestee_id
     setter_id
@@ -224,26 +216,6 @@ sub bug {
 ################################
 ## Searching/Retrieving Flags ##
 ################################
-
-=pod
-
-=over
-
-=item C<has_flags>
-
-Returns 1 if at least one flag exists in the DB, else 0. This subroutine
-is mainly used to decide to display the "(My )Requests" link in the footer.
-
-=back
-
-=cut
-
-sub has_flags {
-    my $dbh = Bugzilla->dbh;
-
-    my $has_flags = $dbh->selectrow_array('SELECT 1 FROM flags ' . $dbh->sql_limit(1));
-    return $has_flags || 0;
-}
 
 =pod
 
@@ -445,10 +417,11 @@ sub create {
     $timestamp ||= Bugzilla->dbh->selectrow_array('SELECT NOW()');
 
     my $params = {};
-    my @columns = grep { $_ ne 'id' } $class->DB_COLUMNS;
+    my @columns = grep { $_ ne 'id' } $class->_get_db_columns;
     $params->{$_} = $flag->{$_} foreach @columns;
 
     $params->{creation_date} = $params->{modification_date} = $timestamp;
+
     $flag = $class->SUPER::create($params);
     return $flag;
 }
@@ -505,19 +478,19 @@ sub update_flags {
             # This is a new flag.
             my $flag = $class->create($new_flag, $timestamp);
             $new_flag->{id} = $flag->id;
-            $class->notify($new_flag, undef, $self);
+            $class->notify($new_flag, undef, $self, $timestamp);
         }
         else {
             my $changes = $new_flag->update($timestamp);
             if (scalar(keys %$changes)) {
-                $class->notify($new_flag, $old_flags{$new_flag->id}, $self);
+                $class->notify($new_flag, $old_flags{$new_flag->id}, $self, $timestamp);
             }
             delete $old_flags{$new_flag->id};
         }
     }
     # These flags have been deleted.
     foreach my $old_flag (values %old_flags) {
-        $class->notify(undef, $old_flag, $self);
+        $class->notify(undef, $old_flag, $self, $timestamp);
         $old_flag->remove_from_db();
     }
 
@@ -768,7 +741,7 @@ sub _check_status {
     if (!grep($status eq $_ , qw(X + - ?))
         || ($status eq '?' && $self->status ne '?' && !$self->type->is_requestable))
     {
-        ThrowCodeError('flag_status_invalid', { id     => $self->id,
+        ThrowUserError('flag_status_invalid', { id     => $self->id,
                                                 status => $status });
     }
     return $status;
@@ -920,7 +893,7 @@ sub extract_flags_from_cgi {
 
 =over
 
-=item C<notify($flag, $bug, $attachment)>
+=item C<notify($flag, $old_flag, $object, $timestamp)>
 
 Sends an email notification about a flag being created, fulfilled
 or deleted.
@@ -930,7 +903,7 @@ or deleted.
 =cut
 
 sub notify {
-    my ($class, $flag, $old_flag, $obj) = @_;
+    my ($class, $flag, $old_flag, $obj, $timestamp) = @_;
 
     my ($bug, $attachment);
     if (blessed($obj) && $obj->isa('Bugzilla::Attachment')) {
@@ -966,6 +939,11 @@ sub notify {
     # Is there someone to notify?
     return unless ($addressee || $cc_list);
 
+    # The email client will display the Date: header in the desired timezone,
+    # so we can always use UTC here.
+    $timestamp ||= Bugzilla->dbh->selectrow_array('SELECT LOCALTIMESTAMP(0)');
+    $timestamp = format_time($timestamp, '%a, %d %b %Y %T %z', 'UTC');
+
     # If the target bug is restricted to one or more groups, then we need
     # to make sure we don't send email about it to unauthorized users
     # on the request type's CC: list, so we have to trawl the list for users
@@ -999,10 +977,11 @@ sub notify {
         # Add threadingmarker to allow flag notification emails to be the
         # threaded similar to normal bug change emails.
         my $thread_user_id = $recipients{$to} ? $recipients{$to}->id : 0;
-    
+
         my $vars = { 'flag'            => $flag,
                      'old_flag'        => $old_flag,
                      'to'              => $to,
+                     'date'            => $timestamp,
                      'bug'             => $bug,
                      'attachment'      => $attachment,
                      'threadingmarker' => build_thread_marker($bug->id, $thread_user_id) };
@@ -1015,7 +994,6 @@ sub notify {
         $template->process("request/email.txt.tmpl", $vars, \$message)
           || ThrowTemplateError($template->error());
 
-        Bugzilla->template_inner("");
         MessageToMTA($message);
     }
 }

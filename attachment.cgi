@@ -127,7 +127,7 @@ elsif ($action eq "delete") {
 }
 else 
 { 
-  ThrowCodeError("unknown_action", { action => $action });
+  ThrowUserError('unknown_action', {action => $action});
 }
 
 exit;
@@ -207,12 +207,10 @@ sub attachmentIsPublic {
 # Validates format of a diff/interdiff. Takes a list as an parameter, which
 # defines the valid format values. Will throw an error if the format is not
 # in the list. Returns either the user selected or default format.
-sub validateFormat
-{
+sub validateFormat {
   # receives a list of legal formats; first item is a default
   my $format = $cgi->param('format') || $_[0];
-  if ( lsearch(\@_, $format) == -1)
-  {
+  if (not grep($_ eq $format, @_)) {
      ThrowUserError("invalid_format", { format  => $format, formats => \@_ });
   }
 
@@ -340,7 +338,8 @@ sub view {
     }
     print $cgi->header(-type=>"$contenttype; name=\"$filename\"",
                        -content_disposition=> "$disposition; filename=\"$filename\"",
-                       -content_length => $attachment->datasize);
+                       -content_length => $attachment->datasize,
+                       -x_content_type_options => "nosniff");
     disable_utf8();
     print $attachment->data;
 }
@@ -518,7 +517,7 @@ sub insert {
           && ($bug_status->name ne 'UNCONFIRMED' 
               || $bug->product_obj->allows_unconfirmed))
       {
-          $bug->set_status($bug_status->name);
+          $bug->set_bug_status($bug_status->name);
           $bug->clear_resolution();
       }
       # Make sure the person we are taking the bug from gets mail.
@@ -543,7 +542,7 @@ sub insert {
   $vars->{'header_done'} = 1;
   $vars->{'contenttypemethod'} = $cgi->param('contenttypemethod');
 
-  my $recipients =  { 'changer' => $user->login, 'owner' => $owner };
+  my $recipients =  { 'changer' => $user, 'owner' => $owner };
   $vars->{'sent_bugmail'} = Bugzilla::BugMail::Send($bugid, $recipients);
 
   print $cgi->header();
@@ -671,7 +670,7 @@ sub update {
     $vars->{'bugs'} = [$bug];
     $vars->{'header_done'} = 1;
     $vars->{'sent_bugmail'} = 
-        Bugzilla::BugMail::Send($bug->id, { 'changer' => $user->login });
+        Bugzilla::BugMail::Send($bug->id, { 'changer' => $user });
 
     print $cgi->header();
 
@@ -744,7 +743,7 @@ sub delete_attachment {
         $vars->{'header_done'} = 1;
 
         $vars->{'sent_bugmail'} =
-            Bugzilla::BugMail::Send($bug->id, { 'changer' => $user->login });
+            Bugzilla::BugMail::Send($bug->id, { 'changer' => $user });
 
         $template->process("attachment/updated.html.tmpl", $vars)
           || ThrowTemplateError($template->error());

@@ -37,6 +37,24 @@ use Bugzilla::User::Setting;
 use Bugzilla::Util qw(get_text);
 use Bugzilla::Version;
 
+use constant STATUS_WORKFLOW => (
+    [undef, 'UNCONFIRMED'],
+    [undef, 'CONFIRMED'],
+    [undef, 'IN_PROGRESS'],
+    ['UNCONFIRMED', 'CONFIRMED'],
+    ['UNCONFIRMED', 'IN_PROGRESS'],
+    ['UNCONFIRMED', 'RESOLVED'],
+    ['CONFIRMED',   'IN_PROGRESS'],
+    ['CONFIRMED',   'RESOLVED'],
+    ['IN_PROGRESS', 'CONFIRMED'],
+    ['IN_PROGRESS', 'RESOLVED'],
+    ['RESOLVED',    'UNCONFIRMED'],
+    ['RESOLVED',    'CONFIRMED'],
+    ['RESOLVED',    'VERIFIED'],
+    ['VERIFIED',    'UNCONFIRMED'],
+    ['VERIFIED',    'CONFIRMED'],
+);
+
 sub SETTINGS {
     return {
     # 2005-03-03 travis@sedsystems.ca -- Bug 41972
@@ -65,6 +83,9 @@ sub SETTINGS {
     # 2007-07-02 altlist@gmail.com -- Bug 225731
     quote_replies      => { options => ['quoted_reply', 'simple_reply', 'off'],
                             default => "quoted_reply" },
+    # 2009-02-01 mozilla@matt.mchenryfamily.org -- Bug 398473
+    comment_box_position => { options => ['before_comments', 'after_comments'],
+                              default => 'before_comments' },
     # 2008-08-27 LpSolit@gmail.com -- Bug 182238
     timezone           => { subclass => 'Timezone', default => 'local' },
     }
@@ -109,14 +130,25 @@ use constant SYSTEM_GROUPS => (
         description => 'Can confirm a bug or mark it a duplicate'
     },
     {
-        name        => 'bz_canusewhines',
-        description => 'User can configure whine reports for self'
+        name         => 'bz_canusewhineatothers',
+        description  => 'Can configure whine reports for other users',
+    },
+    {
+        name         => 'bz_canusewhines',
+        description  => 'User can configure whine reports for self',
+        # inherited_by means that users in the groups listed below are
+        # automatically members of bz_canusewhines.
+        inherited_by => ['editbugs', 'bz_canusewhineatothers'],
     },
     {
         name        => 'bz_sudoers',
-        description => 'Can perform actions as other users'
+        description => 'Can perform actions as other users',
     },
-    # There are also other groups created in update_system_groups.
+    {
+        name         => 'bz_sudo_protect',
+        description  => 'Can not be impersonated by other users',
+        inherited_by => ['bz_sudoers'],
+    },
 );
 
 use constant DEFAULT_CLASSIFICATION => {
@@ -154,38 +186,29 @@ sub update_settings {
 sub update_system_groups {
     my $dbh = Bugzilla->dbh;
 
+    $dbh->bz_start_transaction();
+
     # Create most of the system groups
     foreach my $definition (SYSTEM_GROUPS) {
         my $exists = new Bugzilla::Group({ name => $definition->{name} });
-        $definition->{isbuggroup} = 0;
-        Bugzilla::Group->create($definition) unless $exists;
+        if (!$exists) {
+            $definition->{isbuggroup} = 0;
+            my $inherited_by = delete $definition->{inherited_by};
+            my $created = Bugzilla::Group->create($definition);
+            # Each group in inherited_by is automatically a member of this
+            # group.
+            if ($inherited_by) {
+                foreach my $name (@$inherited_by) {
+                    my $member = Bugzilla::Group->check($name);
+                    $dbh->do('INSERT INTO group_group_map (grantor_id, 
+                                          member_id) VALUES (?,?)',
+                             undef, $created->id, $member->id);
+                }
+            }
+        }
     }
 
-    # Certain groups need something done after they are created. We do
-    # that here.
-
-    # Make sure people who can whine at others can also whine.
-    if (!new Bugzilla::Group({name => 'bz_canusewhineatothers'})) {
-        my $whineatothers = Bugzilla::Group->create({
-            name        => 'bz_canusewhineatothers',
-            description => 'Can configure whine reports for other users',
-            isbuggroup  => 0 });
-        my $whine = new Bugzilla::Group({ name => 'bz_canusewhines' });
-
-        $dbh->do('INSERT INTO group_group_map (grantor_id, member_id) 
-                       VALUES (?,?)', undef, $whine->id, $whineatothers->id);
-    }
-
-    # Make sure sudoers are automatically protected from being sudoed.
-    if (!new Bugzilla::Group({name => 'bz_sudo_protect'})) {
-        my $sudo_protect = Bugzilla::Group->create({
-            name        => 'bz_sudo_protect',
-            description => 'Can not be impersonated by other users',
-            isbuggroup  => 0 });
-        my $sudo = new Bugzilla::Group({ name => 'bz_sudoers' });
-        $dbh->do('INSERT INTO group_group_map (grantor_id, member_id) 
-                       VALUES (?,?)', undef, $sudo_protect->id, $sudo->id);
-    }
+    $dbh->bz_commit_transaction();
 }
 
 sub create_default_classification {
@@ -225,6 +248,24 @@ sub create_default_product {
             initialowner => $admin->login });
     }
 
+}
+
+sub init_workflow {
+    my $dbh = Bugzilla->dbh;
+    my $has_workflow = $dbh->selectrow_array('SELECT 1 FROM status_workflow');
+    return if $has_workflow;
+
+    print get_text('install_workflow_init'), "\n";
+
+    my %status_ids = @{ $dbh->selectcol_arrayref(
+        'SELECT value, id FROM bug_status', {Columns=>[1,2]}) };
+
+    foreach my $pair (STATUS_WORKFLOW) {
+        my $old_id = $pair->[0] ? $status_ids{$pair->[0]} : undef;
+        my $new_id = $status_ids{$pair->[1]};
+        $dbh->do('INSERT INTO status_workflow (old_status, new_status)
+                       VALUES (?,?)', undef, $old_id, $new_id);
+    }
 }
 
 sub create_admin {
@@ -317,7 +358,9 @@ sub make_admin {
         write_params();
     }
 
-    print "\n", get_text('install_admin_created', { user => $user }), "\n";
+    if (Bugzilla->usage_mode == USAGE_MODE_CMDLINE) {
+        print "\n", get_text('install_admin_created', { user => $user }), "\n";
+    }
 }
 
 sub _prompt_for_password {

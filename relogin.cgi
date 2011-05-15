@@ -165,7 +165,6 @@ elsif ($action eq 'begin-sudo') {
     my $message;
     my $mail_template = Bugzilla->template_inner($target_user->settings->{'lang'}->{'value'});
     $mail_template->process('email/sudo.txt.tmpl', { reason => $reason }, \$message);
-    Bugzilla->template_inner("");
     MessageToMTA($message);
 
     $vars->{'message'} = 'sudo_started';
@@ -195,7 +194,7 @@ elsif ($action eq 'end-sudo') {
 # No valid action found
 else {
     Bugzilla->login(LOGIN_OPTIONAL);
-    ThrowCodeError('unknown_action', {action => $action});
+    ThrowUserError('unknown_action', {action => $action});
 }
 
 # Display the template

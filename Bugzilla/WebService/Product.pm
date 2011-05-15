@@ -23,6 +23,13 @@ use Bugzilla::Product;
 use Bugzilla::User;
 use Bugzilla::WebService::Util qw(validate);
 
+use constant READ_ONLY => qw(
+    get
+    get_accessible_products
+    get_enterable_products
+    get_selectable_products
+);
+
 ##################################################
 # Add aliases here for method name compatibility #
 ##################################################
@@ -90,11 +97,9 @@ get information about them.
 See L<Bugzilla::WebService> for a description of how parameters are passed,
 and what B<STABLE>, B<UNSTABLE>, and B<EXPERIMENTAL> mean.
 
-=head2 List Products
+=head1 List Products
 
-=over
-
-=item C<get_selectable_products> 
+=head2 get_selectable_products
 
 B<EXPERIMENTAL>
 
@@ -115,7 +120,7 @@ ids.
 
 =back
 
-=item C<get_enterable_products> 
+=head2 get_enterable_products
 
 B<EXPERIMENTAL>
 
@@ -137,7 +142,7 @@ ids.
 
 =back
 
-=item C<get_accessible_products> 
+=head2 get_accessible_products
 
 B<UNSTABLE>
 
@@ -159,7 +164,7 @@ ids.
 
 =back
 
-=item C<get> 
+=head2 get
 
 B<EXPERIMENTAL>
 
@@ -193,6 +198,3 @@ is returned.
 =item B<Errors> (none)
 
 =back
-
-=back
-

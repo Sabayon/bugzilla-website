@@ -42,7 +42,6 @@
 /* header (begin) */
     #header {
         margin-bottom: 1em;
-        padding-bottom: 2px;
     }
 
     #header form, #header form input,
@@ -58,6 +57,8 @@
         border-bottom: 1px solid #747E93;
         -moz-border-radius-bottomleft: 5px;
         -moz-border-radius-bottomright: 5px;
+        border-bottom-left-radius: 5px;
+        border-bottom-right-radius: 5px;
         padding: 0.5em;
     }
 
@@ -108,6 +109,8 @@
         color: #fff;
         -moz-border-radius-topleft: 5px;
         -moz-border-radius-topright: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
         font-size: 110%;
         margin: 0;
         padding: 0.5em;
@@ -149,7 +152,7 @@
  */
     #footer {
         clear: both;
-        margin-top: 5px;
+        margin-top: 1em;
         width: 100%;
         background: #edf2f2;
         border-top: 1px solid #ddd;
@@ -424,12 +427,6 @@ dl dl > dt {
     padding-left: 1em;
 }
 
-/* For bug fields */
-.uneditable_textarea {
-    width: 30em;
-    font-size: medium;
-}
-
 div.user_match {
     margin-bottom: 1em;
 }
@@ -452,20 +449,41 @@ div.user_match {
         display: none;
     }
 
+    div.bz_query_buttons {
+        display: none;
+    }
+
     body {
         background-image: none;
         background-color: #fff;
     }
 }
 
+/**************/
+/* Bug Fields */
+/**************/
+
 .field_label {
     text-align: right;
     vertical-align: top;
     font-weight: bold;
 }
+.field_help_link {
+    cursor: help;
+}
 .field_value, form#Create th, form#Create td {
     vertical-align: top;
 }
+.field_value .text_input {
+  width: 100%;
+  min-width: 25em;
+}
+
+.uneditable_textarea {
+    width: 30em;
+    font-size: medium;
+}
+
 th.required:before {
     content: "* ";
 }
@@ -497,18 +515,44 @@ input.required, select.required, span.required_explanation {
     list-style-type: none;
 }
 
-form#Create th {
-    text-align: right;
+/* custom styles for inline instances of autocomplete input fields */
+.yui-skin-sam .yui-ac-input { position:static !important; 
+                              vertical-align:middle !important; }
+.yui-skin-sam .yui-ac-container { left:0px !important; }
+.yui-skin-sam .yui-ac { display: inline-block; }
+#bugzilla-body .yui-ac-content {
+    max-height: 19em;
+    overflow: auto;
+    overflow-x: hidden;
 }
 
-form#Create .comment {
-    vertical-align: top;
-    overflow: auto;
-    color: green;
-    margin: 0 0.5em;
-    padding: 0.3em;
-    height: 8ex;
+#keyword_container {
+    padding-top: .2em;
 }
+
+
+#keyword_container .yui-ac-content {
+    margin-left: -1px;
+}
+
+/*******************/
+/* Form Validation */
+/*******************/
+
+.validation_error_text {
+    font-size: 120%;
+    color: #B70000;
+    font-weight: bold;
+}
+
+.validation_error_field, input.validation_error_field {
+    border: 2px solid #B70000;
+    background-color: #FFEBEB;
+}
+
+/*****************/
+/* colchange.cgi */
+/*****************/
 
 .image_button {
     background-repeat: no-repeat;

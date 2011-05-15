@@ -766,28 +766,12 @@
 
           <varlistentry>
             <term>
-              sendmailnow
-            </term>
-            <listitem>
-              <para>
-                When Bugzilla is using Sendmail older than 8.12, turning this option
-                off will improve performance by not waiting for Sendmail to actually
-                send mail.  If Sendmail 8.12 or later is being used, there is 
-                nothing to gain by turning this off.  If another MTA is being used, 
-                such as Postfix, then this option *must* be turned on (even if you 
-                are using the fake sendmail executable that Postfix provides).
-              </para>
-            </listitem>
-          </varlistentry>
-
-          <varlistentry>
-            <term>
               whinedays
             </term>
             <listitem>
               <para>
                 Set this to the number of days you want to let bugs go
-                in the NEW or REOPENED state before notifying people they have
+                in the CONFIRMED state before notifying people they have
                 untouched new bugs. If you do not plan to use this feature, simply 
                 do not set up the whining cron job described in the installation
                 instructions, or set this value to "0" (never whine).
@@ -1258,7 +1242,7 @@
     basis. The number of <quote>votes</quote> available to 
     users is set per-product, as is the number of votes
     required to move a bug automatically from the UNCONFIRMED 
-    status to the NEW status.
+    status to the CONFIRMED status.
     </para>
 
     <para>
@@ -1833,8 +1817,7 @@ ReadOnly: ENTRY, NA/NA, CANEDIT
       </listitem>
 
       <listitem>
-        <para>Select "Add" in the bottom right corner.
-        text</para>
+        <para>Select "Add" in the bottom right corner.</para>
       </listitem>
 
       <listitem>
@@ -2068,8 +2051,8 @@ ReadOnly: ENTRY, NA/NA, CANEDIT
      <section id="flags-edit">
        <title>Editing a Flag</title>
        <para>
-         To edit a flag's properties, just click on the <quote>Edit</quote>
-         link next to the flag's description. That will take you to the same
+         To edit a flag's properties, just click the flag's name.
+         That will take you to the same
          form as described below (<xref linkend="flags-create"/>).
        </para>
      </section>
@@ -2551,7 +2534,7 @@ ReadOnly: ENTRY, NA/NA, CANEDIT
     This allows developers to gauge
     user need for a particular enhancement or bugfix. By allowing bugs with
     a certain number of votes to automatically move from "UNCONFIRMED" to
-    "NEW", users of the bug system can help high-priority bugs garner
+    "CONFIRMED", users of the bug system can help high-priority bugs garner
     attention so they don't sit for a long time awaiting triage.</para>
 
     <para>To modify Voting settings:</para>
@@ -2580,7 +2563,7 @@ ReadOnly: ENTRY, NA/NA, CANEDIT
         <para><emphasis>Number of votes a bug in this product needs to
         automatically get out of the UNCONFIRMED state</emphasis>: 
         Setting this field to "0" disables the automatic move of
-        bugs from UNCONFIRMED to NEW. 
+        bugs from UNCONFIRMED to CONFIRMED. 
         </para>
       </listitem>
 
@@ -2641,7 +2624,7 @@ ReadOnly: ENTRY, NA/NA, CANEDIT
 
     <para>
     Groups allow for separating bugs into logical divisions.
-    Groups are typically used to
+    Groups are typically used
     to isolate bugs that should only be seen by certain people. For
     example, a company might create a different group for each one of its customers
     or partners. Group permissions could be set so that each partner or customer would

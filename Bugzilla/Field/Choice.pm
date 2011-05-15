@@ -23,7 +23,7 @@ use strict;
 
 package Bugzilla::Field::Choice;
 
-use base qw(Bugzilla::Object);
+use base qw(Bugzilla::Field::ChoiceInterface Bugzilla::Object);
 
 use Bugzilla::Config qw(SetParam write_params);
 use Bugzilla::Constants;
@@ -55,17 +55,17 @@ use constant UPDATE_COLUMNS => qw(
 use constant NAME_FIELD => 'value';
 use constant LIST_ORDER => 'sortkey, value';
 
-use constant REQUIRED_CREATE_FIELDS => qw(value);
-
 use constant VALIDATORS => {
     value   => \&_check_value,
     sortkey => \&_check_sortkey,
     visibility_value_id => \&_check_visibility_value_id,
-    isactive => \&Bugzilla::Object::check_boolean,
+    isactive => \&_check_isactive,
 };
 
 use constant CLASS_MAP => {
     bug_status => 'Bugzilla::Status',
+    classification => 'Bugzilla::Classification',
+    component  => 'Bugzilla::Component',
     product    => 'Bugzilla::Product',
 };
 
@@ -141,7 +141,7 @@ sub create {
     my $class = shift;
     my ($params) = @_;
     foreach my $key (keys %$params) {
-        if (!grep {$_ eq $key} $class->DB_COLUMNS) {
+        if (!grep {$_ eq $key} $class->_get_db_columns) {
             delete $params->{$key};
         }
     }
@@ -194,118 +194,8 @@ sub remove_from_db {
         ThrowUserError("fieldvalue_still_has_bugs",
                        { field => $self->field, value => $self });
     }
-    $self->_check_if_controller();
+    $self->_check_if_controller(); # From ChoiceInterface.
     $self->SUPER::remove_from_db();
-}
-
-# Factored out to make life easier for subclasses.
-sub _check_if_controller {
-    my $self = shift;
-    my $vis_fields = $self->controls_visibility_of_fields;
-    my $values = $self->controlled_values_array;
-    if (@$vis_fields || @$values) {
-        ThrowUserError('fieldvalue_is_controller',
-            { value => $self, fields => [map($_->name, @$vis_fields)],
-              vals => $self->controlled_values });
-    }
-}
-
-sub controlled_values_array {
-    my ($self) = @_;
-    my $values = $self->controlled_values;
-    return [map { @{ $values->{$_} } } keys %$values];
-}
-
-#############
-# Accessors #
-#############
-
-sub is_active { return $_[0]->{'isactive'}; }
-sub sortkey   { return $_[0]->{'sortkey'};  }
-
-sub bug_count {
-    my $self = shift;
-    return $self->{bug_count} if defined $self->{bug_count};
-    my $dbh = Bugzilla->dbh;
-    my $fname = $self->field->name;
-    my $count;
-    if ($self->field->type == FIELD_TYPE_MULTI_SELECT) {
-        $count = $dbh->selectrow_array("SELECT COUNT(*) FROM bug_$fname
-                                         WHERE value = ?", undef, $self->name);
-    }
-    else {
-        $count = $dbh->selectrow_array("SELECT COUNT(*) FROM bugs 
-                                         WHERE $fname = ?",
-                                       undef, $self->name);
-    }
-    $self->{bug_count} = $count;
-    return $count;
-}
-
-sub field {
-    my $invocant = shift;
-    my $class = ref $invocant || $invocant;
-    my $cache = Bugzilla->request_cache;
-    # This is just to make life easier for subclasses. Our auto-generated
-    # subclasses from type() already have this set.
-    $cache->{"field_$class"} ||=  
-        new Bugzilla::Field({ name => $class->DB_TABLE });
-    return $cache->{"field_$class"};
-}
-
-sub is_default {
-    my $self = shift;
-    my $name = $self->DEFAULT_MAP->{$self->field->name};
-    # If it doesn't exist in DEFAULT_MAP, then there is no parameter
-    # related to this field.
-    return 0 unless $name;
-    return ($self->name eq Bugzilla->params->{$name}) ? 1 : 0;
-}
-
-sub is_static {
-    my $self = shift;
-    # If we need to special-case Resolution for *anything* else, it should
-    # get its own subclass.
-    if ($self->field->name eq 'resolution') {
-        return grep($_ eq $self->name, ('', 'FIXED', 'MOVED', 'DUPLICATE'))
-               ? 1 : 0;
-    }
-    elsif ($self->field->custom) {
-        return $self->name eq '---' ? 1 : 0;
-    }
-    return 0;
-}
-
-sub controls_visibility_of_fields {
-    my $self = shift;
-    $self->{controls_visibility_of_fields} ||= Bugzilla::Field->match(
-        { visibility_field_id => $self->field->id, 
-          visibility_value_id => $self->id });
-    return $self->{controls_visibility_of_fields};
-}
-
-sub visibility_value {
-    my $self = shift;
-    if ($self->{visibility_value_id}) {
-        $self->{visibility_value} ||=
-            Bugzilla::Field::Choice->type($self->field->value_field)->new(
-                $self->{visibility_value_id});
-    }
-    return $self->{visibility_value};
-}
-
-sub controlled_values {
-    my $self = shift;
-    return $self->{controlled_values} if defined $self->{controlled_values};
-    my $fields = $self->field->controls_values_of;
-    my %controlled_values;
-    foreach my $field (@$fields) {
-        $controlled_values{$field->name} = 
-            Bugzilla::Field::Choice->type($field)
-            ->match({ visibility_value_id => $self->id });
-    }
-    $self->{controlled_values} = \%controlled_values;
-    return $self->{controlled_values};
 }
 
 ############
@@ -324,6 +214,25 @@ sub set_visibility_value {
 ##############
 # Validators #
 ##############
+
+sub _check_isactive {
+    my ($invocant, $value) = @_;
+    $value = Bugzilla::Object::check_boolean($invocant, $value);
+    if (!$value and ref $invocant) {
+        if ($invocant->is_default) {
+            my $field = $invocant->field;
+            ThrowUserError('fieldvalue_is_default', 
+                           { value => $invocant, field => $field,
+                             param_name => $invocant->DEFAULT_MAP->{$field->name}
+                           });
+        }
+        if ($invocant->is_static) {
+            ThrowUserError('fieldvalue_not_deletable',
+                           { value => $invocant, field => $invocant->field });
+        }
+    }
+    return $value;
+}
 
 sub _check_value {
     my ($invocant, $value) = @_;
@@ -407,6 +316,9 @@ each value type needs its own class.
 
 See the L</SYNOPSIS> for examples of how this works.
 
+This class implements L<Bugzilla::Field::ChoiceInterface>, and so all
+methods of that class are also available here.
+
 =head1 METHODS
 
 =head2 Class Factory
@@ -429,28 +341,7 @@ must call C<type> to get a class you can call methods on.
 
 =back
 
-=head2 Accessors
+=head2 Mutators
 
-These are in addition to the standard L<Bugzilla::Object> accessors.
-
-=over
-
-=item C<sortkey>
-
-The key that determines the sort order of this item.
-
-=item C<field>
-
-The L<Bugzilla::Field> object that this field value belongs to.
-
-=item C<controlled_values>
-
-Tells you which values in B<other> fields appear (become visible) when this
-value is set in its field.
-
-Returns a hashref of arrayrefs. The hash keys are the names of fields,
-and the values are arrays of C<Bugzilla::Field::Choice> objects,
-representing values that this value controls the visibility of, for
-that field.
-
-=back
+This class implements mutators for all of the settable accessors in
+L<Bugzilla::Field::ChoiceInterface>.

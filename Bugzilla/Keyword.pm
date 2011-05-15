@@ -35,8 +35,6 @@ use constant DB_COLUMNS => qw(
 
 use constant DB_TABLE => 'keyworddefs';
 
-use constant REQUIRED_CREATE_FIELDS => qw(name description);
-
 use constant VALIDATORS => {
     name        => \&_check_name,
     description => \&_check_description,
@@ -78,7 +76,8 @@ sub get_all_with_bug_count {
     my $class = shift;
     my $dbh = Bugzilla->dbh;
     my $keywords =
-      $dbh->selectall_arrayref('SELECT ' . join(', ', DB_COLUMNS) . ',
+      $dbh->selectall_arrayref('SELECT ' 
+                                      . join(', ', $class->_get_db_columns) . ',
                                        COUNT(keywords.bug_id) AS bug_count
                                   FROM keyworddefs
                              LEFT JOIN keywords
@@ -105,7 +104,9 @@ sub _check_name {
     my ($self, $name) = @_;
 
     $name = trim($name);
-    $name eq "" && ThrowUserError("keyword_blank_name");
+    if (!defined $name or $name eq "") {
+        ThrowUserError("keyword_blank_name");
+    }
     if ($name =~ /[\s,]/) {
         ThrowUserError("keyword_invalid_name");
     }
@@ -123,7 +124,9 @@ sub _check_name {
 sub _check_description {
     my ($self, $desc) = @_;
     $desc = trim($desc);
-    $desc eq '' && ThrowUserError("keyword_blank_description");
+    if (!defined $desc or $desc eq '') {
+        ThrowUserError("keyword_blank_description");
+    }
     return $desc;
 }
 

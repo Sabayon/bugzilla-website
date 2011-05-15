@@ -68,11 +68,15 @@ use constant ENUM_DEFAULTS => {
     priority     => ["Highest", "High", "Normal", "Low", "Lowest", "---"],
     op_sys       => ["All","Windows","Mac OS","Linux","Other"],
     rep_platform => ["All","PC","Macintosh","Other"],
-    bug_status   => ["UNCONFIRMED","NEW","ASSIGNED","REOPENED","RESOLVED",
-                     "VERIFIED","CLOSED"],
-    resolution   => ["","FIXED","INVALID","WONTFIX", "DUPLICATE","WORKSFORME",
-                     "MOVED"],
+    bug_status   => ["UNCONFIRMED","CONFIRMED","IN_PROGRESS","RESOLVED",
+                     "VERIFIED"],
+    resolution   => ["","FIXED","INVALID","WONTFIX", "DUPLICATE","WORKSFORME"],
 };
+
+# The character that means "OR" in a boolean fulltext search. If empty,
+# the database doesn't support OR searches in fulltext searches.
+# Used by Bugzilla::Bug::possible_duplicates.
+use constant FULLTEXT_OR => '';
 
 #####################################################################
 # Connection Methods
@@ -83,22 +87,27 @@ sub connect_shadow {
     die "Tried to connect to non-existent shadowdb" 
         unless $params->{'shadowdb'};
 
-    my $lc = Bugzilla->localconfig;
+    # Instead of just passing in a new hashref, we locally modify the
+    # values of "localconfig", because some drivers access it while
+    # connecting.
+    my %connect_params = %{ Bugzilla->localconfig };
+    $connect_params{db_host} = $params->{'shadowdbhost'};
+    $connect_params{db_name} = $params->{'shadowdb'};
+    $connect_params{db_port} = $params->{'shadowdbport'};
+    $connect_params{db_sock} = $params->{'shadowdbsock'};
 
-    return _connect($lc->{db_driver}, $params->{"shadowdbhost"},
-                    $params->{'shadowdb'}, $params->{"shadowdbport"},
-                    $params->{"shadowdbsock"}, $lc->{db_user}, $lc->{db_pass});
+    return _connect(\%connect_params);
 }
 
 sub connect_main {
     my $lc = Bugzilla->localconfig;
-    return _connect($lc->{db_driver}, $lc->{db_host}, $lc->{db_name}, $lc->{db_port},
-                    $lc->{db_sock}, $lc->{db_user}, $lc->{db_pass});
+    return _connect(Bugzilla->localconfig); 
 }
 
 sub _connect {
-    my ($driver, $host, $dbname, $port, $sock, $user, $pass) = @_;
+    my ($params) = @_;
 
+    my $driver = $params->{db_driver};
     my $pkg_module = DB_MODULE->{lc($driver)}->{db};
 
     # do the actual import
@@ -107,7 +116,7 @@ sub _connect {
                 . " localconfig: " . $@);
 
     # instantiate the correct DB specific module
-    my $dbh = $pkg_module->new($user, $pass, $host, $dbname, $port, $sock);
+    my $dbh = $pkg_module->new($params);
 
     return $dbh;
 }
@@ -127,36 +136,16 @@ sub bz_check_requirements {
 
     my $lc = Bugzilla->localconfig;
     my $db = DB_MODULE->{lc($lc->{db_driver})};
+
     # Only certain values are allowed for $db_driver.
     if (!defined $db) {
         die "$lc->{db_driver} is not a valid choice for \$db_driver in"
             . bz_locations()->{'localconfig'};
     }
 
-    die("It is not safe to run Bugzilla inside the 'mysql' database.\n"
-        . "Please pick a different value for \$db_name in localconfig.")
-        if $lc->{db_name} eq 'mysql';
-
     # Check the existence and version of the DBD that we need.
-    my $dbd        = $db->{dbd};
-    my $sql_server = $db->{name};
-    my $sql_want   = $db->{db_version};
-    unless (have_vers($dbd, $output)) {
-        my $command = install_command($dbd);
-        my $root    = ROOT_USER;
-        my $dbd_mod = $dbd->{module};
-        my $dbd_ver = $dbd->{version};
-        my $version = $dbd_ver ? " $dbd_ver or higher" : '';
-        print <<EOT;
-
-For $sql_server, Bugzilla requires that perl's $dbd_mod $dbd_ver or later be
-installed. To install this module, run the following command (as $root):
-
-    $command
-
-EOT
-        exit;
-    }
+    my $dbd = $db->{dbd};
+    _bz_check_dbd($db, $output);
 
     # We don't try to connect to the actual database if $db_check is
     # disabled.
@@ -167,28 +156,62 @@ EOT
 
     # And now check the version of the database server itself.
     my $dbh = _get_no_db_connection();
+    $dbh->bz_check_server_version($db, $output);
 
-    printf("Checking for %15s %-9s ", $sql_server, "(v$sql_want)")
-        if $output;
-    my $sql_vers = $dbh->bz_server_version;
-    $dbh->disconnect;
+    print "\n" if $output;
+}
+
+sub _bz_check_dbd {
+    my ($db, $output) = @_;
+
+    my $dbd = $db->{dbd};
+    unless (have_vers($dbd, $output)) {
+        my $sql_server = $db->{name};
+        my $command = install_command($dbd);
+        my $root    = ROOT_USER;
+        my $dbd_mod = $dbd->{module};
+        my $dbd_ver = $dbd->{version};
+        die <<EOT;
+
+For $sql_server, Bugzilla requires that perl's $dbd_mod $dbd_ver or later be
+installed. To install this module, run the following command (as $root):
+
+    $command
+
+EOT
+    }
+}
+
+sub bz_check_server_version {
+    my ($self, $db, $output) = @_;
+
+    my $sql_vers = $self->bz_server_version;
+    $self->disconnect;
+
+    my $sql_want = $db->{db_version};
+    my $version_ok = vers_cmp($sql_vers, $sql_want) > -1 ? 1 : 0;
+
+    my $sql_server = $db->{name};
+    if ($output) {
+        Bugzilla::Install::Requirements::_checking_for({
+            package => $sql_server, wanted => $sql_want,
+            found   => $sql_vers, ok => $version_ok });
+    }
 
     # Check what version of the database server is installed and let
     # the user know if the version is too old to be used with Bugzilla.
-    if ( vers_cmp($sql_vers,$sql_want) > -1 ) {
-        print "ok: found v$sql_vers\n" if $output;
-    } else {
-        print <<EOT;
+    if (!$version_ok) {
+        die <<EOT;
 
 Your $sql_server v$sql_vers is too old. Bugzilla requires version
 $sql_want or later of $sql_server. Please download and install a
 newer version.
 
 EOT
-        exit;
     }
 
-    print "\n" if $output;
+    # This is used by subclasses.
+    return $sql_vers;
 }
 
 # Note that this function requires that localconfig exist and
@@ -213,10 +236,9 @@ sub bz_create_database {
         if (!$success) {
             my $error = $dbh->errstr || $@;
             chomp($error);
-            print STDERR  "The '$db_name' database could not be created.",
-                          " The error returned was:\n\n    $error\n\n",
-                          _bz_connect_error_reasons();
-            exit;
+            die "The '$db_name' database could not be created.",
+                " The error returned was:\n\n    $error\n\n",
+                _bz_connect_error_reasons();
         }
     }
 
@@ -227,19 +249,19 @@ sub bz_create_database {
 sub _get_no_db_connection {
     my ($sql_server) = @_;
     my $dbh;
-    my $lc = Bugzilla->localconfig;
+    my %connect_params = %{ Bugzilla->localconfig };
+    $connect_params{db_name} = '';
     my $conn_success = eval {
-        $dbh = _connect($lc->{db_driver}, $lc->{db_host}, '', $lc->{db_port},
-                        $lc->{db_sock}, $lc->{db_user}, $lc->{db_pass});
+        $dbh = _connect(\%connect_params);
     };
     if (!$conn_success) {
-        my $sql_server = DB_MODULE->{lc($lc->{db_driver})}->{name};
+        my $driver = $connect_params{db_driver};
+        my $sql_server = DB_MODULE->{lc($driver)}->{name};
         # Can't use $dbh->errstr because $dbh is undef.
         my $error = $DBI::errstr || $@;
         chomp($error);
-        print STDERR "There was an error connecting to $sql_server:\n\n",
-                     "    $error\n\n", _bz_connect_error_reasons();
-        exit;
+        die "There was an error connecting to $sql_server:\n\n",
+            "    $error\n\n", _bz_connect_error_reasons(), "\n";
     }
     return $dbh;    
 }
@@ -389,7 +411,7 @@ sub sql_fulltext_search {
     @words = map("LOWER($column) LIKE $_", @words);
 
     # search for occurrences of all specified words in the column
-    return "CASE WHEN (" . join(" AND ", @words) . ") THEN 1 ELSE 0 END";
+    return join (" AND ", @words), "CASE WHEN (" . join(" AND ", @words) . ") THEN 1 ELSE 0 END";
 }
 
 #####################################################################
@@ -458,12 +480,14 @@ sub bz_setup_foreign_keys {
     my @tables = $self->_bz_schema->get_table_list();
     foreach my $table (@tables) {
         my @columns = $self->_bz_schema->get_table_columns($table);
+        my %add_fks;
         foreach my $column (@columns) {
             my $def = $self->_bz_schema->get_column_abstract($table, $column);
             if ($def->{REFERENCES}) {
-                $self->bz_add_fk($table, $column, $def->{REFERENCES});
+                $add_fks{$column} = $def->{REFERENCES};
             }
         }
+        $self->bz_add_fks($table, \%add_fks);
     }
 }
 
@@ -517,19 +541,36 @@ sub bz_add_column {
 
 sub bz_add_fk {
     my ($self, $table, $column, $def) = @_;
+    $self->bz_add_fks($table, { $column => $def });
+}
 
-    my $col_def = $self->bz_column_info($table, $column);
-    if (!$col_def->{REFERENCES}) {
-        $self->_check_references($table, $column, $def);
+sub bz_add_fks {
+    my ($self, $table, $column_fks) = @_;
+
+    my %add_these;
+    foreach my $column (keys %$column_fks) {
+        my $col_def = $self->bz_column_info($table, $column);
+        next if $col_def->{REFERENCES};
+        my $fk = $column_fks->{$column};
+        $self->_check_references($table, $column, $fk);
+        $add_these{$column} = $fk;
         print get_text('install_fk_add',
-                       { table => $table, column => $column, fk => $def }) 
+                       { table => $table, column => $column, fk => $fk })
             . "\n" if Bugzilla->usage_mode == USAGE_MODE_CMDLINE;
-        my @sql = $self->_bz_real_schema->get_add_fk_sql($table, $column, $def);
-        $self->do($_) foreach @sql;
-        $col_def->{REFERENCES} = $def;
-        $self->_bz_real_schema->set_column($table, $column, $col_def);
-        $self->_bz_store_real_schema;
     }
+
+    return if !scalar(keys %add_these);
+
+    my @sql = $self->_bz_real_schema->get_add_fks_sql($table, \%add_these);
+    $self->do($_) foreach @sql;
+
+    foreach my $column (keys %add_these) {
+        my $col_def = $self->bz_column_info($table, $column);
+        $col_def->{REFERENCES} = $add_these{$column};
+        $self->_bz_real_schema->set_column($table, $column, $col_def);
+    }
+
+    $self->_bz_store_real_schema();
 }
 
 sub bz_alter_column {
@@ -676,7 +717,8 @@ sub bz_add_table {
 sub _bz_add_table_raw {
     my ($self, $name) = @_;
     my @statements = $self->_bz_schema->get_table_ddl($name);
-    print "Adding new table $name ...\n" unless i_am_cgi();
+    print "Adding new table $name ...\n"
+        if Bugzilla->usage_mode == USAGE_MODE_CMDLINE;
     $self->do($_) foreach (@statements);
 }
 
@@ -711,11 +753,11 @@ sub bz_add_field_tables {
         $self->_bz_add_field_table($ms_table,
             $self->_bz_schema->MULTI_SELECT_VALUE_TABLE);
 
-        $self->bz_add_fk($ms_table, 'bug_id', {TABLE => 'bugs',
-                                               COLUMN => 'bug_id',
-                                               DELETE => 'CASCADE'});
-        $self->bz_add_fk($ms_table, 'value',  {TABLE  => $field->name,
-                                               COLUMN => 'value'});
+        $self->bz_add_fks($ms_table, 
+            { bug_id => {TABLE => 'bugs', COLUMN => 'bug_id',
+                         DELETE => 'CASCADE'},
+
+              value  => {TABLE  => $field->name, COLUMN => 'value'} });
     }
 }
 
@@ -773,10 +815,10 @@ sub bz_drop_fk {
 
 }
 
-sub bz_drop_related_fks {
+sub bz_get_related_fks {
     my ($self, $table, $column) = @_;
     my @tables = $self->_bz_real_schema->get_table_list();
-    my @dropped;
+    my @related;
     foreach my $check_table (@tables) {
         my @columns = $self->bz_table_columns($check_table);
         foreach my $check_column (@columns) {
@@ -786,13 +828,22 @@ sub bz_drop_related_fks {
                 and (($fk->{TABLE} eq $table and $fk->{COLUMN} eq $column)
                      or ($check_column eq $column and $check_table eq $table)))
             {
-                $self->bz_drop_fk($check_table, $check_column);
-                push(@dropped, [$check_table, $check_column, $fk]); 
+                push(@related, [$check_table, $check_column, $fk]);
             }
         } # foreach $column
     } # foreach $table
 
-    return \@dropped;
+    return \@related;
+}
+
+sub bz_drop_related_fks {
+    my $self = shift;
+    my $related = $self->bz_get_related_fks(@_);
+    foreach my $item (@$related) {
+        my ($table, $column) = @$item;
+        $self->bz_drop_fk($table, $column);
+    }
+    return $related;
 }
 
 sub bz_drop_index {
@@ -1074,7 +1125,9 @@ sub bz_rollback_transaction {
 #####################################################################
 
 sub db_new {
-    my ($class, $dsn, $user, $pass, $override_attrs) = @_;
+    my ($class, $params) = @_;
+    my ($dsn, $user, $pass, $override_attrs) = 
+        @$params{qw(dsn user pass attrs)};
 
     # set up default attributes used to connect to the database
     # (may be overridden by DB driver implementations)
@@ -1319,13 +1372,11 @@ sub _check_references {
             }
         }
         else {
-            print "\n", get_text('install_fk_invalid',
+            die "\n", get_text('install_fk_invalid',
                 { table => $table, column => $column,
                   foreign_table => $foreign_table,
                   foreign_column => $foreign_column,
                  'values' => $bad_values }), "\n";
-            # I just picked a number above 2, to be considered "abnormal exit"
-            exit 3
         }
     }
 }
@@ -1907,8 +1958,17 @@ Note that both parameters need to be sql-quoted.
 
 =item B<Description>
 
-Returns SQL syntax for performing a full text search for specified text 
-on a given column.
+Returns one or two SQL expressions for performing a full text search for
+specified text on a given column.
+
+If one value is returned, it is a numeric expression that indicates
+a match with a positive value and a non-match with zero. In this case,
+the DB must support casting numeric expresions to booleans.
+
+If the DB does not support casting numeric expresions to booleans, then
+the first value is a boolean expression that indicates the presence of
+a match, and the second value is a numeric expression that can be
+used for ranking.
 
 There is a ANSI SQL version of this method implemented using LIKE operator,
 but it's not a real full text search. DB specific modules should override 

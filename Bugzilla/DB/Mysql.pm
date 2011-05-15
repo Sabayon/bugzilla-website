@@ -40,8 +40,8 @@ For interface details see L<Bugzilla::DB> and L<DBI>.
 =cut
 
 package Bugzilla::DB::Mysql;
-
 use strict;
+use base qw(Bugzilla::DB);
 
 use Bugzilla::Constants;
 use Bugzilla::Install::Util qw(install_string);
@@ -57,11 +57,12 @@ use Text::ParseWords;
 # MAX_COMMENT_LENGTH is big.
 use constant MAX_COMMENTS => 50;
 
-# This module extends the DB interface via inheritance
-use base qw(Bugzilla::DB);
+use constant FULLTEXT_OR => '|';
 
 sub new {
-    my ($class, $user, $pass, $host, $dbname, $port, $sock) = @_;
+    my ($class, $params) = @_;
+    my ($user, $pass, $host, $dbname, $port, $sock) =
+        @$params{qw(db_user db_pass db_host db_name db_port db_sock)};
 
     # construct the DSN from the parameters we got
     my $dsn = "dbi:mysql:host=$host;database=$dbname";
@@ -74,7 +75,8 @@ sub new {
         mysql_auto_reconnect => 1,
     );
     
-    my $self = $class->db_new($dsn, $user, $pass, \%attrs);
+    my $self = $class->db_new({ dsn => $dsn, user => $user, 
+                                pass => $pass, attrs => \%attrs });
 
     # This makes sure that if the tables are encoded as UTF-8, we
     # return their data correctly.
@@ -124,12 +126,15 @@ sub bz_last_key {
 }
 
 sub sql_group_concat {
-    my ($self, $column, $separator) = @_;
-    my $sep_sql;
-    if ($separator) {
-        $sep_sql = " SEPARATOR $separator";
+    my ($self, $column, $separator, $sort) = @_;
+    $separator = $self->quote(', ') if !defined $separator;
+    $sort = 1 if !defined $sort;
+    if ($sort) {
+        my $sort_order = $column;
+        $sort_order =~ s/^DISTINCT\s+//i;
+        $column = "$column ORDER BY $sort_order";
     }
-    return "GROUP_CONCAT($column$sep_sql)";
+    return "GROUP_CONCAT($column SEPARATOR $separator)";
 }
 
 sub sql_regexp {
@@ -282,6 +287,18 @@ sub _bz_get_initial_schema {
 # Database Setup
 #####################################################################
 
+sub bz_check_server_version {
+    my $self = shift;
+
+    my $lc = Bugzilla->localconfig;
+    if (lc(Bugzilla->localconfig->{db_name}) eq 'mysql') {
+        die "It is not safe to run Bugzilla inside a database named 'mysql'.\n"
+            . " Please pick a different value for \$db_name in localconfig.\n";
+    }
+
+    $self->SUPER::bz_check_server_version(@_);
+}
+
 sub bz_setup_database {
     my ($self) = @_;
 
@@ -311,13 +328,12 @@ sub bz_setup_database {
     my ($innodb_on) = @{$self->selectcol_arrayref(
         q{SHOW VARIABLES LIKE '%have_innodb%'}, {Columns=>[2]})};
     if ($innodb_on ne 'YES') {
-        print <<EOT;
+        die <<EOT;
 InnoDB is disabled in your MySQL installation. 
 Bugzilla requires InnoDB to be enabled. 
 Please enable it and then re-run checksetup.pl.
 
 EOT
-        exit 3;
     }
 
 

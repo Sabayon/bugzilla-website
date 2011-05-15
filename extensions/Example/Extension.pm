@@ -25,15 +25,22 @@ use strict;
 use base qw(Bugzilla::Extension);
 
 use Bugzilla::Constants;
+use Bugzilla::Error;
 use Bugzilla::Group;
 use Bugzilla::User;
+use Bugzilla::User::Setting;
 use Bugzilla::Util qw(diff_arrays html_quote);
+use Bugzilla::Status qw(is_open_state);
+use Bugzilla::Install::Filesystem;
 
 # This is extensions/Example/lib/Util.pm. I can load this here in my
 # Extension.pm only because I have a Config.pm.
 use Bugzilla::Extension::Example::Util;
 
 use Data::Dumper;
+
+# See bugmail_relationships.
+use constant REL_EXAMPLE => -127;
 
 our $VERSION = '1.0';
 
@@ -191,23 +198,54 @@ sub buglist_columns {
     $columns->{'example'} = { 'name' => 'bugs.delta_ts' , 'title' => 'Example' };
 }
 
+sub search_operator_field_override {
+    my ($self, $args) = @_;
+    
+    my $operators = $args->{'operators'};
+
+    my $original = $operators->{component}->{_non_changed};
+    $operators->{component} = {
+        _non_changed => sub { _component_nonchanged($original, @_) }
+    };
+}
+
+sub _component_nonchanged {
+    my $original = shift;
+    my $invocant = shift;
+
+    my %func_args = @_;
+    $invocant->$original(%func_args);
+
+    # Actually, it does not change anything in the result,
+    # just an example.
+    my ($term) = @func_args{qw(term)};
+    $$term = $$term . " OR 1=2";
+}
+
 sub bugmail_recipients {
     my ($self, $args) = @_;
     my $recipients = $args->{recipients};
     my $bug = $args->{bug};
+
+    my $user = 
+        new Bugzilla::User({ name => Bugzilla->params->{'maintainer'} });
+
     if ($bug->id == 1) {
-        # Uncomment the line below to add the second user in the Bugzilla
-        # database to the recipients list of every bugmail sent out about
-        # bug 1 as though that user were on the CC list.
-        #$recipients->{2}->{+REL_CC} = 1;
+        # Uncomment the line below to add the maintainer to the recipients
+        # list of every bugmail from bug 1 as though that the maintainer
+        # were on the CC list.
+        #$recipients->{$user->id}->{+REL_CC} = 1;
+
+        # And this line adds the maintainer as though he had the "REL_EXAMPLE"
+        # relationship from the bugmail_relationships hook below.
+        #$recipients->{$user->id}->{+REL_EXAMPLE} = 1;
     }
 }
 
-sub colchange_columns {
+sub bugmail_relationships {
     my ($self, $args) = @_;
-    
-    my $columns = $args->{'columns'};
-    push (@$columns, "example")
+    my $relationships = $args->{relationships};
+    $relationships->{+REL_EXAMPLE} = 'Example';
 }
 
 sub config {
@@ -236,6 +274,25 @@ sub config_modify_panels {
     
     push(@{ $info_class->{choices} },   'CGI,Example');
     push(@{ $verify_class->{choices} }, 'Example');
+}
+
+sub db_schema_abstract_schema {
+    my ($self, $args) = @_;
+#    $args->{'schema'}->{'example_table'} = {
+#        FIELDS => [
+#            id       => {TYPE => 'SMALLSERIAL', NOTNULL => 1,
+#                     PRIMARYKEY => 1},
+#            for_key  => {TYPE => 'INT3', NOTNULL => 1,
+#                           REFERENCES  => {TABLE  =>  'example_table2',
+#                                           COLUMN =>  'id',
+#                                           DELETE => 'CASCADE'}},
+#            col_3    => {TYPE => 'varchar(64)', NOTNULL => 1},
+#        ],
+#        INDEXES => [
+#            id_index_idx   => {FIELDS => ['col_3'], TYPE => 'UNIQUE'},
+#            for_id_idx => ['for_key'],
+#        ],
+#    };
 }
 
 sub email_in_before_parse {
@@ -278,6 +335,13 @@ sub email_in_after_parse {
     else {
         ThrowUserError('invalid_username', { name => $reporter });
     }
+}
+
+sub enter_bug_entrydefaultvars {
+    my ($self, $args) = @_;
+    
+    my $vars = $args->{vars};
+    $vars->{'example'} = 1;
 }
 
 sub flag_end_of_update {
@@ -351,6 +415,50 @@ sub group_end_of_update {
 sub install_before_final_checks {
     my ($self, $args) = @_;
     print "Install-before_final_checks hook\n" unless $args->{silent};
+    
+    # Add a new user setting like this:
+    #
+    # add_setting('product_chooser',           # setting name
+    #             ['pretty', 'full', 'small'], # options
+    #             'pretty');                   # default
+    #
+    # To add descriptions for the setting and choices, add extra values to 
+    # the hash defined in global/setting-descs.none.tmpl. Do this in a hook: 
+    # hook/global/setting-descs-settings.none.tmpl .
+}
+
+sub install_filesystem {
+    my ($self, $args) = @_;
+    my $create_dirs  = $args->{'create_dirs'};
+    my $recurse_dirs = $args->{'recurse_dirs'};
+    my $htaccess     = $args->{'htaccess'};
+
+    # Create a new directory in datadir specifically for this extension.
+    # The directory will need to allow files to be created by the extension
+    # code as well as allow the webserver to server content from it.
+    # my $data_path = bz_locations->{'datadir'} . "/" . __PACKAGE__->NAME;
+    # $create_dirs->{$data_path} = Bugzilla::Install::Filesystem::DIR_CGI_WRITE;
+   
+    # Update the permissions of any files and directories that currently reside
+    # in the extension's directory. 
+    # $recurse_dirs->{$data_path} = {
+    #     files => Bugzilla::Install::Filesystem::CGI_READ,
+    #     dirs  => Bugzilla::Install::Filesystem::DIR_CGI_WRITE
+    # };
+    
+    # Create a htaccess file that allows specific content to be served from the 
+    # extension's directory.
+    # $htaccess->{"$data_path/.htaccess"} = {
+    #     perms    => Bugzilla::Install::Filesystem::WS_SERVE,
+    #     contents => Bugzilla::Install::Filesystem::HT_DEFAULT_DENY
+    # };
+}
+
+sub install_update_db {
+    my $dbh = Bugzilla->dbh;
+#    $dbh->bz_add_column('example', 'new_column',
+#                        {TYPE => 'INT2', NOTNULL => 1, DEFAULT => 0});
+#    $dbh->bz_add_index('example', 'example_new_column_idx', [qw(value)]);
 }
 
 sub mailer_before_send {
@@ -401,6 +509,15 @@ sub object_before_set {
     }
 }
 
+sub object_columns {
+    my ($self, $args) = @_;
+    my ($class, $columns) = @$args{qw(class columns)};
+
+    if ($class->isa('Bugzilla::ExampleObject')) {
+        push(@$columns, 'example');
+    }
+}
+
 sub object_end_of_create {
     my ($self, $args) = @_;
     
@@ -438,7 +555,7 @@ sub object_end_of_set {
 sub object_end_of_set_all {
     my ($self, $args) = @_;
     
-    my $object = $args->{'class'};
+    my $object = $args->{'object'};
     my $object_params = $args->{'params'};
     
     # Note that this is a made-up class, for this example.
@@ -465,6 +582,54 @@ sub object_end_of_update {
     }
 }
 
+sub object_update_columns {
+    my ($self, $args) = @_;
+    my ($object, $columns) = @$args{qw(object columns)};
+
+    if ($object->isa('Bugzilla::ExampleObject')) {
+        push(@$columns, 'example');
+    }
+}
+
+sub object_validators {
+    my ($self, $args) = @_;
+    my ($class, $validators) = @$args{qw(class validators)};
+
+    if ($class->isa('Bugzilla::Bug')) {
+        # This is an example of adding a new validator.
+        # See the _check_example subroutine below.
+        $validators->{example} = \&_check_example;
+
+        # This is an example of overriding an existing validator.
+        # See the check_short_desc validator below.
+        my $original = $validators->{short_desc};
+        $validators->{short_desc} = sub { _check_short_desc($original, @_) };
+    }
+}
+
+sub _check_example {
+    my ($invocant, $value, $field) = @_;
+    warn "I was called to validate the value of $field.";
+    warn "The value of $field that I was passed in is: $value";
+
+    # Make the value always be 1.
+    my $fixed_value = 1;
+    return $fixed_value;
+}
+
+sub _check_short_desc {
+    my $original = shift;
+    my $invocant = shift;
+    my $value = $invocant->$original(@_);
+    if ($value !~ /example/i) {
+        # Uncomment this line to make Bugzilla throw an error every time
+        # you try to file a bug or update a bug without the word "example"
+        # in the summary.
+        #ThrowUserError('example_short_desc_invalid');
+    }
+    return $value;
+}
+
 sub page_before_template {
     my ($self, $args) = @_;
     
@@ -474,6 +639,13 @@ sub page_before_template {
     if ($page eq 'example.html') {
         $vars->{cgi_variables} = { Bugzilla->cgi->Vars };
     }
+}
+
+sub post_bug_after_creation {
+    my ($self, $args) = @_;
+    
+    my $vars = $args->{vars};
+    $vars->{'example'} = 1;
 }
 
 sub product_confirm_delete {
@@ -521,6 +693,14 @@ sub product_end_of_create {
 #                                  'exist in the current list of components',
 #              initialowner     => $default_assignee });
     }
+}
+
+sub quicksearch_map {
+    my ($self, $args) = @_;
+    my $map = $args->{'map'};
+
+    # This demonstrates adding a shorter alias for a long custom field name.
+    $map->{'impact'} = $map->{'cf_long_field_name_for_impact_field'};
 }
 
 sub sanitycheck_check {
@@ -587,6 +767,64 @@ sub template_before_process {
     if ($file eq 'bug/edit.html.tmpl') {
         $vars->{'viewing_the_bug_form'} = 1;
     }
+}
+
+sub bug_check_can_change_field {
+    my ($self, $args) = @_;
+
+    my ($bug, $field, $new_value, $old_value, $priv_results)
+        = @$args{qw(bug field new_value old_value priv_results)};
+
+    my $user = Bugzilla->user;
+
+    # Disallow a bug from being reopened if currently closed unless user 
+    # is in 'admin' group
+    if ($field eq 'bug_status' && $bug->product_obj->name eq 'Example') {
+        if (!is_open_state($old_value) && is_open_state($new_value) 
+            && !$user->in_group('admin')) 
+        {
+            push(@$priv_results, PRIVILEGES_REQUIRED_EMPOWERED);
+            return;
+        }
+    }
+
+    # Disallow a bug's keywords from being edited unless user is the
+    # reporter of the bug 
+    if ($field eq 'keywords' && $bug->product_obj->name eq 'Example' 
+        && $user->login ne $bug->reporter->login) 
+    {
+        push(@$priv_results, PRIVILEGES_REQUIRED_REPORTER);
+        return;
+    }
+
+    # Allow updating of priority even if user cannot normally edit the bug 
+    # and they are in group 'engineering'
+    if ($field eq 'priority' && $bug->product_obj->name eq 'Example'
+        && $user->in_group('engineering')) 
+    {
+        push(@$priv_results, PRIVILEGES_REQUIRED_NONE);
+        return;
+    }
+}
+
+sub user_preferences {
+    my ($self, $args) = @_;
+    my $tab = $args->{current_tab};
+    my $save = $args->{save_changes};
+    my $handled = $args->{handled};
+
+    return unless $tab eq 'my_tab';
+
+    my $value = Bugzilla->input_params->{'example_pref'};
+    if ($save) {
+        # Validate your data and update the DB accordingly.
+        $value =~ s/\s+/:/g;
+    }
+    $args->{'vars'}->{example_pref} = $value;
+
+    # Set the 'handled' scalar reference to true so that the caller
+    # knows the panel name is valid and that an extension took care of it.
+    $$handled = 1;
 }
 
 sub webservice {
