@@ -5,12 +5,10 @@ docs/en/xml/bugzilla.ent
 docs/en/txt
 docs/en/html
 docs/en/pdf
-skins/custom
 graphs
 data
 localconfig
 index.html
-
 
 FABIO-NOTES
 *.bak
