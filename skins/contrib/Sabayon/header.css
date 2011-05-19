@@ -5,14 +5,14 @@ ul.links span.separator {
 
 ul.header_links {
 	float: left;
-	margin-top: 1em;
+	margin: 1em 0;
 	max-width: 75%;
 }
 
 ul.header_links li {
 	display: inline;
 	margin-right: 1em;
-	font-size: 1.4444em;
+	font-size: 1.2em;
 	color: #FFF;
 }
 
