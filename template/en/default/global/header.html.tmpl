@@ -106,19 +106,6 @@
     [% SET yui = yui_resolve_deps(yui, yui_deps) %]
     [% SET css_sets = css_files(style_urls, yui, yui_css) %]
 
-    [%# CSS cascade, part 1: Standard Bugzilla stylesheet set (persistent).
-      # Always present.
-      #%]
-    [%# This allows people to switch back to the "Classic" skin if they
-      # are in another skin. 
-      #%]
-    <link href="[% 'skins/standard/global.css' FILTER mtime FILTER html %]"
-          rel="alternate stylesheet" 
-          title="[% setting_descs.standard FILTER html %]">
-    [% FOREACH style_url = css_sets.standard %]
-      [% PROCESS format_css_link css_set_name = 'standard' %]
-    [% END %]
-
     [%# CSS cascade, part 2 & 3: Third-party stylesheet set (selected and
       # selectable). All third-party skins are present as alternate
       # stylesheets, even if they are not currently in use.
