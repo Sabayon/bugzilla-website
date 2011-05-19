@@ -22,25 +22,11 @@
 [% DEFAULT qs_suffix = "" %]
 [% USE Bugzilla %]
 
-<ul class="links">
+<ul class="links header_links">
   <li><a href="./">Home</a></li>
   <li><span class="separator">| </span><a href="enter_bug.cgi">New</a></li>
   <li><span class="separator">| </span><a href="describecomponents.cgi">Browse</a></li>
   <li><span class="separator">| </span><a href="query.cgi">Search</a></li>
-
-  <li class="form">
-    <span class="separator">| </span>
-    <form action="buglist.cgi" method="get"
-        onsubmit="if (this.quicksearch.value == '')
-                  { alert('Please enter one or more search terms first.');
-                    return false; } return true;">
-    <input class="txt" type="text" id="quicksearch[% qs_suffix FILTER html %]" name="quicksearch" 
-           value="[% quicksearch FILTER html %]">
-    <input class="btn" type="submit" value="Search" 
-           id="find[% qs_suffix FILTER html %]">
-    [%-# Work around FF bug: keep this on one line %]</form>
-  <a href="page.cgi?id=quicksearch.html" title="Quicksearch Help">[?]</a></li>
-
   <li><span class="separator">| </span><a href="report.cgi">Reports</a></li>
 
   <li>
@@ -67,22 +53,18 @@
     [% PROCESS link_to_documentation %]
 
       [% IF user.authorizer.can_logout %]
-        <li><a href="index.cgi?logout=1">Log&nbsp;out</a>
-      [% ELSE %]
-        <li>Logged&nbsp;in&nbsp;as
+        <li><a href="index.cgi?logout=1">Log&nbsp;out</a> 
       [% END %]
       [% IF sudoer %]
         [%+ sudoer.login FILTER html %] (<b>impersonating
         [%+ user.login FILTER html %]</b>
         <a href="relogin.cgi?action=end-sudo">end session</a></li>)
       [% ELSE %]
-        [%+ user.login FILTER html %]</li>
+        </li>
       [% END %]
     [%-# Work around FF bug: keep this on one line %]
   [% ELSE %]
   
-    [% PROCESS link_to_documentation %]
-    
     [% IF Param('createemailregexp')
           && user.authorizer.user_can_create_account %]
       <li id="new_account_container[% qs_suffix FILTER html %]">
@@ -90,17 +72,25 @@
       </li>
     [% END %]
 
-    [%# Only display one login form when we're on a LOGIN_REQUIRED page. That
-      # way, we're guaranteed that the user will use the form that has 
-      # hidden_fields in it (the center form) instead of this one. Also, it's
-      # less confusing to have one form (as opposed to  three) when you're 
-      # required to log in.
-      #%]
     [% IF user.authorizer.can_login && !Bugzilla.page_requires_login %]
-      [% PROCESS "account/auth/login-small.html.tmpl" %]
+      <li id="login"><a href="index.cgi?GoAheadAndLogIn=1">Login</a><li>
     [% END %]
   [% END %]
 </ul>
+
+<div id="searchbox" class="form">
+    <form action="buglist.cgi" method="get"
+        onsubmit="if (this.quicksearch.value == '')
+                  { alert('Please enter one or more search terms first.');
+                    return false; } return true;">
+    <input class="txt" type="text" id="quicksearch[% qs_suffix FILTER html %]" name="quicksearch" 
+           value="[% quicksearch FILTER html %]">
+    <input class="btn" type="submit" value="Search" 
+           id="find[% qs_suffix FILTER html %]">
+    </form>
+</div>
+
+
 
 [% Hook.process("link-row") %]
 [% BLOCK link_to_documentation %]
