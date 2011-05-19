@@ -6,7 +6,7 @@
 	clear: both;
 	position: relative;
 	padding: 0 0 1em 0;
-	background: url('http://static.sabayon.org/site/img/top_bg.png') repeat-x bottom;
+	background: url('http://static.sabayon.org/site/img/top_bg.png') #111 repeat-x bottom;
 }
 
 h1.title {
