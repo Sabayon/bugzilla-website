@@ -1,3 +1,27 @@
+div.bz_comment {
+	width: 64em;
+}
+
+.bz_comment_head, .bz_first_comment_head {
+	background-color:#083671;
+	font-size:1.2em;
+	margin:0.5em 0 0;
+	padding:0.4em;
+	color: #DDD;
+	-moz-border-radius: 0.2em;
+	-webkit-border-radius: 0.2em;
+	border-radius: 0.2em;
+}
+
+.bz_comment_head a,
+.bz_first_comment_head a {
+	color: #DDD;
+}
+
+div.bz_comment pre.bz_comment_text {
+	font-size: 1.4em;
+}
+
 .bz_alias_short_desc_container {
     margin: 8px 0; 
     padding: 0.3em; 
@@ -124,6 +148,7 @@ table#flags {
 /* Info Box */
 #infobox {
 	float: right;
+	margin: 1em 0 0;
 	padding: 0.5em;
 	background-color: #222;
 	color: #FFF;
