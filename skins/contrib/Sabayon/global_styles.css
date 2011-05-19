@@ -1,0 +1,155 @@
+/* 
+ * Top
+ */
+
+#top_wrapper {
+	clear: both;
+	position: relative;
+	padding: 0 0 1em 0;
+	background: url('http://static.sabayon.org/site/img/top_bg.png') repeat-x bottom;
+}
+
+h1.title {
+    color: white;
+    font-size: 2em;
+    margin: 1em 0;
+}
+
+/*
+ * Middle / Main
+ */
+
+#mid_wrapper {
+	overflow: auto;
+	color: #222;
+	background: #FFF url('http://static.sabayon.org/site/img/mid_bg.png') repeat-x top;
+}
+
+.content_row {
+	overflow: hidden;
+	clear: both;
+	margin-top: 1em;
+}
+
+.col_mid {
+	width: 30em;
+	margin: 0;
+	overflow: hidden;
+	float: left;
+}
+
+.col_center {
+	margin: 0 3em 0 3em;
+}
+
+#mid_content {
+	clear: left;
+	float: left;
+	margin: 0 3em 0 0;
+	overflow: hidden;
+	width: 63em;
+}
+
+/* Base Styles */
+div#content p {
+	font-size: 1.2em;
+	line-height: 1.6em;
+	margin-bottom: 1.2em;
+}
+
+div#content h2 {
+	color: #00438A;
+	font-size: 1.7em;
+	margin: 1.3em 0 0.3em;
+}
+/* Make Linked h2s blue too */
+div#content h2 a{
+	color: #00438A;
+}
+
+/*
+ * Footer
+ */
+
+#footer_wrapper {
+	overflow: auto;
+	background:  #111 url('http://static.sabayon.org/site/img/footer_bg.png') repeat-x top;
+	color: #888;
+}
+
+#footer_menu_wrapper {
+	clear: both;
+	width: 100%;
+	overflow: auto;
+}
+
+.footer_menu {
+	width: 14em;
+	margin: 0 1em 0 0;
+	float: left;
+}
+
+.footer_menu.twospace {
+	margin: 0 4em 0 0;
+}
+
+.footer_menu.last {
+	margin: 0;
+}
+
+.footer_menu h2,
+.footer_menu h2.block-title {
+	color: #888;
+	font-weight: bold;
+	margin-top: 1em;
+	font-size: 1.2em
+}
+
+.footer_menu li {
+	font-size: 1.1em;
+	line-height: 1.6em;
+}
+
+.footer_menu li a,
+.footer_menu li a:active, 
+.footer_menu li a:visited,
+.footer_menu li a:link {
+	color: #555;
+	text-decoration: none;
+}
+
+.footer_menu li a:hover {
+	text-decoration: underline;
+}
+
+#footer_wrapper #sp0nsors {
+	overflow: auto;
+	clear: both;
+	margin-top: 1em;
+}
+
+#footer_wrapper #sp0nsors img {
+	height: 60px;
+	float: left;
+	margin-right: 0.5em;
+}
+
+#footer_wrapper #sp0nsors h3 {
+	font-weight: bold;
+	font-size: 1.2em;
+}
+
+#footer_wrapper #sp0nsors h2 {
+	display: none;
+}
+
+#footer_wrapper #copyright .region-copyright {
+	clear: both;
+	margin: 2em;
+	text-align: center;
+	font-size: 1.2em;
+}
+
+#copyright .region-copyright .content p {
+	font-size: 0.8em;
+}

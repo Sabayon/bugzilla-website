@@ -1,0 +1,41 @@
+/* Global */
+
+@import url(http://fonts.googleapis.com/css?family=Cantarell);
+
+html {
+	font-size: 100%;
+	background-color: #111;
+}
+
+html body {
+	font-family: 'Cantarell', 'Lucida Sans Unicode', 'Lucida Grande', sans-serif;
+	font-size: 62.5%; /* 10px */
+	line-height: 1.5em;
+}
+
+.inside {
+	margin: 0 auto;
+	width: 96em;
+	overflow: auto;
+}
+
+.left {
+	text-align: left;
+}
+
+.right {
+	text-align: right;
+}
+
+a,
+a:link,
+a:visited,
+a:active
+{
+	color: #083671;
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
