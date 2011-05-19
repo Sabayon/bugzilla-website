@@ -33,10 +33,23 @@
   font-weight: bold;
 }
 
+table.bz_buglist {
+	font-size: 1.1em;
+}
+
 .bz_buglist_header th {
 	text-align: left;
 	padding: 0.5em;
 	border-bottom: 1px solid #aaa;
+}
+
+tr.bz_bugitem {
+	border-bottom: 1px dotted #666;
+}
+
+tr.bz_bugitem:hover {
+	background-color: #CCCCCC;
+	background-color: rgba(0, 0, 0, 0.1);
 }
 
 .bz_bugitem td {
@@ -48,7 +61,6 @@
 }
 
 .bz_row_even {
-	background-color: #E7E4E7;
 }
 
 .bz_id_column {

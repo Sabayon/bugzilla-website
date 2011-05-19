@@ -20,6 +20,10 @@
 /* This CSS is used by various informational pages in the
    template/en/default/pages/ directory. */
 
+div#content {
+	font-size: 1.2em;
+}
+
 #content > * {
     /* People have an easier time reading narrower columns of text. */
     max-width: 45em;
