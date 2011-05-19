@@ -122,7 +122,7 @@ YAHOO.util.Event.onDOMReady(onLoadActions);
 <div id="page-index">
 	<div id="col1" class="col_mid">
 		<div id="introduction" class="block">
-			<img src="images/sabayon-logo-95px.png" alt="Sabayon Logo"/>
+			<img src="images/sabayon-logo-95px.png" class="frontpage right" alt="Sabayon Logo"/>
 			<h2>Welcome</h2>
 			<p>Welcome to the Sabayon Linux issue tracker.  This site is for <a href="http://bugs.sabayon.org/enter_bug.cgi">bug submissions</a> as well
 			as <a href="http://bugs.sabayon.org/enter_bug.cgi?product=Entropy&format=packreq">feature and package requests</a>.  Before making a submission, please make sure to do a <a href="http://bugs.sabayon.org/query.cgi">search</a>.
@@ -137,9 +137,9 @@ YAHOO.util.Event.onDOMReady(onLoadActions);
 	</div>
 		<div id="col2" class="col_mid col_center">
 		<div id="common_actions" class="block">
-			<img src="images/actions.png" alt="Bugs!"/>
+			<img src="images/actions.png" class="frontpage right" alt="Bugs!"/>
 			<h2>Most Common Actions</h2>
-				<ul>
+				<ul class="bulletlist">
 					 <li id="entropyreq">
 						<a href="enter_bug.cgi?product=Entropy&format=packreq">Make an Entropy Package Request</a>
 					</li>
@@ -147,7 +147,7 @@ YAHOO.util.Event.onDOMReady(onLoadActions);
 						<a href="buglist.cgi?query_format=advanced&bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED&bug_status=VERIFIED&chfieldfrom=3m&chfieldto=Now&chfield=[Bug+creation]&chfield=assigned_to&order=bugs.bug_id%20desc">View Open Issues</a></li>
 					<li id="lastweek">
 						<a href="buglist.cgi?bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED&bugidtype=include&chfieldfrom=1w&chfieldto=Now&query_format=advanced&value-1-0-0=NEW%2CASSIGNED%2CREOPENED&order=bugs.bug_id%20desc">Last Week's Issues</a></li>
-					<li id="query">
+					<li id="search">
 						<a href="query.cgi">Search existing [% terms.bug %] reports</a>
 					</li>
 					<li id="enter-bug">
@@ -157,7 +157,7 @@ YAHOO.util.Event.onDOMReady(onLoadActions);
 
 			[% IF user.id %]
 		    <h2>User Management</h2>
-			<ul>
+			<ul class="bulletlist">
 				<li id="userprefs">
 					<a href="userprefs.cgi">Change password or user preferences</a>
 				</li>
@@ -184,7 +184,7 @@ YAHOO.util.Event.onDOMReady(onLoadActions);
 	</div>
 	<div id="col3" class="col_mid">
 		<div id="search" class="block">
-			<img src="images/search.png" alt="Search"/>
+			<img src="images/search.png" class="frontpage right" alt="Search"/>
 			<h2>Search</h2>
 			<form id="f" name="f" action="buglist.cgi" method="get"
 				onsubmit="if (this.quicksearch.value == '')
