@@ -24,3 +24,7 @@ dl.process.notification dt a {
 dl.process.notification dd dl dd {
 	margin: 0.2em 0 0 1em;
 }
+
+dl.process.notification dd dl dd code {
+	font-size: 1.3em;
+}
