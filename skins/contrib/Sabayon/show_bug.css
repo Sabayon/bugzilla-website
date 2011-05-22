@@ -34,9 +34,9 @@ div.bz_comment pre.bz_comment_text {
 }
 
 .bz_bug .edit_form {
-	width: 99%;
 	font-size: 1.2em;
 	line-height: 1.6em;
+	clear: both;
 }
 .bz_bug .edit_form table {
   width: 100%;
@@ -150,13 +150,11 @@ table#flags {
 /* Info Box */
 #infobox {
 	float: right;
-	margin: 1em 0 0;
+	margin: 1em 0;
 	padding: 0.5em;
 	background-color: #222;
 	color: #FFF;
 	border-radius: 0.5em;
-	-moz-border-radius: 0.5em;
-	-webkit-radius-border: 0.5em;
 }
 
 #infobox table tr {
