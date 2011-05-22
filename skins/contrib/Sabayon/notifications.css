@@ -1,0 +1,26 @@
+dl.process.notification {
+	background: #7EA98D url('http://static.sabayon.org/site/img/bz/close.png') no-repeat 99% 5%;
+	background: rgba(126,169,141,0.95) url('http://static.sabayon.org/site/img/bz/close.png') no-repeat 99% 5% ;
+	color: #FFFFFF;
+	display: block;
+	margin-top: 1.5em;
+	padding: 1.5em;
+	position: absolute;
+	width: 50%;
+	left: 25%;
+	font-size: 1.3em;
+	border-radius: 1em;
+}
+
+dl.process.notification > dt {
+	font-weight: bold;
+	margin: 0 0 0.5em 0;
+}
+
+dl.process.notification dt a {
+	color: #FFF;
+}
+
+dl.process.notification dd dl dd {
+	margin: 0.2em 0 0 1em;
+}
