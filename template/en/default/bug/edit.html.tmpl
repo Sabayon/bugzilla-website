@@ -141,7 +141,7 @@
   //-->
   </script>
 
-<div id="infobox">
+<div id="infobox_stats" class="infobox">
   <table>
     <tr>
       <td>
@@ -240,6 +240,13 @@
     [% END %]
   </table>
 </div>
+
+[% IF user.id %]
+  <div id="infobox_add_comment" class="add_comment infobox">
+    <a href="#" onclick="return goto_add_comments();">Add Comment</a>
+  </div>
+[% END %]
+
 
 <form name="changeform" method="post" action="process_bug.cgi">
 

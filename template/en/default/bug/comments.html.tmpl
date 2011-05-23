@@ -64,14 +64,6 @@
   [% count = count + increment %]
 [% END %]
 
-[% IF user.settings.comment_box_position.value == "before_comments" && user.id %]
-  <div class="bz_add_comment">
-    <a href="#" 
-       onclick="return goto_add_comments();">
-       Add Comment</a>
-  </div>
-[% END %]
-
 [%# Note: this template is used in multiple places; if you use this hook,
   # make sure you are aware of this fact.
   #%]  

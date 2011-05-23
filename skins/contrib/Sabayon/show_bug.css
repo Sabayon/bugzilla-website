@@ -141,28 +141,42 @@ pre.bz_comment_text {
 }
 
 /* Info Box */
-#infobox {
+.infobox {
 	float: right;
 	margin: 1em 0;
 	padding: 0.5em;
+	width: 17em;
 	background-color: #222;
 	color: #FFF;
+	clear: right;
 	border-radius: 0.5em;
 }
 
-#infobox table tr {
+
+
+#infobox_stats table tr {
 	height: 2em;
 }
 
-#infobox table tr td b {
+#infobox_stats table tr td b {
 	padding-right: 1em;
 }
 
-#infobox a,
-#infobox a:link,
-#infobox a:visited,
-#infobox a:active,
-#infobox a:hover
+.infobox a,
+.infobox a:link,
+.infobox a:visited,
+.infobox a:active,
+.infobox a:hover
  {
 	color: #FFF;
+}
+
+/* Add Comments Box */
+div#infobox_add_comment {
+	background: #5C865C url('http://static.sabayon.org/site/img/bz_add_comment.png') no-repeat 95% center;
+}
+
+div#infobox_add_comment a {
+	font-size: 1.2em;
+	font-weight: bold;
 }
