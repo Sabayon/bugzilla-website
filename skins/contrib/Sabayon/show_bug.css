@@ -52,6 +52,31 @@ span.bz_comment_actions {
 	float: right;
 }
 
+span.bz_comment_actions a {
+	display: inline-block;
+	border-radius: .5em;
+	border: 1px solid #333;
+	color: #333;
+	font-size: 0.9em;
+	font-weight: bold;
+	margin: 0.2em 0 0 0.2em;
+	padding: 0.3em;
+	opacity: 0.35;
+}
+
+span.bz_comment_actions a:hover {
+	opacity: 0.8;
+	text-decoration: none;
+}
+
+span.bz_comment_actions a.comment_reply_link:hover {
+        opacity: 1;
+	color: #FFF;
+	background-color: #5C865C;
+	border: 1px solid #5C865C;
+        text-decoration: none;
+}
+
 pre.bz_comment_text {
 	font-size: 1.4em;
 	clear: left;

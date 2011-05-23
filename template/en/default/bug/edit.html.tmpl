@@ -39,8 +39,8 @@
        * createElement, but finding a container isn't trivial.
        */
       [% IF user.settings.quote_replies.value != 'off' %]
-        document.write('[<a href="#add_comment" onclick="replyToComment(' + 
-                       id + ',' + real_id + '); return false;">reply<' + '/a>]');
+        document.write('<a class="comment_reply_link" href="#add_comment" onclick="replyToComment(' + 
+                       id + ',' + real_id + '); return false;">reply<' + '/a>');
       [% END %]
   }
 
