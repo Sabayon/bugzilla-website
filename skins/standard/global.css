@@ -164,6 +164,11 @@
         padding-right: 1ex;
     }
 
+    #useful-links a, #useful-links a:active, #useful-links a:visited, #useful-links a:link {
+        color: #555555;
+        text-decoration: none;
+    }
+
     #footer ul {
         list-style-type: none;
     }
