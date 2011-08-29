@@ -67,6 +67,14 @@ div#content h2 a{
 	color: #00438A;
 }
 
+.packagereq-label {
+	display: table;
+	min-width: 10em;
+	padding-bottom: 1em;
+	padding-right: 1em;
+}
+
+
 /*
  * Footer
  */

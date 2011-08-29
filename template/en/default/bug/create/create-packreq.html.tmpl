@@ -34,12 +34,6 @@
    style = "#somebugs { width: 100%; height: 500px }"
  %]
 
-<p>
-  <font color="silver" size=0.25em>
-    EntropyPackageRequestPage 0.1 (20090425 Thev00d00)
-    </font>
-</p>
-
 [% tablecolour = "#FFFFCC" %]
 
 <a name="step1"></a>
@@ -64,22 +58,22 @@ you have any ideas on improving this page please contact a member of the <a href
 
 <table valign="top" cellpadding="5" cellspacing="5" border="0">
 
-  <tr>
-    <td align="right" valign="top">
+  <tr class="packagereq-row">
+    <td align="right" valign="top" class="packagereq-label">
       <b>Product</b>
     </td>
-    <td valign="top">
+    <td valign="top" class="packagereq-desc">
       <input type="hidden" name="product" value="[% product.name FILTER html %]">
       [% product.name FILTER html %]
     </td>
   </tr>
 
-  <tr>
-    <td align="right" valign="top">
+  <tr class="packagereq-row">
+    <td align="right" valign="top" class="packagereq-label">
       <b>Application</b>
     </td>
-    <td valign="top">
-	<p> This information can be found using <a href="http://gentoo-portage.com">Gentoo-Portage.com</a>. Your request may be discarded if this is incorrect. If the package is not in mainline Portage, please paste a link to the ebuild 
+    <td valign="top" class="packagereq-desc">
+	<p> This information can be found using <a href="http://packages.gentoo.org">Gentoo Packages Browser</a>. Your request may be discarded if this is incorrect. If the package is not in mainline Portage, please paste a link to the ebuild 
 instead. If an ebuild does not exist, please file a bug to get it included in the Sabayon overlay first.
  </p>
 	
@@ -117,11 +111,11 @@ instead. If an ebuild does not exist, please file a bug to get it included in th
 	
 
 
-  <tr>
-    <td align="right" valign="top">
+  <tr class="packagereq-row">
+    <td align="right" valign="top" class="packagereq-label">
       <b>URL</b>
     </td>
-    <td valign="top">
+    <td valign="top" class="packagereq-desc">
       <input type="text" size="80" name="bug_file_loc" value="http://">
       <p>
         The Projects homepage (optional but highly reccomended).
@@ -129,11 +123,11 @@ instead. If an ebuild does not exist, please file a bug to get it included in th
    </td>
   </tr>
 
-<tr>
- <td align="right" valign="top">
+<tr class="packagereq-row">
+ <td align="right" valign="top" class="packagereq-label">
       <b>Extra Notes</b>
     </td>
-    <td valign="top">
+    <td valign="top" class="packagereq-desc">
       [% INCLUDE global/textarea.html.tmpl
         name    = 'comment'
         minrows = 6
