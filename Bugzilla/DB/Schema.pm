@@ -705,6 +705,8 @@ use constant ABSTRACT_SCHEMA => {
                             REFERENCES => {TABLE  => 'products',
                                            COLUMN => 'id',
                                            DELETE => 'CASCADE'}},
+            isactive   =>  {TYPE => 'BOOLEAN', NOTNULL => 1, 
+                            DEFAULT => 'TRUE'},
         ],
         INDEXES => [
             versions_product_id_idx => {FIELDS => [qw(product_id value)],
@@ -723,6 +725,8 @@ use constant ABSTRACT_SCHEMA => {
             value      => {TYPE => 'varchar(20)', NOTNULL => 1},
             sortkey    => {TYPE => 'INT2', NOTNULL => 1,
                            DEFAULT => 0},
+            isactive   => {TYPE => 'BOOLEAN', NOTNULL => 1, 
+                           DEFAULT => 'TRUE'},
         ],
         INDEXES => [
             milestones_product_id_idx => {FIELDS => [qw(product_id value)],
@@ -1251,6 +1255,8 @@ use constant ABSTRACT_SCHEMA => {
                                                 COLUMN => 'userid',
                                                 DELETE => 'SET NULL'}},
             description      => {TYPE => 'MEDIUMTEXT', NOTNULL => 1},
+            isactive         => {TYPE => 'BOOLEAN', NOTNULL => 1, 
+                                 DEFAULT => 'TRUE'},
         ],
         INDEXES => [
             components_product_id_idx => {FIELDS => [qw(product_id name)],
