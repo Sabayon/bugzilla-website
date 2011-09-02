@@ -1,6 +1,6 @@
 /* Lists */
 ul.bulletlist li {
-	list-style-image: url("http://static.sabayon.org/site/img/bullet.png");
+	list-style-image: url("https://static.sabayon.org/site/img/bullet.png");
 	list-style-position: inside;
 	font-size: 1.2em;
 	margin: 0.2em 0 0;

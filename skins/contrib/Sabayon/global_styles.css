@@ -6,7 +6,7 @@
 	clear: both;
 	position: relative;
 	padding: 0 0 1em 0;
-	background: url('http://static.sabayon.org/site/img/top_bg.png') #111 repeat-x bottom;
+	background: url('https://static.sabayon.org/site/img/top_bg.png') #111 repeat-x bottom;
 }
 
 h1.title {
@@ -22,7 +22,7 @@ h1.title {
 #mid_wrapper {
 	overflow: auto;
 	color: #222;
-	background: #FFF url('http://static.sabayon.org/site/img/mid_bg.png') repeat-x top;
+	background: #FFF url('https://static.sabayon.org/site/img/mid_bg.png') repeat-x top;
 }
 
 .content_row {
@@ -81,7 +81,7 @@ div#content h2 a{
 
 #footer_wrapper {
 	overflow: auto;
-	background:  #111 url('http://static.sabayon.org/site/img/footer_bg.png') repeat-x top;
+	background:  #111 url('https://static.sabayon.org/site/img/footer_bg.png') repeat-x top;
 	color: #888;
 }
 
