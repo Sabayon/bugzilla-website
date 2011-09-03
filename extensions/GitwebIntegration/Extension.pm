@@ -23,7 +23,7 @@ package Bugzilla::Extension::GitwebIntegration;
 use strict;
 use base qw(Bugzilla::Extension);
 
-our $VERSION = '0.1';
+our $VERSION = '0.2';
 
 # See the documentation of Bugzilla::Hook ("perldoc Bugzilla::Hook" 
 # in the bugzilla directory) for a list of all available hooks.
@@ -49,7 +49,7 @@ sub _replace_commit {
 	# arguments to this function.
 	my $repo = $args->{matches}->[0];
 	my $ref = $args->{matches}->[1];
-	return qq{<a href="http://gitweb.sabayon.org/?p=$repo;a=commitdiff;h=$ref">$ref</a>};
+	return qq{<a href="http://git.sabayon.org/$repo/commit/?id=$ref">$ref</a>};
 };
 
 __PACKAGE__->NAME;
