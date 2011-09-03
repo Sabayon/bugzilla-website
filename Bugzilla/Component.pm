@@ -45,7 +45,6 @@ use constant DB_COLUMNS => qw(
     initialowner
     initialqacontact
     description
-    isactive
 );
 
 use constant UPDATE_COLUMNS => qw(
@@ -53,7 +52,6 @@ use constant UPDATE_COLUMNS => qw(
     initialowner
     initialqacontact
     description
-    isactive
 );
 
 use constant REQUIRED_FIELD_MAP => {
@@ -68,7 +66,6 @@ use constant VALIDATORS => {
     description      => \&_check_description,
     initial_cc       => \&_check_cc_list,
     name             => \&_check_name,
-    isactive         => \&Bugzilla::Object::check_boolean,
 };
 
 use constant VALIDATOR_DEPENDENCIES => {
@@ -303,7 +300,6 @@ sub _create_series {
 
 sub set_name { $_[0]->set('name', $_[1]); }
 sub set_description { $_[0]->set('description', $_[1]); }
-sub set_is_active { $_[0]->set('isactive', $_[1]); }
 sub set_default_assignee {
     my ($self, $owner) = @_;
 
@@ -418,7 +414,6 @@ sub product {
 
 sub description { return $_[0]->{'description'}; }
 sub product_id  { return $_[0]->{'product_id'};  }
-sub is_active   { return $_[0]->{'isactive'};    }
 
 ##############################################
 # Implement Bugzilla::Field::ChoiceInterface #
@@ -426,6 +421,7 @@ sub is_active   { return $_[0]->{'isactive'};    }
 
 use constant FIELD_NAME => 'component';
 use constant is_default => 0;
+use constant is_active => 1;
 
 sub is_set_on_bug {
     my ($self, $bug) = @_;
