@@ -52,6 +52,7 @@ use Bugzilla::Field;
 use Bugzilla::Group;
 
 use DateTime::TimeZone;
+use Digest::MD5 qw(md5_hex);
 use List::Util qw(max);
 use Scalar::Util qw(blessed);
 use Storable qw(dclone);
@@ -258,6 +259,7 @@ sub cryptpassword {
         undef, $self->id);
     return $pw;
 }
+sub email_md5 { md5_hex(lc($_[0]->login . Bugzilla->params->{'emailsuffix'})); }
 
 sub set_authorizer {
     my ($self, $authorizer) = @_;

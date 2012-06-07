@@ -35,9 +35,9 @@ sub bug_format_comment {
 
 	# Each regex is run in order, and later regexes don't modify
 	# earlier matches, due to some cleverness in Bugzilla's internals.
-	my $commit_match = qr/gitweb:\/\/([a-zA-Z0-9\/]+\.git)\/([0-9a-f]{5,40})/;
+	my $commit_match = qr/gitweb:\/\/([a-zA-Z0-9\/\-]+\.git)\/([0-9a-f]{5,40})/;
 	push(@$regexes, { match => $commit_match, replace => \&_replace_commit });
-	my $review_match = qr/gitweb:\/\/([a-zA-Z0-9\/]+\.git)\/([0-9a-f]{5,40})/;
+	my $review_match = qr/gitweb:\/\/([a-zA-Z0-9\/\-]+\.git)\/([0-9a-f]{5,40})/;
 	push(@$regexes, { match => $review_match, replace => \&_replace_review });
 }
 

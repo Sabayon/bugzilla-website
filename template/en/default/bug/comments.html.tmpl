@@ -92,8 +92,11 @@
 
       <div class="[% class_name FILTER html %]">
 	<div class="bz_comment_header_left">
-          <span class="bz_comment_user_images">
-          [% FOREACH group = comment.author.direct_group_membership %]
+          
+
+	<span class="bz_comment_user_images">
+          <img alt="Gravatar" src="https://gravatar.com/avatar/[% comment.author.email_md5 %]?d=wavatar&s=30"/>
+	[% FOREACH group = comment.author.direct_group_membership %]
             [% NEXT UNLESS group.icon_url %]
             <img src="[% group.icon_url FILTER html %]"
                  alt="[% group.name FILTER html %]"
@@ -121,7 +124,7 @@
 
         <span class="bz_comment_user">
           By: [% INCLUDE global/user.html.tmpl who = comment.author %]
-        </span>
+	</span>
 	</div>
 	</div><!-- end of bz_comment_header_left -->
 
