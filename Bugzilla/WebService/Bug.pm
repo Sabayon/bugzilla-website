@@ -639,9 +639,12 @@ sub add_attachment {
 
     my @created;
     $dbh->bz_start_transaction();
+    my $timestamp = $dbh->selectrow_array('SELECT LOCALTIMESTAMP(0)');
+
     foreach my $bug (@bugs) {
         my $attachment = Bugzilla::Attachment->create({
             bug         => $bug,
+            creation_ts => $timestamp,
             data        => $params->{data},
             description => $params->{summary},
             filename    => $params->{file_name},
@@ -657,7 +660,7 @@ sub add_attachment {
               extra_data => $attachment->id });
         push(@created, $attachment);
     }
-    $_->bug->update($_->attached) foreach @created;
+    $_->bug->update($timestamp) foreach @created;
     $dbh->bz_commit_transaction();
 
     $_->send_changes() foreach @bugs;
@@ -1022,7 +1025,7 @@ containing the following keys:
 
 =item C<id>
 
-C<int> An integer id uniquely idenfifying this field in this installation only.
+C<int> An integer id uniquely identifying this field in this installation only.
 
 =item C<type>
 
@@ -1266,19 +1269,14 @@ value looks like this:
 
  {
      bugs => {
-         1345 => {
-             attachments => [
-                 { (attachment) },
-                 { (attachment) }
-             ]
-         },
-         9874 => {
-             attachments => [
-                 { (attachment) },
-                 { (attachment) }
-             ]
-
-         },
+         1345 => [
+             { (attachment) },
+             { (attachment) }
+         ],
+         9874 => [
+             { (attachment) },
+             { (attachment) }
+         ],
      },
 
      attachments => {
@@ -1289,9 +1287,8 @@ value looks like this:
 
 The attachments of any bugs that you specified in the C<ids> argument in
 input are returned in C<bugs> on output. C<bugs> is a hash that has integer
-bug IDs for keys and contains a single key, C<attachments>. That key points
-to an arrayref that contains attachments as a hash. (Fields for attachments
-are described below.)
+bug IDs for keys and the values are arrayrefs that contain hashes as attachments.
+(Fields for attachments are described below.)
 
 For any attachments that you specified directly in C<attachment_ids>, they
 are returned in C<attachments> on output. This is a hash where the attachment
@@ -2062,6 +2059,9 @@ May not be an array.
 
 C<string> The login name of the user who created the bug.
 
+You can also pass this argument with the name C<reporter>, for
+backwards compatibility with older Bugzillas.
+
 =item C<id>
 
 C<int> The numeric id of the bug.
@@ -2097,13 +2097,6 @@ C<string> The Priority field on a bug.
 =item C<product>
 
 C<string> The name of the Product that the bug is in.
-
-=item C<creator>
-
-C<string> The login name of the user who reported the bug.
-
-You can also pass this argument with the name C<reporter>, for
-backwards compatibility with older Bugzillas.
 
 =item C<resolution>
 
@@ -2504,7 +2497,7 @@ This allows you to add a comment to a bug in Bugzilla.
 
 =over
 
-=item C<id> (int) B<Required> - The id or alias of the bug to append a 
+=item C<id> (int or string) B<Required> - The id or alias of the bug to append a 
 comment to.
 
 =item C<comment> (string) B<Required> - The comment to append to the bug.

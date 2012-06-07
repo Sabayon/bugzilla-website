@@ -22,7 +22,18 @@
 package Bugzilla::WebService::Server::JSONRPC;
 
 use strict;
-use base qw(JSON::RPC::Server::CGI Bugzilla::WebService::Server);
+use Bugzilla::WebService::Server;
+BEGIN {
+    our @ISA = qw(Bugzilla::WebService::Server);
+
+    if (eval { require JSON::RPC::Server::CGI }) {
+        unshift(@ISA, 'JSON::RPC::Server::CGI');
+    }
+    else {
+        require JSON::RPC::Legacy::Server::CGI;
+        unshift(@ISA, 'JSON::RPC::Legacy::Server::CGI');
+    }
+}
 
 use Bugzilla::Error;
 use Bugzilla::WebService::Constants;
@@ -361,6 +372,17 @@ sub _argument_type_check {
         if (!grep($_ eq $method, $pkg->READ_ONLY)) {
             ThrowUserError('json_rpc_post_only', 
                            { method => $self->_bz_method_name });
+        }
+    }
+    else {
+        # CSRF is also possible when using |Content-Type: text/plain| with POST.
+        # There are some other content types which must also be banned for
+        # security reasons.
+        my $content_type = $self->cgi->content_type;
+        # The charset can be appended to the content type, so we use a regexp.
+        if (grep { $content_type =~ m{\Q$_\E}i } CONTENT_TYPE_BLACKLIST) {
+            ThrowUserError('json_rpc_illegal_content_type',
+                            { content_type => $content_type });
         }
     }
 
