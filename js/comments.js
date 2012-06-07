@@ -65,13 +65,13 @@ function toggle_all_comments(action) {
 }
 
 function collapse_comment(link, comment) {
-    link.innerHTML = "+";
+    link.innerHTML = "[+]";
     link.title = "Expand the comment.";
     YAHOO.util.Dom.addClass(comment, 'collapsed');
 }
 
 function expand_comment(link, comment) {
-    link.innerHTML = "-";
+    link.innerHTML = "[-]";
     link.title = "Collapse the comment";
     YAHOO.util.Dom.removeClass(comment, 'collapsed');
 }
@@ -83,7 +83,7 @@ function addCollapseLink(count) {
     document.write(' <a href="#" class="bz_collapse_comment"' +
                    ' id="comment_link_' + count +
                    '" onclick="toggle_comment_display(this, ' +  count +
-                   '); return false;" title="Collapse the comment.">-<\/a> ');
+                   '); return false;" title="Collapse the comment.">[-]<\/a> ');
 }
 
 function goto_add_comments( anchor ){

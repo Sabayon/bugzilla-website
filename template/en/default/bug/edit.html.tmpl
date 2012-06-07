@@ -39,8 +39,8 @@
        * createElement, but finding a container isn't trivial.
        */
       [% IF user.settings.quote_replies.value != 'off' %]
-        document.write('<a class="comment_reply_link" href="#add_comment" onclick="replyToComment(' + 
-                       id + ',' + real_id + '); return false;">reply<' + '/a>');
+        document.write('[<a href="#add_comment" onclick="replyToComment(' + 
+                       id + ',' + real_id + '); return false;">reply<' + '/a>]');
       [% END %]
   }
 
@@ -141,130 +141,14 @@
   //-->
   </script>
 
-<div id="infobox_stats" class="infobox">
-  <table>
-    <tr>
-      <td>
-        <b>Product:</b>
-      </td>
-      <td>
-        <a href="browse.cgi?product=[% bug.product FILTER url_quote %]">[% bug.product FILTER html %]</a>
-      </td>
-    </tr>
-
-    <tr>
-      <td>
-        <b>Component:</b>
-      </td>
-      <td>
-        [% bug.component FILTER html %]
-      </td>
-    </tr>
-
-    <tr>
-      <td>
-        <b>Version:</b>
-      </td>
-      <td>
-        [% bug.version FILTER html %]
-      </td>
-    </tr>
-
-    <tr>
-      <td>
-        <b>Status:</b>
-      </td>
-      <td>
-        [% bug.bug_status FILTER html %]
-      </td>
-    </tr>
-
-    [% IF bug.bug_status == "RESOLVED" %]
-      <tr>
-        <td>
-          <b>Resolution:</b>
-        </td>
-        <td>
-          [% bug.resolution FILTER html %]
-          [% IF bug.dup_id && bug.resolution == "DUPLICATE" %]
-            of [%+ "bug ${bug.dup_id}" FILTER bug_link(bug.dup_id) %]
-          [% END %]
-        </td>
-        </td>
-      </tr>
-    [% ELSE %]
-      <tr>
-        <td>
-          <b>Priority:</b>
-        </td>
-        <td>
-          [% bug.priority FILTER html %]
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <b>Severity:</b>
-        </td>
-        <td>
-          [% bug.bug_severity FILTER html %]
-        </td>
-      </tr>
-      [% IF bug.target_milestone != "---" %]
-      <tr>
-        <td>
-          <b>Target:</b>
-        </td>
-        <td>
-          [% bug.target_milestone FILTER html %]
-        </td>
-      </tr>
-      [% END %]
-    [% END %]
-
-    [% IF use_votes %]
-    [% IF bug.bug_status == "CLOSED" || bug.bug_status == "RESOLVED" %]
-    [% ELSE %]
-    <tr>
-      <td>
-        <b>Votes:</b>
-      </td>
-      <td>
-        <a href="votes.cgi?action=show_bug&amp;bug_id=[% bug.bug_id %]">
-          [% bug.votes FILTER html %]
-        </a>
-        (<a href="votes.cgi?action=show_user&amp;bug_id=[% bug.bug_id %]">
-        vote</a>)
-      </td>
-    </tr>
-    [% END %]
-    [% END %]
-  </table>
-</div>
-
-[% IF user.id %]
-  <div id="infobox_add_comment" class="add_comment infobox">
-    <a href="#" onclick="return goto_add_comments();">Add Comment</a>
-  </div>
-[% END %]
-
-
-<form name="changeform" method="post" action="process_bug.cgi">
+<form name="changeform" id="changeform" method="post" action="process_bug.cgi">
 
   <input type="hidden" name="delta_ts" value="[% bug.delta_ts %]">
   <input type="hidden" name="longdesclength" value="[% bug.comments.size %]">
   <input type="hidden" name="id" value="[% bug.bug_id %]">
   <input type="hidden" name="token" value="[% issue_hash_token([bug.id, bug.delta_ts]) FILTER html %]">
 
-  [%# *** Additional Comments *** %]
-  <div id="comments">
-    [% PROCESS bug/comments.html.tmpl
-      comments = bug.comments
-      mode = user.id ? "edit" : "show"
-    %]
-  </div>
-
   [% PROCESS section_title %]
-
   <table class="edit_form">
     <tr>
       [%# 1st Column %]
@@ -322,6 +206,11 @@
         </table>
       </td>
     </tr>
+    <tr>
+      <td colspan="3">
+          <hr id="bz_top_half_spacer">
+      </td>
+    </tr>
   </table>
 
   <table id="bz_big_form_parts" cellspacing="0" cellpadding="0"><tr>
@@ -347,6 +236,19 @@
     [% PROCESS section_restrict_visibility %]
   </td>
   </tr></table>
+
+  [%# *** Additional Comments *** %]
+  <div id="comments">
+    [% PROCESS bug/comments.html.tmpl
+      comments = bug.comments
+      mode = user.id ? "edit" : "show"
+    %]
+  </div>
+
+  [% IF user.settings.comment_box_position.value == 'after_comments' %]
+    <hr>
+    [% PROCESS comment_box %]
+  [% END %]        
 
 </form>
 

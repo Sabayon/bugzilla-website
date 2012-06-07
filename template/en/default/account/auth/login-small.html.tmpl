@@ -31,6 +31,7 @@
 [% login_target = urlbase _ login_target %]
 
 <li id="mini_login_container[% qs_suffix %]">
+  <span class="separator">| </span>
   [% connector = "?" %]
   [% IF cgi.request_method == "GET" AND cgi.query_string %]
     [% connector = "&" %]
@@ -106,7 +107,8 @@
   </form>
 </li>
 <li id="forgot_container[% qs_suffix %]">
-   <a id="forgot_link[% qs_suffix %]" href="?GoAheadAndLogIn=1#forgot"
+  <span class="separator">| </span>
+  <a id="forgot_link[% qs_suffix %]" href="[% script_name FILTER html %]#forgot"
      onclick="return show_forgot_form('[% qs_suffix %]')">Forgot Password</a>
   <form action="token.cgi" method="post" id="forgot_form[% qs_suffix %]"
         class="mini_forgot bz_default_hidden">

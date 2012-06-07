@@ -90,13 +90,12 @@
   # set header's default value here only if it is undefined. %]
 [% IF !header.defined %][% header = title %][% END %]
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-"https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<html xmlns="https://www.w3.org/1999/xhtml">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                      "http://www.w3.org/TR/html4/loose.dtd">
+<html>
   <head>
     [% Hook.process("start") %]
-    <title>[% title %] | Sabayon Bugzilla</title>
+    <title>[% title %]</title>
 
 [%# Migration note: contents of the old Param 'headerhtml' would go here %]
 
@@ -106,6 +105,19 @@
 
     [% SET yui = yui_resolve_deps(yui, yui_deps) %]
     [% SET css_sets = css_files(style_urls, yui, yui_css) %]
+
+    [%# CSS cascade, part 1: Standard Bugzilla stylesheet set (persistent).
+      # Always present.
+      #%]
+    [%# This allows people to switch back to the "Classic" skin if they
+      # are in another skin. 
+      #%]
+    <link href="[% 'skins/standard/global.css' FILTER mtime FILTER html %]"
+          rel="alternate stylesheet" 
+          title="[% setting_descs.standard FILTER html %]">
+    [% FOREACH style_url = css_sets.standard %]
+      [% PROCESS format_css_link css_set_name = 'standard' %]
+    [% END %]
 
     [%# CSS cascade, part 2 & 3: Third-party stylesheet set (selected and
       # selectable). All third-party skins are present as alternate
@@ -212,9 +224,6 @@
       [% PROCESS format_js_link %]
     [% END %]
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js" type="text/javascript"></script>
-    <script src="js/sabayon.js" type="text/javascript"></script>
-
     [%# this puts the live bookmark up on firefox for the Atom feed %]
     [% IF atomlink %]
        <link rel="alternate" 
@@ -239,21 +248,34 @@
                  [% ' ' %][% class FILTER css_class_quote %]
                [% END %] yui-skin-sam">
 
-[% INCLUDE global/sabayon_global_menu.html.tmpl %]
-
 [%# Migration note: the following file corresponds to the old Param
   # 'bannerhtml'
   #%]
-<div id="top_wrapper">
-<div class="inside">
+
+<div id="header">
 
 [% INCLUDE global/banner.html.tmpl %]
 
-<h1 class="title">
-	[% "$header" IF header %]
-	[% "&nbsp;&ndash;&nbsp;" IF bug.short_desc %]
-	[% bug.short_desc FILTER quoteUrls(bug) %]
-</h1>
+<table border="0" cellspacing="0" cellpadding="0" id="titles">
+<tr>
+    <td id="title">
+      <p>[% terms.Bugzilla %]
+      [% " &ndash; $header" IF header %]</p>
+    </td>
+
+  [% IF subheader %]
+    <td id="subtitle">
+      <p class="subheader">[% subheader %]</p>
+    </td>
+  [% END %]
+
+  [% IF header_addl_info %]
+    <td id="information">
+      <p class="header_addl_info">[% header_addl_info %]</p>
+    </td>
+  [% END %]
+</tr>
+</table>
 
 <table id="lang_links_container" cellpadding="0" cellspacing="0"
        class="bz_default_hidden"><tr><td>
@@ -274,12 +296,10 @@
 </td></tr></table>
 
 [% PROCESS "global/common-links.html.tmpl" qs_suffix = "_top" %]
-</div>
 </div> [%# header %]
 
-<div id="mid_wrapper">
-	<div class="inside">
-		<div id="content">
+<div id="bugzilla-body">
+
 [% IF Param('announcehtml') %]
 [% Param('announcehtml') FILTER none %]
 [% END %]

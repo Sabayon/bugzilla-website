@@ -54,7 +54,8 @@
 
 <!-- This auto-sizes the comments and positions the collapse/expand links 
      to the right. -->
-<div class="bz_comment_table">
+<table class="bz_comment_table" cellpadding="0" cellspacing="0"><tr>
+<td>
 
 [% FOREACH comment = comments %]
   [% IF count >= start_at %]
@@ -64,11 +65,36 @@
   [% count = count + increment %]
 [% END %]
 
+[% IF user.settings.comment_box_position.value == "before_comments" && user.id %]
+  <div class="bz_add_comment">
+    <a href="#" 
+       onclick="return goto_add_comments();">
+       Add Comment</a>
+  </div>
+[% END %]
+
 [%# Note: this template is used in multiple places; if you use this hook,
   # make sure you are aware of this fact.
   #%]  
 [% Hook.process("aftercomments") %]
-</div>
+
+</td>
+<td>
+  [% IF mode == "edit" %]
+    <ul class="bz_collapse_expand_comments">
+      <li><a href="#" onclick="toggle_all_comments('collapse'); 
+                               return false;">Collapse All Comments</a></li>
+      <li><a href="#" onclick="toggle_all_comments('expand');
+                               return false;">Expand All Comments</a></li>
+      [% IF user.settings.comment_box_position.value == "after_comments" && user.id %]
+        <li class="bz_add_comment"><a href="#" 
+            onclick="return goto_add_comments('bug_status_bottom');">
+            Add Comment</a></li>
+      [% END %]                               
+    </ul>
+  [% END %]
+</td>
+</tr></table>
 
 [%############################################################################%]
 [%# Block for individual comments                                            #%]
@@ -91,25 +117,17 @@
       [% END %]
 
       <div class="[% class_name FILTER html %]">
-	<div class="bz_comment_header_left">
-          
 
-	<span class="bz_comment_user_images">
-          <img alt="Gravatar" src="https://gravatar.com/avatar/[% comment.author.email_md5 %]?d=wavatar&s=30"/>
-	[% FOREACH group = comment.author.direct_group_membership %]
-            [% NEXT UNLESS group.icon_url %]
-            <img src="[% group.icon_url FILTER html %]"
-                 alt="[% group.name FILTER html %]"
-                 title="[% group.name FILTER html %] - [% group.description FILTER html %]">
-          [% END %]
-        </span>
+        [% IF mode == "edit" %]
+          <span class="bz_comment_actions">
+            <script type="text/javascript"><!--
+              addReplyLink([% count %], [% comment.id %]);
+              addCollapseLink([% count %]); // -->
+            </script>
+          </span>
+        [% END %]
 
-	<div class="bz_comment_header_left_inner">
-      <span class="bz_comment_time">
-          [%+ comment.creation_ts FILTER time %]
-        </span>
-
-         [% IF mode == "edit" && user.is_insider %]
+        [% IF mode == "edit" && user.is_insider %]
           <div class="bz_private_checkbox">
             <input type="hidden" value="1"
                    name="defined_isprivate_[% comment.id %]">
@@ -122,21 +140,29 @@
           </div>
         [% END %]
 
+        <span class="bz_comment_number">
+          <a 
+             href="show_bug.cgi?id=[% bug.bug_id %]#c[% count %]">
+            [%- comment_label FILTER html %]</a>
+        </span>
+
         <span class="bz_comment_user">
-          By: [% INCLUDE global/user.html.tmpl who = comment.author %]
-	</span>
-	</div>
-	</div><!-- end of bz_comment_header_left -->
+          [% INCLUDE global/user.html.tmpl who = comment.author %]
+        </span>
 
-       [% IF mode == "edit" %]
-          <span class="bz_comment_actions">
-            <script type="text/javascript"><!--
-              addReplyLink([% count %], [% comment.id %]);
-              addCollapseLink([% count %]); // -->
-            </script>
-         </span>
-        [% END %]
+        <span class="bz_comment_user_images">
+          [% FOREACH group = comment.author.direct_group_membership %]
+            [% NEXT UNLESS group.icon_url %]
+            <img src="[% group.icon_url FILTER html %]"
+                 alt="[% group.name FILTER html %]"
+                 title="[% group.name FILTER html %] - [% group.description FILTER html %]">
+          [% END %]
+        </span>
 
+        <span class="bz_comment_time">
+          [%+ comment.creation_ts FILTER time %]
+        </span>
+      </div>
 
       [% IF user.is_timetracker &&
             (comment.work_time > 0 || comment.work_time < 0) %]
@@ -144,7 +170,7 @@
          Additional hours worked: 
          [% PROCESS formattimeunit time_unit=comment.work_time %]
       [% END %]
-</div>
+
 [%# Don't indent the <pre> block, since then the spaces are displayed in the
   # generated HTML
   #%]

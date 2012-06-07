@@ -26,6 +26,10 @@
 [% PROCESS global/variables.none.tmpl %]
 
 <ul id="useful-links">
+  <li id="links-actions">
+      [% PROCESS "global/common-links.html.tmpl" qs_suffix = "_bottom" %]
+  </li>
+
   [%# Saved searches %]
     
   [% IF user.showmybugslink OR user.queries.size 
@@ -34,18 +38,17 @@
     [% print_pipe = 0 %]
     <li id="links-saved">
       <ul class="links">
-	<li>Saved Searches:</li>
         [% IF user.showmybugslink %]
           [% filtered_username = user.login FILTER url_quote %]
           <li><a href="[% Param('mybugstemplate').replace('%userid%', filtered_username) %]">My [% terms.Bugs %]</a></li>
-          [% print_pipe = 0 %]
+          [% print_pipe = 1 %]
         [% END %]
 
         [% FOREACH q = user.queries %]
           [% IF q.link_in_footer %]
             <li>[% '<span class="separator">| </span>' IF print_pipe %]
             <a href="buglist.cgi?cmdtype=runnamed&amp;namedcmd=[% q.name FILTER url_quote %]">[% q.name FILTER html %]</a></li>
-            [% print_pipe = 0 %]
+            [% print_pipe = 1 %]
           [% END %]
         [% END %]
         [% new_line = print_pipe %]
@@ -63,7 +66,7 @@
                class="shared"
                title="Shared by [% q.user.identity FILTER html %]"
                >[% q.name FILTER html FILTER no_break %]</a></li>
-          [% print_pipe = 0 %]
+          [% print_pipe = 1 %]
         [% END %]
       </ul>
     </li>

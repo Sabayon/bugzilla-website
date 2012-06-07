@@ -1,5 +1,4 @@
 [%# -*- mode: html -*- %]
-
 [%# The contents of this file are subject to the Mozilla Public
   # License Version 1.1 (the "License"); you may not use this file
   # except in compliance with the License. You may obtain a copy of
@@ -31,9 +30,9 @@
 
 
 [% PROCESS global/header.html.tmpl
-   title = "Home"
-   header = "Sabayon Bug Tracker - Home" 
-   header_addl_info = "Your frigging bug hunter"
+   title = "$terms.Bugzilla Main Page"
+   header = "Main Page" 
+   header_addl_info = "version $constants.BUGZILLA_VERSION"
    style_urls = [ 'skins/standard/index.css' ]
 %]
 
@@ -121,87 +120,64 @@ YAHOO.util.Event.onDOMReady(onLoadActions);
 [% END %]
 
 <div id="page-index">
-	<div id="col1" class="col_mid">
-		<div id="introduction" class="block">
-			<img src="images/sabayon-logo-95px.png" class="frontpage right" alt="Sabayon Logo"/>
-			<h2>Welcome</h2>
-			<p>Welcome to the Sabayon Linux issue tracker.</p>
-			<p>Using this site is for <a href="/enter_bug.cgi">bug submissions</a> as well
-			as <a href="/enter_bug.cgi?product=Entropy&format=packreq">feature and package requests</a>.</p>
-			<p>Before making a submission, please make sure to do a <a href="/query.cgi">search</a>.
-			This will ensure that you don't submit a duplicate, and will tell you if this is an issue
-			that is being addressed, or one that has already been fixed.</p>
-			<p>When submitting a bug report, please try to provide as much information as possible including
-			program and version, logs, tracebacks, and a description of what conditions are necessary to 
-			reproduce the problem.</p>
-			<p>The more information we have, the better we are able to track the issue 
-			down and get it fixed.</p>
-		</div>
-	</div>
-		<div id="col2" class="col_mid col_center">
-		<div id="common_actions" class="block">
-			<img src="images/actions.png" class="frontpage right" alt="Bugs!"/>
-			<h2>Most Common Actions</h2>
-				<ul class="bulletlist">
-					 <li id="entropyreq">
-						<a href="enter_bug.cgi?product=Entropy&format=packreq">Make an Entropy Package Request</a>
-					</li>
-					<li id="openissues">
-						<a href="buglist.cgi?bug_status=UNCONFIRMED&bug_status=CONFIRMED&bug_status=IN_PROGRESS&order=bug_id%20DESC&columnlist=bug_severity%2Cpriority%2Cbug_status%2Cshort_desc%2Creporter_realname">View Open Issues</a></li>
-					<li id="lastweek">
-						<a href="buglist.cgi?chfieldto=now&chfield=[Bug creation]&chfieldfrom=-1w&columnlist=bug_severity%2Cpriority%2Cbug_status%2Cresolution%2Cshort_desc%2Creporte_realname">Last Week's Issues</a></li>
-					<li id="search">
-						<a href="query.cgi">Search existing [% terms.bug %] reports</a>
-					</li>
-					<li id="enter-bug">
-						<a href="enter_bug.cgi">Enter a new [% terms.bug %] report</a>
-					</li>
-				</ul>
+  <table>
+    <tr>
+      <td>
+        <h1 id="welcome"> Welcome to [% terms.Bugzilla %]</h1>
+        <div class="intro">[% Hook.process('intro') %]</div>
+        <a id="enter_bug" class="bz_common_actions"
+           href="enter_bug.cgi"><span>File [% terms.aBug %]</span></a>
+      
+        <a id="query" class="bz_common_actions" 
+           href="query.cgi"><span>Search</span></a>
+      
+        <a id="account" class="bz_common_actions"
+          [% IF user.id %]
+            href="userprefs.cgi"><span>User Preferences</span></a>
+          [% ELSIF Param('createemailregexp')
+                   && user.authorizer.user_can_create_account 
+          %]
+            href="createaccount.cgi"><span>Open a New Account</span></a>
+          [% ELSE %]
+            href="?GoAheadAndLogIn=1"><span>Log In</span></a>
+          [% END %]
 
-		    <h2>User Management</h2>
-			<ul class="bulletlist">
-			[% IF user.id %]
-				<li id="userprefs">
-					<a href="userprefs.cgi">Change password or user preferences</a>
-				</li>
-				[% IF user.authorizer.can_logout %]
-				<li id="logout">
-					<a href="relogin.cgi">Log out [% user.login FILTER html %]</a>
-				</li>
-			[% END %]
-			[% ELSIF user.authorizer.can_login %]
-				<li><a href="index.cgi?GoAheadAndLogIn=1">Login</a></li>
-				[% IF Param('createemailregexp') && user.authorizer.user_can_create_account %]
-					<li id="account">
-					<a href="createaccount.cgi">Open a new [% terms.Bugzilla %] account</a>
-					</li>
-			[% END %]
-			[% END %]
-			    <li id="quick_search_plugin">
-					<a href="javascript:window.external.AddSearchProvider('[% urlbase FILTER html %]search_plugin.cgi')">Add a Sabayon Bugzilla Quick Search plugin</a>
-			    </li>
-			[%# List items of links to more things users can do on this installation. %]
-			[% Hook.process("links") %]
-			</ul>
-		</div>
-	</div>
-	<div id="col3" class="col_mid">
-		<div id="search" class="block">
-			<img src="images/search.png" class="frontpage right" alt="Search"/>
-			<h2>Search</h2>
-			<form id="f" name="f" action="buglist.cgi" method="get"
-				onsubmit="if (this.quicksearch.value == '')
-			    { alert('Please enter one or more search terms first.');
-			    return false; } return true;">
-				<div>
-				    <p>Enter [% terms.abug %] # or some search terms:</p>
-					<input id="quicksearch" type="text" name="quicksearch">
-					<input id="find" type="submit" value="Find">
-					<a href="page.cgi?id=quicksearch.html">[Help]</a>
-				</div>
-			</form>
-		</div>
-	</div>
+        <form id="quicksearchForm" name="quicksearchForm" action="buglist.cgi"
+              onsubmit="return checkQuicksearch(this);">
+          <div>
+            <input id="quicksearch_main" type="text" name="quicksearch"
+              onfocus="quicksearchHelpText(this.id, 'hide');"
+              onblur="quicksearchHelpText(this.id, 'show');"
+            >
+            <input id="find" type="submit" value="Quick Search">
+            <ul class="additional_links" id="quicksearch_links">
+              <li>
+                <a href="page.cgi?id=quicksearch.html">Quick Search help</a>
+              </li>
+              <li class="bz_default_hidden" id="quicksearch_plugin">
+                |
+                <a href="javascript:window.external.AddSearchProvider('[% urlbase FILTER html %]search_plugin.cgi')">
+                 Install the Quick Search plugin
+                </a>
+              </li>
+            </ul>
+            <ul class="additional_links">
+              <li>
+                <a href="[% docs_urlbase FILTER html %]using.html">
+                  [%- terms.Bugzilla %] User's Guide</a>
+              </li>
+              <li>
+                |
+                <a href="page.cgi?id=release-notes.html">Release Notes</a>
+              </li>
+              [% Hook.process('additional_links') %]
+            </ul>
+          </div>
+        </form>
+        <div class="outro">[% Hook.process('outro') %]</div>
+      </td>
+    </tr>
+  </table>
 </div>
 
 [% PROCESS global/footer.html.tmpl %]

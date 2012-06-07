@@ -52,10 +52,10 @@
   doc_section = "query.html#list"
 %]
 
-<div class="bz_query_head">
-  <div class="bz_query_timestamp">
-    <p>[% currenttime FILTER time('%a %b %e %Y %T %Z') FILTER html %]</p>
-  </div>
+<div class="bz_query_head" align="center">
+  <span class="bz_query_timestamp">
+    <b>[% currenttime FILTER time('%a %b %e %Y %T %Z') FILTER html %]</b><br>
+  </span>
 
   [% IF debug %]
     <p class="bz_query">[% query FILTER html %]</p>
@@ -66,9 +66,9 @@
 
   [% IF user.settings.display_quips.value == 'on' %]
     [% DEFAULT quip = "$terms.Bugzilla would like to put a random quip here, but no one has entered any." %]
-    <div class="bz_quip">
-      <p>[% quip FILTER html %]</p>
-    </div>
+    <span class="bz_quip">
+      <a href="quips.cgi"><i>[% quip FILTER html %]</i></a>
+    </span>
   [% END %]
 
 </div>
