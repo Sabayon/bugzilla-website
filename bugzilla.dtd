@@ -84,7 +84,6 @@
           isobsolete (0|1) #REQUIRED
           ispatch (0|1) #REQUIRED
           isprivate (0|1) #REQUIRED
-          isurl (0|1) #REQUIRED
 >
 <!ELEMENT attacher (#PCDATA)>
 <!ELEMENT attachid (#PCDATA)>

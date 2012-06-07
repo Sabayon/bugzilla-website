@@ -102,7 +102,7 @@
 
 [% BLOCK a_comment %]
   [% RETURN IF comment.is_private AND ! user.is_insider %]
-  [% comment_text = comment.body_full({ wrap => 1 }) %]
+  [% comment_text = comment.body_full %]
   [% RETURN IF comment_text == '' AND (comment.work_time - 0) != 0 AND !user.is_timetracker %]
 
     <div id="c[% count %]" class="bz_comment[% " bz_private" IF comment.is_private %]
@@ -122,7 +122,7 @@
           <span class="bz_comment_actions">
             <script type="text/javascript"><!--
               addReplyLink([% count %], [% comment.id %]);
-              addCollapseLink([% count %]); // -->
+              addCollapseLink([% count %], 'Toggle comment display'); // -->
             </script>
           </span>
         [% END %]

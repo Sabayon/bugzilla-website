@@ -151,7 +151,6 @@ sub _hash_encode64 {
 
     return $myoutput;
 }
-
 sub phpbb3_check_credentials {
 
     my $password = shift;

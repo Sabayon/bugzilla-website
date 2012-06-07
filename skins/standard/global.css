@@ -57,8 +57,6 @@
         border-bottom: 1px solid #747E93;
         -moz-border-radius-bottomleft: 5px;
         -moz-border-radius-bottomright: 5px;
-        border-bottom-left-radius: 5px;
-        border-bottom-right-radius: 5px;
         padding: 0.5em;
     }
 
@@ -105,12 +103,10 @@
 /* titles (begin) */
     #titles {
         width: 100%;
-        background-color: #333;
+        background-color: #404D6C;
         color: #fff;
         -moz-border-radius-topleft: 5px;
         -moz-border-radius-topright: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
         font-size: 110%;
         margin: 0;
         padding: 0.5em;
@@ -222,7 +218,7 @@
     }
 
     a:visited {
-        color: #183E81;
+        color: #636;
     }
 
     a:hover {
@@ -235,6 +231,10 @@
 
     .clickable_area {
         cursor: pointer;
+    }
+
+    textarea {
+        font-family: monospace;
     }
 /* generic (end) */
 
@@ -252,6 +252,18 @@ div#docslinks {
 
 #docslinks h2 {
     margin: 0;
+}
+
+/**************************/
+/* Bug links and statuses */
+/**************************/
+
+.bz_bug_link {
+    /* Catch-all if you want common styles for all bug links */
+}
+
+.bz_bug_link .bz_status_UNCONFIRMED {
+    font-style: italic;
 }
 
 .bz_obsolete {
@@ -284,16 +296,10 @@ div#docslinks {
     margin-bottom: 2em;
 }
 
-/* The rules for these classes make international text wrap correctly,
-   even for languages like Japanese that have no spaces. */
-.bz_comment_text, .uneditable_textarea {
+/* tbody.file pre is for the Diff view of attachments. */
+.bz_comment_text, .uneditable_textarea, tbody.file pre {
      font-family: monospace;
-    /* Note that these must all be on separate lines or they stop
-       working in Konqueror. */
-     white-space: pre-wrap;      /* CSS 3 & 2.1 */
-     white-space: -moz-pre-wrap; /* Gecko */
-     white-space: -pre-wrap;     /* Opera 4-6 */
-     white-space: -o-pre-wrap;   /* Opera 7 */
+     white-space: pre-wrap;
 }
 
 .bz_comment_text {
@@ -377,6 +383,10 @@ input.requestee {
     font-size: x-large;
 }
 
+.warning {
+  color: red;
+}
+
 .throw_error {
     background-color: #ff0000;
     color: black;
@@ -397,6 +407,12 @@ dl dl > dt {
 
 #admin_table th {
     white-space: normal !important;
+}
+
+/* Arrow buttons are buttons with only &uarr;, &darr;, &larr; or &rarr; on
+ * them. We want these to look a little less spidery. */
+.arrow_button {
+    font-size: 150%;
 }
 
 /* Style of the attachment table and time tracking table */
@@ -549,31 +565,4 @@ input.required, select.required, span.required_explanation {
 .validation_error_field, input.validation_error_field {
     border: 2px solid #B70000;
     background-color: #FFEBEB;
-}
-
-/*****************/
-/* colchange.cgi */
-/*****************/
-
-.image_button {
-    background-repeat: no-repeat;
-    background-position: center center;
-    width: 30px;
-    height: 20px;
-}
-
-#select_button {
-    background-image: url(global/right.png);
-}
-
-#deselect_button {
-    background-image: url(global/left.png);
-}
-
-#up_button {
-    background-image: url(global/up.png);
-}
-
-#down_button {
-    background-image: url(global/down.png);
 }

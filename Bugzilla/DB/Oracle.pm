@@ -194,13 +194,15 @@ sub sql_date_format {
     return "TO_CHAR($date, " . $self->quote($format) . ")";
 }
 
-sub sql_interval {
-    my ($self, $interval, $units) = @_;
+sub sql_date_math {
+    my ($self, $date, $operator, $interval, $units) = @_;
+    my $time_sql;
     if ($units =~ /YEAR|MONTH/i) {
-        return "NUMTOYMINTERVAL($interval,'$units')";
+        $time_sql = "NUMTOYMINTERVAL($interval,'$units')";
     } else{
-        return "NUMTODSINTERVAL($interval,'$units')";
+        $time_sql = "NUMTODSINTERVAL($interval,'$units')";
     }
+   return "$date $operator $time_sql";
 }
 
 sub sql_position {
@@ -244,7 +246,7 @@ sub bz_drop_table {
 # Dropping all FKs for a specified table. 
 sub _bz_drop_fks {
     my ($self, $table) = @_;
-    my @columns = $self->_bz_real_schema->get_table_columns($table);
+    my @columns = $self->bz_table_columns($table);
     foreach my $column (@columns) {
         $self->bz_drop_fk($table, $column);
     }
@@ -646,6 +648,10 @@ sub bz_setup_database {
                 my $fk_name = $self->_bz_schema->_get_fk_name($table,
                                                               $column,
                                                               $references);
+                # bz_rename_table didn't rename the trigger correctly.
+                if ($table eq 'bug_tag' && $to_table eq 'tags') {
+                    $to_table = 'tag';
+                }
                 if ( $update =~ /CASCADE/i ){
                      my $trigger_name = uc($fk_name . "_UC");
                      my $exist_trigger = $self->selectcol_arrayref(

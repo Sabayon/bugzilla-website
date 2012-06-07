@@ -150,14 +150,36 @@ sub REQUIRED_MODULES {
     {
         package => 'URI',
         module  => 'URI',
-        version => 0
+        # This version properly handles a semicolon as the delimiter
+        # in a URL query string.
+        version => '1.37',
     },
     {
         package => 'List-MoreUtils',
         module  => 'List::MoreUtils',
         version => 0.22,
     },
+    {
+        package => 'Math-Random-ISAAC',
+        module  => 'Math::Random::ISAAC',
+        version => '1.0.1',
+    },
     );
+
+    if (ON_WINDOWS) {
+        push(@modules, {
+            package => 'Win32',
+            module  => 'Win32',
+            # 0.35 fixes a memory leak in GetOSVersion, which we use.
+            version => 0.35,
+        }, 
+        {
+            package => 'Win32-API',
+            module  => 'Win32::API',
+            # 0.55 fixes a bug with char* that might affect Bugzilla::RNG.
+            version => '0.55',
+        });
+    }
 
     my $extra_modules = _get_extension_requirements('REQUIRED_MODULES');
     push(@modules, @$extra_modules);
@@ -222,7 +244,8 @@ sub OPTIONAL_MODULES {
     {
         package => 'PatchReader',
         module  => 'PatchReader',
-        version => '0.9.4',
+        # 0.9.6 fixes two notable bugs and significantly improves the UX.
+        version => '0.9.6',
         feature => ['patch_viewer'],
     },
     {
@@ -283,6 +306,19 @@ sub OPTIONAL_MODULES {
         version => 0,
         feature => ['html_desc'],
     },
+    {
+        # we need version 2.21 of Encode for mime_name
+        package => 'Encode',
+        module  => 'Encode',
+        version => 2.21,
+        feature => ['detect_charset'],
+    },
+    {
+        package => 'Encode-Detect',
+        module  => 'Encode::Detect',
+        version => 0,
+        feature => ['detect_charset'],
+    },
 
     # Inbound Email
     {
@@ -322,29 +358,11 @@ sub OPTIONAL_MODULES {
     {
         package => 'Apache-SizeLimit',
         module  => 'Apache2::SizeLimit',
-        # 0.93 fixes problems on Linux and Windows, and changes the
-        # syntax used by SizeLimit.
-        version => '0.93',
+        # 0.96 properly determines process size on Linux.
+        version => '0.96',
         feature => ['mod_perl'],
     },
-    {
-        package => 'Math-Random-Secure',
-        module  => 'Math::Random::Secure',
-        # This is the first version that installs properly on Windows.
-        version => '0.05',
-        feature => ['rand_security'],
-    },
     );
-
-    if (ON_WINDOWS) {
-        # SizeLimit needs Win32::API to work on Windows.
-        push(@modules, {
-            package => 'Win32-API',
-            module  => 'Win32::API',
-            version => 0,
-            feature => ['mod_perl'],
-        });
-    }
 
     my $extra_modules = _get_extension_requirements('OPTIONAL_MODULES');
     push(@modules, @$extra_modules);
@@ -606,18 +624,18 @@ sub _translate_feature {
 sub check_graphviz {
     my ($output) = @_;
 
-    return 1 if (Bugzilla->params->{'webdotbase'} =~ /^https?:/);
+    my $webdotbase = Bugzilla->params->{'webdotbase'};
+    return 1 if $webdotbase =~ /^https?:/;
 
     my $return;
-    $return = 1 if -x Bugzilla->params->{'webdotbase'};
+    $return = 1 if -x $webdotbase;
 
     if ($output) {
         _checking_for({ package => 'GraphViz', ok => $return });
     }
 
     if (!$return) {
-        print "not a valid executable: " . Bugzilla->params->{'webdotbase'}
-              . "\n";
+        print install_string('bad_executable', { bin => $webdotbase }), "\n";
     }
 
     my $webdotdir = bz_locations()->{'webdotdir'};
@@ -626,8 +644,8 @@ sub check_graphviz {
         my $htaccess = new IO::File("$webdotdir/.htaccess", 'r') 
             || die "$webdotdir/.htaccess: " . $!;
         if (!grep(/png/, $htaccess->getlines)) {
-            print "Dependency graph images are not accessible.\n";
-            print "delete $webdotdir/.htaccess and re-run checksetup.pl to fix.\n";
+            print STDERR install_string('webdot_bad_htaccess',
+                                        { dir => $webdotdir }), "\n";
         }
         $htaccess->close;
     }

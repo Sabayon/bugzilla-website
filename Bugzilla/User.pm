@@ -52,7 +52,6 @@ use Bugzilla::Field;
 use Bugzilla::Group;
 
 use DateTime::TimeZone;
-use Digest::MD5 qw(md5_hex);
 use List::Util qw(max);
 use Scalar::Util qw(blessed);
 use Storable qw(dclone);
@@ -83,6 +82,7 @@ use constant DEFAULT_USER => {
     'showmybugslink' => 0,
     'disabledtext'   => '',
     'disable_mail'   => 0,
+    'is_enabled'     => 1, 
 };
 
 use constant DB_TABLE => 'profiles';
@@ -98,6 +98,8 @@ use constant DB_COLUMNS => (
     'profiles.mybugslink AS showmybugslink',
     'profiles.disabledtext',
     'profiles.disable_mail',
+    'profiles.extern_id',
+    'profiles.is_enabled', 
 );
 use constant NAME_FIELD => 'login_name';
 use constant ID_FIELD   => 'userid';
@@ -109,6 +111,8 @@ use constant VALIDATORS => {
     disabledtext  => \&_check_disabledtext,
     login_name    => \&check_login_name_for_creation,
     realname      => \&_check_realname,
+    extern_id     => \&_check_extern_id,
+    is_enabled    => \&_check_is_enabled, 
 };
 
 sub UPDATE_COLUMNS {
@@ -118,10 +122,18 @@ sub UPDATE_COLUMNS {
         disabledtext
         login_name
         realname
+        extern_id
+        is_enabled
     );
     push(@cols, 'cryptpassword') if exists $self->{cryptpassword};
     return @cols;
 };
+
+use constant VALIDATOR_DEPENDENCIES => {
+    is_enabled => ['disabledtext'], 
+};
+
+use constant EXTRA_REQUIRED_FIELDS => qw(is_enabled);
 
 ################################################################################
 # Functions
@@ -136,6 +148,12 @@ sub new {
     bless ($user, $class);
     return $user unless $param;
 
+    if (ref($param) eq 'HASH') {
+        if (defined $param->{extern_id}) {
+            $param = { condition => 'extern_id = ?' , values => [$param->{extern_id}] };
+            $_[0] = $param;
+        }
+    }
     return $class->SUPER::new(@_);
 }
 
@@ -170,7 +188,7 @@ sub update {
 
     # XXX Can update profiles_activity here as soon as it understands
     #     field names like login_name.
-
+    
     return $changes;
 }
 
@@ -180,6 +198,22 @@ sub update {
 
 sub _check_disable_mail { return $_[1] ? 1 : 0; }
 sub _check_disabledtext { return trim($_[1]) || ''; }
+
+# Check whether the extern_id is unique.
+sub _check_extern_id {
+    my ($invocant, $extern_id) = @_;
+    $extern_id = trim($extern_id);
+    return undef unless defined($extern_id) && $extern_id ne "";
+    if (!ref($invocant) || $invocant->extern_id ne $extern_id) {
+        my $existing_login = $invocant->new({ extern_id => $extern_id });
+        if ($existing_login) {
+            ThrowUserError( 'extern_id_exists',
+                            { extern_id => $extern_id,
+                              existing_login_name => $existing_login->login });
+        }
+    }
+    return $extern_id;
+}
 
 # This is public since createaccount.cgi needs to use it before issuing
 # a token for account creation.
@@ -214,12 +248,22 @@ sub _check_password {
 
 sub _check_realname { return trim($_[1]) || ''; }
 
+sub _check_is_enabled {
+    my ($invocant, $is_enabled, undef, $params) = @_;
+    # is_enabled is set automatically on creation depending on whether 
+    # disabledtext is empty (enabled) or not empty (disabled).
+    # When updating the user, is_enabled is set by calling set_disabledtext().
+    # Any value passed into this validator is ignored.
+    my $disabledtext = ref($invocant) ? $invocant->disabledtext : $params->{disabledtext};
+    return $disabledtext ? 0 : 1;
+}
+
 ################################################################################
 # Mutators
 ################################################################################
 
-sub set_disabledtext { $_[0]->set('disabledtext', $_[1]); }
 sub set_disable_mail { $_[0]->set('disable_mail', $_[1]); }
+sub set_extern_id    { $_[0]->set('extern_id', $_[1]); }
 
 sub set_login {
     my ($self, $login) = @_;
@@ -236,6 +280,10 @@ sub set_name {
 
 sub set_password { $_[0]->set('cryptpassword', $_[1]); }
 
+sub set_disabledtext {
+    $_[0]->set('disabledtext', $_[1]);
+    $_[0]->set('is_enabled', $_[1] ? 0 : 1);
+}
 
 ################################################################################
 # Methods
@@ -244,9 +292,10 @@ sub set_password { $_[0]->set('cryptpassword', $_[1]); }
 # Accessors for user attributes
 sub name  { $_[0]->{realname};   }
 sub login { $_[0]->{login_name}; }
+sub extern_id { $_[0]->{extern_id}; }
 sub email { $_[0]->login . Bugzilla->params->{'emailsuffix'}; }
 sub disabledtext { $_[0]->{'disabledtext'}; }
-sub is_disabled { $_[0]->disabledtext ? 1 : 0; }
+sub is_enabled { $_[0]->{'is_enabled'} ? 1 : 0; }
 sub showmybugslink { $_[0]->{showmybugslink}; }
 sub email_disabled { $_[0]->{disable_mail}; }
 sub email_enabled { !($_[0]->{disable_mail}); }
@@ -259,7 +308,6 @@ sub cryptpassword {
         undef, $self->id);
     return $pw;
 }
-sub email_md5 { md5_hex(lc($_[0]->login . Bugzilla->params->{'emailsuffix'})); }
 
 sub set_authorizer {
     my ($self, $authorizer) = @_;
@@ -363,6 +411,24 @@ sub queries_available {
     $self->{queries_available} =
         Bugzilla::Search::Saved->new_from_list($avail_query_ids);
     return $self->{queries_available};
+}
+
+sub tags {
+    my $self = shift;
+    my $dbh = Bugzilla->dbh;
+
+    if (!defined $self->{tags}) {
+        # We must use LEFT JOIN instead of INNER JOIN as we may be
+        # in the process of inserting a new tag to some bugs,
+        # in which case there are no bugs with this tag yet.
+        $self->{tags} = $dbh->selectall_hashref(
+            'SELECT name, id, COUNT(bug_id) AS bug_count
+               FROM tag
+          LEFT JOIN bug_tag ON bug_tag.tag_id = tag.id
+              WHERE user_id = ? ' . $dbh->sql_group_by('id', 'name'),
+            'name', undef, $self->id);
+    }
+    return $self->{tags};
 }
 
 ##########################
@@ -526,11 +592,16 @@ sub settings {
     return $self->{'settings'};
 }
 
+sub setting {
+    my ($self, $name) = @_;
+    return $self->settings->{$name}->{'value'};
+}
+
 sub timezone {
     my $self = shift;
 
     if (!defined $self->{timezone}) {
-        my $tz = $self->settings->{timezone}->{value};
+        my $tz = $self->setting('timezone');
         if ($tz eq 'local') {
             # The user wants the local timezone of the server.
             $self->{timezone} = Bugzilla->local_timezone;
@@ -606,18 +677,28 @@ sub groups {
     return $self->{groups};
 }
 
+# It turns out that calling ->id on objects a few hundred thousand
+# times is pretty slow. (It showed up as a significant time contributor
+# when profiling xt/search.t.) So we cache the group ids separately from
+# groups for functions that need the group ids.
+sub _group_ids {
+    my ($self) = @_;
+    $self->{group_ids} ||= [map { $_->id } @{ $self->groups }];
+    return $self->{group_ids};
+}
+
 sub groups_as_string {
     my $self = shift;
-    my @ids = map { $_->id } @{ $self->groups };
-    return scalar(@ids) ? join(',', @ids) : '-1';
+    my $ids = $self->_group_ids;
+    return scalar(@$ids) ? join(',', @$ids) : '-1';
 }
 
 sub groups_in_sql {
     my ($self, $field) = @_;
     $field ||= 'group_id';
-    my @ids = map { $_->id } @{ $self->groups };
-    @ids = (-1) if !scalar @ids;
-    return Bugzilla->dbh->sql_in($field, \@ids);
+    my $ids = $self->_group_ids;
+    $ids = [-1] if !scalar @$ids;
+    return Bugzilla->dbh->sql_in($field, $ids);
 }
 
 sub bless_groups {
@@ -922,11 +1003,15 @@ sub can_enter_product {
         ThrowUserError('product_disabled', { product => $product });
     }
     # It could have no components...
-    elsif (!@{$product->components}) {
+    elsif (!@{$product->components}
+           || !grep { $_->is_active } @{$product->components})
+    {
         ThrowUserError('missing_component', { product => $product });
     }
     # It could have no versions...
-    elsif (!@{$product->versions}) {
+    elsif (!@{$product->versions}
+           || !grep { $_->is_active } @{$product->versions})
+    {
         ThrowUserError ('missing_version', { product => $product });
     }
 
@@ -942,28 +1027,31 @@ sub get_enterable_products {
     }
 
      # All products which the user has "Entry" access to.
-     my @enterable_ids =@{$dbh->selectcol_arrayref(
+     my $enterable_ids = $dbh->selectcol_arrayref(
            'SELECT products.id FROM products
          LEFT JOIN group_control_map
                    ON group_control_map.product_id = products.id
                       AND group_control_map.entry != 0
                       AND group_id NOT IN (' . $self->groups_as_string . ')
             WHERE group_id IS NULL
-                  AND products.isactive = 1') || []};
+                  AND products.isactive = 1');
 
-    if (@enterable_ids) {
+    if (scalar @$enterable_ids) {
         # And all of these products must have at least one component
         # and one version.
-        @enterable_ids = @{$dbh->selectcol_arrayref(
-               'SELECT DISTINCT products.id FROM products
-            INNER JOIN components ON components.product_id = products.id
-            INNER JOIN versions ON versions.product_id = products.id
-                 WHERE products.id IN (' . (join(',', @enterable_ids)) .
-            ')') || []};
+        $enterable_ids = $dbh->selectcol_arrayref(
+            'SELECT DISTINCT products.id FROM products
+              WHERE ' . $dbh->sql_in('products.id', $enterable_ids) .
+              ' AND products.id IN (SELECT DISTINCT components.product_id
+                                      FROM components
+                                     WHERE components.isactive = 1)
+                AND products.id IN (SELECT DISTINCT versions.product_id
+                                      FROM versions
+                                     WHERE versions.isactive = 1)');
     }
 
     $self->{enterable_products} =
-         Bugzilla::Product->new_from_list(\@enterable_ids);
+         Bugzilla::Product->new_from_list($enterable_ids);
     return $self->{enterable_products};
 }
 
@@ -996,6 +1084,49 @@ sub check_can_admin_product {
 
     # Return the validated product object.
     return $product;
+}
+
+sub check_can_admin_flagtype {
+    my ($self, $flagtype_id) = @_;
+
+    my $flagtype = Bugzilla::FlagType->check({ id => $flagtype_id });
+    my $can_fully_edit = 1;
+
+    if (!$self->in_group('editcomponents')) {
+        my $products = $self->get_products_by_permission('editcomponents');
+        # You need editcomponents privs for at least one product to have
+        # a chance to edit the flagtype.
+        scalar(@$products)
+          || ThrowUserError('auth_failure', {group  => 'editcomponents',
+                                             action => 'edit',
+                                             object => 'flagtypes'});
+        my $can_admin = 0;
+        my $i = $flagtype->inclusions_as_hash;
+        my $e = $flagtype->exclusions_as_hash;
+
+        # If there is at least one product for which the user doesn't have
+        # editcomponents privs, then don't allow him to do everything with
+        # this flagtype, independently of whether this product is in the
+        # exclusion list or not.
+        my %product_ids;
+        map { $product_ids{$_->id} = 1 } @$products;
+        $can_fully_edit = 0 if grep { !$product_ids{$_} } keys %$i;
+
+        unless ($e->{0}->{0}) {
+            foreach my $product (@$products) {
+                my $id = $product->id;
+                next if $e->{$id}->{0};
+                # If we are here, the product has not been explicitly excluded.
+                # Check whether it's explicitly included, or at least one of
+                # its components.
+                $can_admin = ($i->{0}->{0} || $i->{$id}->{0}
+                              || scalar(grep { !$e->{$id}->{$_} } keys %{$i->{$id}}));
+                last if $can_admin;
+            }
+        }
+        $can_admin || ThrowUserError('flag_type_not_editable', { flagtype => $flagtype });
+    }
+    return wantarray ? ($flagtype, $can_fully_edit) : $flagtype;
 }
 
 sub can_request_flag {
@@ -1099,7 +1230,7 @@ sub queryshare_groups {
             }
         }
         else {
-            @queryshare_groups = map { $_->id } @{ $self->groups };
+            @queryshare_groups = @{ $self->_group_ids };
         }
     }
 
@@ -1244,7 +1375,7 @@ sub match {
                       "AND group_id IN(" .
                       join(', ', (-1, @{$user->visible_groups_inherited})) . ") ";
         }
-        $query    .= " AND disabledtext = '' " if $exclude_disabled;
+        $query    .= " AND is_enabled = 1 " if $exclude_disabled;
         $query    .= $dbh->sql_limit($limit) if $limit;
 
         # Execute the query, retrieve the results, and make them into
@@ -1279,7 +1410,7 @@ sub match {
                       " AND group_id IN(" .
                 join(', ', (-1, @{$user->visible_groups_inherited})) . ") ";
         }
-        $query     .= " AND disabledtext = '' " if $exclude_disabled;
+        $query     .= " AND is_enabled = 1 " if $exclude_disabled;
         $query     .= $dbh->sql_limit($limit) if $limit;
         my $user_ids = $dbh->selectcol_arrayref($query, undef, ($str, $str));
         @users = @{Bugzilla::User->new_from_list($user_ids)};
@@ -1488,35 +1619,33 @@ sub match_field {
 
 }
 
-# Changes in some fields automatically trigger events. The 'field names' are
-# from the fielddefs table. We really should be using proper field names 
-# throughout.
+# Changes in some fields automatically trigger events. The field names are
+# from the fielddefs table.
 our %names_to_events = (
-    'Resolution'             => EVT_OPENED_CLOSED,
-    'Keywords'               => EVT_KEYWORD,
-    'CC'                     => EVT_CC,
-    'Severity'               => EVT_PROJ_MANAGEMENT,
-    'Priority'               => EVT_PROJ_MANAGEMENT,
-    'Status'                 => EVT_PROJ_MANAGEMENT,
-    'Target Milestone'       => EVT_PROJ_MANAGEMENT,
-    'Attachment description' => EVT_ATTACHMENT_DATA,
-    'Attachment mime type'   => EVT_ATTACHMENT_DATA,
-    'Attachment is patch'    => EVT_ATTACHMENT_DATA,
-    'Depends on'             => EVT_DEPEND_BLOCK,
-    'Blocks'                 => EVT_DEPEND_BLOCK);
+    'resolution'              => EVT_OPENED_CLOSED,
+    'keywords'                => EVT_KEYWORD,
+    'cc'                      => EVT_CC,
+    'bug_severity'            => EVT_PROJ_MANAGEMENT,
+    'priority'                => EVT_PROJ_MANAGEMENT,
+    'bug_status'              => EVT_PROJ_MANAGEMENT,
+    'target_milestone'        => EVT_PROJ_MANAGEMENT,
+    'attachments.description' => EVT_ATTACHMENT_DATA,
+    'attachments.mimetype'    => EVT_ATTACHMENT_DATA,
+    'attachments.ispatch'     => EVT_ATTACHMENT_DATA,
+    'dependson'               => EVT_DEPEND_BLOCK,
+    'blocked'                 => EVT_DEPEND_BLOCK);
 
 # Returns true if the user wants mail for a given bug change.
 # Note: the "+" signs before the constants suppress bareword quoting.
 sub wants_bug_mail {
     my $self = shift;
-    my ($bug_id, $relationship, $fieldDiffs, $comments, $dependencyText,
-        $changer, $bug_is_new) = @_;
+    my ($bug, $relationship, $fieldDiffs, $comments, $dep_mail, $changer) = @_;
 
     # Make a list of the events which have happened during this bug change,
     # from the point of view of this user.    
     my %events;    
-    foreach my $ref (@$fieldDiffs) {
-        my ($who, $whoname, $fieldName, $when, $old, $new) = @$ref;
+    foreach my $change (@$fieldDiffs) {
+        my $fieldName = $change->{field_name};
         # A change to any of the above fields sets the corresponding event
         if (defined($names_to_events{$fieldName})) {
             $events{$names_to_events{$fieldName}} = 1;
@@ -1528,16 +1657,16 @@ sub wants_bug_mail {
 
         # If the user is in a particular role and the value of that role
         # changed, we need the ADDED_REMOVED event.
-        if (($fieldName eq "AssignedTo" && $relationship == REL_ASSIGNEE) ||
-            ($fieldName eq "QAContact" && $relationship == REL_QA)) 
+        if (($fieldName eq "assigned_to" && $relationship == REL_ASSIGNEE) ||
+            ($fieldName eq "qa_contact" && $relationship == REL_QA))
         {
             $events{+EVT_ADDED_REMOVED} = 1;
         }
         
-        if ($fieldName eq "CC") {
+        if ($fieldName eq "cc") {
             my $login = $self->login;
-            my $inold = ($old =~ /^(.*,\s*)?\Q$login\E(,.*)?$/);
-            my $innew = ($new =~ /^(.*,\s*)?\Q$login\E(,.*)?$/);
+            my $inold = ($change->{old} =~ /^(.*,\s*)?\Q$login\E(,.*)?$/);
+            my $innew = ($change->{new} =~ /^(.*,\s*)?\Q$login\E(,.*)?$/);
             if ($inold != $innew)
             {
                 $events{+EVT_ADDED_REMOVED} = 1;
@@ -1545,7 +1674,7 @@ sub wants_bug_mail {
         }
     }
 
-    if ($bug_is_new) {
+    if (!$bug->lastdiffed) {
         # Notify about new bugs.
         $events{+EVT_BUG_CREATED} = 1;
 
@@ -1568,7 +1697,7 @@ sub wants_bug_mail {
     
     # Dependent changed bugmails must have an event to ensure the bugmail is
     # emailed.
-    if ($dependencyText ne '') {
+    if ($dep_mail) {
         $events{+EVT_DEPEND_BLOCK} = 1;
     }
 
@@ -1585,19 +1714,8 @@ sub wants_bug_mail {
         $wants_mail &= $self->wants_mail([EVT_CHANGED_BY_ME], $relationship);
     }    
     
-    if ($wants_mail) {
-        my $dbh = Bugzilla->dbh;
-        # We don't create a Bug object from the bug_id here because we only
-        # need one piece of information, and doing so (as of 2004-11-23) slows
-        # down bugmail sending by a factor of 2. If Bug creation was more
-        # lazy, this might not be so bad.
-        my $bug_status = $dbh->selectrow_array('SELECT bug_status
-                                                FROM bugs WHERE bug_id = ?',
-                                                undef, $bug_id);
-
-        if ($bug_status eq "UNCONFIRMED") {
-            $wants_mail &= $self->wants_mail([EVT_UNCONFIRMED], $relationship);
-        }
+    if ($wants_mail && $bug->bug_status eq 'UNCONFIRMED') {
+        $wants_mail &= $self->wants_mail([EVT_UNCONFIRMED], $relationship);
     }
     
     return $wants_mail;
@@ -1644,6 +1762,18 @@ sub mail_settings {
         $self->{'mail_settings'} = \%mail;
     }
     return $self->{'mail_settings'};
+}
+
+sub has_audit_entries {
+    my $self = shift;
+    my $dbh = Bugzilla->dbh;
+
+    if (!exists $self->{'has_audit_entries'}) {
+        $self->{'has_audit_entries'} =
+            $dbh->selectrow_array('SELECT 1 FROM audit_log WHERE user_id = ? ' .
+                                   $dbh->sql_limit(1), undef, $self->id);
+    }
+    return $self->{'has_audit_entries'};
 }
 
 sub is_insider {
@@ -1697,7 +1827,7 @@ sub get_userlist {
                   "AND group_id IN(" .
                   join(', ', (-1, @{$self->visible_groups_inherited})) . ")";
     }
-    $query    .= " WHERE disabledtext = '' ";
+    $query    .= " WHERE is_enabled = 1 ";
     $query    .= $dbh->sql_group_by('userid', 'login_name, realname');
 
     my $sth = $dbh->prepare($query);
@@ -1800,12 +1930,13 @@ sub clear_login_failures {
 sub account_ip_login_failures {
     my $self = shift;
     my $dbh = Bugzilla->dbh;
-    my $time = $dbh->sql_interval(LOGIN_LOCKOUT_INTERVAL, 'MINUTE');
+    my $time = $dbh->sql_date_math('LOCALTIMESTAMP(0)', '-', 
+                                   LOGIN_LOCKOUT_INTERVAL, 'MINUTE');
     my $ip_addr = remote_ip();
     trick_taint($ip_addr);
     $self->{account_ip_login_failures} ||= Bugzilla->dbh->selectall_arrayref(
         "SELECT login_time, ip_addr, user_id FROM login_failure
-          WHERE user_id = ? AND login_time > LOCALTIMESTAMP(0) - $time
+          WHERE user_id = ? AND login_time > $time
                 AND ip_addr = ?
        ORDER BY login_time", {Slice => {}}, $self->id, $ip_addr);
     return $self->{account_ip_login_failures};
@@ -1880,15 +2011,31 @@ sub check_and_send_account_creation_confirmation {
     Bugzilla::Token::issue_new_user_account_token($login);
 }
 
+# This is used in a few performance-critical areas where we don't want to
+# do check() and pull all the user data from the database.
 sub login_to_id {
     my ($login, $throw_error) = @_;
     my $dbh = Bugzilla->dbh;
-    # No need to validate $login -- it will be used by the following SELECT
-    # statement only, so it's safe to simply trick_taint.
-    trick_taint($login);
-    my $user_id = $dbh->selectrow_array("SELECT userid FROM profiles WHERE " .
-                                        $dbh->sql_istrcmp('login_name', '?'),
-                                        undef, $login);
+    my $cache = Bugzilla->request_cache->{user_login_to_id} ||= {};
+
+    # We cache lookups because this function showed up as taking up a 
+    # significant amount of time in profiles of xt/search.t. However,
+    # for users that don't exist, we re-do the check every time, because
+    # otherwise we break is_available_username.
+    my $user_id;
+    if (defined $cache->{$login}) {
+        $user_id = $cache->{$login};
+    }
+    else {
+        # No need to validate $login -- it will be used by the following SELECT
+        # statement only, so it's safe to simply trick_taint.
+        trick_taint($login);
+        $user_id = $dbh->selectrow_array(
+            "SELECT userid FROM profiles 
+              WHERE " . $dbh->sql_istrcmp('login_name', '?'), undef, $login);
+        $cache->{$login} = $user_id;
+    }
+
     if ($user_id) {
         return $user_id;
     } elsif ($throw_error) {
@@ -1917,6 +2064,19 @@ sub validate_password {
     } elsif ((defined $matchpassword) && ($password ne $matchpassword)) {
         ThrowUserError('passwords_dont_match');
     }
+    
+    my $complexity_level = Bugzilla->params->{password_complexity};
+    if ($complexity_level eq 'letters_numbers_specialchars') {
+        ThrowUserError('password_not_complex')
+          if ($password !~ /\w/ || $password !~ /\d/ || $password !~ /[[:punct:]]/);
+    } elsif ($complexity_level eq 'letters_numbers') {
+        ThrowUserError('password_not_complex')
+          if ($password !~ /[[:lower:]]/ || $password !~ /[[:upper:]]/ || $password !~ /\d/);
+    } elsif ($complexity_level eq 'mixed_letters') {
+        ThrowUserError('password_not_complex')
+          if ($password !~ /[[:lower:]]/ || $password !~ /[[:upper:]]/);
+    }
+
     # Having done these checks makes us consider the password untainted.
     trick_taint($_[0]);
     return 1;
@@ -2032,6 +2192,11 @@ internally, such code must call this method to flush the cached result.
 An arrayref of group ids. The user can share their own queries with these
 groups.
 
+=item C<tags>
+
+Returns a hashref with tag IDs as key, and a hashref with tag 'id',
+'name' and 'bug_count' as value.
+
 =back
 
 =head2 Account Lockout
@@ -2124,6 +2289,10 @@ value          - the value of this setting for this user. Will be the same
                  is_default is true.
 is_default     - a boolean to indicate whether the user has chosen to make
                  a preference for themself or use the site default.
+
+=item C<setting(name)>
+
+Returns the value for the specified setting.
 
 =item C<timezone>
 
@@ -2274,6 +2443,21 @@ not be aware of the existence of the product.
  Params:      $product_name - a product name.
 
  Returns:     On success, a product object. On failure, an error is thrown.
+
+=item C<check_can_admin_flagtype($flagtype_id)>
+
+ Description: Checks whether the user is allowed to edit properties of the flag type.
+              If the flag type is also used by some products for which the user
+              hasn't editcomponents privs, then the user is only allowed to edit
+              the inclusion and exclusion lists for products he can administrate.
+
+ Params:      $flagtype_id - a flag type ID.
+
+ Returns:     On success, a flag type object. On failure, an error is thrown.
+              In list context, a boolean indicating whether the user can edit
+              all properties of the flag type is also returned. The boolean
+              is false if the user can only edit the inclusion and exclusions
+              lists.
 
 =item C<can_request_flag($flag_type)>
 

@@ -53,7 +53,7 @@ use Bugzilla::Attachment::PatchReader;
 use Bugzilla::Token;
 use Bugzilla::Keyword;
 
-use Encode qw(encode);
+use Encode qw(encode find_encoding);
 
 # For most scripts we don't make $cgi and $template global variables. But
 # when preparing Bugzilla for mod_perl, this script used these
@@ -399,6 +399,12 @@ sub view {
         # In order to prevent Apache from adding a charset, we have to send a
         # charset that's a single space.
         $cgi->charset(' ');
+        if (Bugzilla->feature('detect_charset') && $contenttype =~ /^text\//) {
+            my $encoding = detect_encoding($attachment->data);
+            if ($encoding) {
+                $cgi->charset(find_encoding($encoding)->mime_name);
+            }
+        }
     }
     print $cgi->header(-type=>"$contenttype; name=\"$filename\"",
                        -content_disposition=> "$disposition; filename=\"$filename\"",
@@ -450,6 +456,11 @@ sub viewall {
     # Ignore deleted attachments.
     @$attachments = grep { $_->datasize } @$attachments;
 
+    if ($cgi->param('hide_obsolete')) {
+        @$attachments = grep { !$_->isobsolete } @$attachments;
+        $vars->{'hide_obsolete'} = 1;
+    }
+
     # Define the variables and functions that will be passed to the UI template.
     $vars->{'bug'} = $bug;
     $vars->{'attachments'} = $attachments;
@@ -490,7 +501,7 @@ sub enter {
   $vars->{'flag_types'} = $flag_types;
   $vars->{'any_flags_requesteeble'} =
     grep { $_->is_requestable && $_->is_requesteeble } @$flag_types;
-  $vars->{'token'} = issue_session_token('create_attachment:');
+  $vars->{'token'} = issue_session_token('create_attachment');
 
   print $cgi->header();
 
@@ -513,27 +524,7 @@ sub insert {
 
     # Detect if the user already used the same form to submit an attachment
     my $token = trim($cgi->param('token'));
-    if ($token) {
-        my ($creator_id, $date, $old_attach_id) = Bugzilla::Token::GetTokenData($token);
-        unless ($creator_id 
-            && ($creator_id == $user->id) 
-                && ($old_attach_id =~ "^create_attachment:")) 
-        {
-            # The token is invalid.
-            ThrowUserError('token_does_not_exist');
-        }
-    
-        $old_attach_id =~ s/^create_attachment://;
-   
-        if ($old_attach_id) {
-            $vars->{'bugid'} = $bugid;
-            $vars->{'attachid'} = $old_attach_id;
-            print $cgi->header();
-            $template->process("attachment/cancel-create-dupe.html.tmpl",  $vars)
-                || ThrowTemplateError($template->error());
-            exit;
-        }
-    }
+    check_token_data($token, 'create_attachment', 'index.cgi');
 
     # Check attachments the user tries to mark as obsolete.
     my @obsolete_attachments;
@@ -551,15 +542,16 @@ sub insert {
     my $attachment = Bugzilla::Attachment->create(
         {bug           => $bug,
          creation_ts   => $timestamp,
-         data          => scalar $cgi->param('attachurl') || $data_fh,
+         data          => scalar $cgi->param('attach_text') || $data_fh,
          description   => scalar $cgi->param('description'),
-         filename      => $cgi->param('attachurl') ? '' : scalar $cgi->upload('data'),
+         filename      => $cgi->param('attach_text') ? "file_$bugid.txt" : scalar $cgi->upload('data'),
          ispatch       => scalar $cgi->param('ispatch'),
          isprivate     => scalar $cgi->param('isprivate'),
-         isurl         => scalar $cgi->param('attachurl'),
          mimetype      => $content_type,
-         store_in_file => scalar $cgi->param('bigfile'),
          });
+
+    # Delete the token used to create this attachment.
+    delete_token($token);
 
     foreach my $obsolete_attachment (@obsolete_attachments) {
         $obsolete_attachment->set_is_obsolete(1);
@@ -597,12 +589,6 @@ sub insert {
       $bug->set_assigned_to($user);
   }
   $bug->update($timestamp);
-
-  if ($token) {
-      trick_taint($token);
-      $dbh->do('UPDATE tokens SET eventdata = ? WHERE token = ?', undef,
-               ("create_attachment:" . $attachment->id, $token));
-  }
 
   $dbh->bz_commit_transaction;
 

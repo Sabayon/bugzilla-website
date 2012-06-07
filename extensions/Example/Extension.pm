@@ -196,6 +196,22 @@ sub buglist_columns {
     
     my $columns = $args->{'columns'};
     $columns->{'example'} = { 'name' => 'bugs.delta_ts' , 'title' => 'Example' };
+    $columns->{'product_desc'} = { 'name'  => 'prod_desc.description',
+                                   'title' => 'Product Description' };
+}
+
+sub buglist_column_joins {
+    my ($self, $args) = @_;
+    my $joins = $args->{'column_joins'};
+
+    # This column is added using the "buglist_columns" hook
+    $joins->{'product_desc'} = {
+        from  => 'product_id',
+        to    => 'id',
+        table => 'products',
+        as    => 'prod_desc',
+        join  => 'INNER',
+    };
 }
 
 sub search_operator_field_override {
@@ -211,15 +227,12 @@ sub search_operator_field_override {
 
 sub _component_nonchanged {
     my $original = shift;
-    my $invocant = shift;
+    my ($invocant, $args) = @_;
 
-    my %func_args = @_;
-    $invocant->$original(%func_args);
-
+    $invocant->$original($args);
     # Actually, it does not change anything in the result,
     # just an example.
-    my ($term) = @func_args{qw(term)};
-    $$term = $$term . " OR 1=2";
+    $args->{term} = $args->{term} . " OR 1=2";
 }
 
 sub bugmail_recipients {
@@ -264,9 +277,14 @@ sub config_modify_panels {
     my $auth_params = $panels->{'auth'}->{params};
     my ($info_class)   = grep($_->{name} eq 'user_info_class', @$auth_params);
     my ($verify_class) = grep($_->{name} eq 'user_verify_class', @$auth_params);
-    
+
     push(@{ $info_class->{choices} },   'CGI,Example');
     push(@{ $verify_class->{choices} }, 'Example');
+
+    push(@$auth_params, { name => 'param_example',
+                          type => 't',
+                          default => 0,
+                          checker => \&check_numeric });    
 }
 
 sub db_schema_abstract_schema {
@@ -335,6 +353,25 @@ sub enter_bug_entrydefaultvars {
     
     my $vars = $args->{vars};
     $vars->{'example'} = 1;
+}
+
+sub error_catch {
+    my ($self, $args) = @_;
+    # Customize the error message displayed when someone tries to access
+    # page.cgi with an invalid page ID, and keep track of this attempt
+    # in the web server log.
+    return unless Bugzilla->error_mode == ERROR_MODE_WEBPAGE;
+    return unless $args->{error} eq 'bad_page_cgi_id';
+
+    my $page_id = $args->{vars}->{page_id};
+    my $login = Bugzilla->user->identity || "Someone";
+    warn "$login attempted to access page.cgi with id = $page_id";
+
+    my $page = $args->{message};
+    my $new_error_msg = "Ah ah, you tried to access $page_id? Good try!";
+    $new_error_msg = html_quote($new_error_msg);
+    # There are better tools to parse an HTML page, but it's just an example.
+    $$page =~ s/(?<=<td id="error_msg" class="throw_error">).*(?=<\/td>)/$new_error_msg/si;
 }
 
 sub flag_end_of_update {
@@ -452,6 +489,26 @@ sub install_update_db {
 #    $dbh->bz_add_column('example', 'new_column',
 #                        {TYPE => 'INT2', NOTNULL => 1, DEFAULT => 0});
 #    $dbh->bz_add_index('example', 'example_new_column_idx', [qw(value)]);
+}
+
+sub install_update_db_fielddefs {
+    my $dbh = Bugzilla->dbh;
+#    $dbh->bz_add_column('fielddefs', 'example_column', 
+#                        {TYPE => 'MEDIUMTEXT', NOTNULL => 1, DEFAULT => ''});
+}
+
+sub job_map {
+    my ($self, $args) = @_;
+    
+    my $job_map = $args->{job_map};
+    
+    # This adds the named class (an instance of TheSchwartz::Worker) as a
+    # handler for when a job is added with the name "some_task".
+    $job_map->{'some_task'} = 'Bugzilla::Extension::Example::Job::SomeClass';
+    
+    # Schedule a job like this:
+    # my $queue = Bugzilla->job_queue();
+    # $queue->insert('some_task', { some_parameter => $some_variable });
 }
 
 sub mailer_before_send {
@@ -797,6 +854,20 @@ sub bug_check_can_change_field {
     {
         push(@$priv_results, PRIVILEGES_REQUIRED_NONE);
         return;
+    }
+}
+
+sub admin_editusers_action {
+    my ($self, $args) = @_;
+    my ($vars, $action, $user) = @$args{qw(vars action user)};
+    my $template = Bugzilla->template;
+
+    if ($action eq 'my_action') {
+        # Allow to restrict the search to any group the user is allowed to bless.
+        $vars->{'restrictablegroups'} = $user->bless_groups();
+        $template->process('admin/users/search.html.tmpl', $vars)
+            || ThrowTemplateError($template->error());
+        exit;
     }
 }
 

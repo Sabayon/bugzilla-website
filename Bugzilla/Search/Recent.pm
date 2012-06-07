@@ -33,6 +33,10 @@ use Bugzilla::Util;
 
 use constant DB_TABLE => 'profile_search';
 use constant LIST_ORDER => 'id DESC';
+# Do not track buglists viewed by users.
+use constant AUDIT_CREATES => 0;
+use constant AUDIT_UPDATES => 0;
+use constant AUDIT_REMOVES => 0;
 
 use constant DB_COLUMNS => qw(
     id
@@ -57,14 +61,16 @@ sub create {
     my $class = shift;
     my $dbh = Bugzilla->dbh;
     $dbh->bz_start_transaction();
-    my $search = $class->SUPER::create(@_);   
+    my $search = $class->SUPER::create(@_);
+    my $user_id = $search->user_id;
 
     # Enforce there only being SAVE_NUM_SEARCHES per user.
-    my ($num_searches, $min_id) = $dbh->selectrow_array(
-        'SELECT COUNT(*), MIN(id) FROM profile_search WHERE user_id = ?',
-        undef, $search->user_id);
-    if ($num_searches > SAVE_NUM_SEARCHES) {
-        $dbh->do('DELETE FROM profile_search WHERE id = ?', undef, $min_id);
+    my $min_id = $dbh->selectrow_array(
+        'SELECT id FROM profile_search WHERE user_id = ? ORDER BY id DESC '
+        . $dbh->sql_limit(1, SAVE_NUM_SEARCHES), undef, $user_id);
+    if ($min_id) {
+        $dbh->do('DELETE FROM profile_search WHERE user_id = ? AND id <= ?',
+                 undef, ($user_id, $min_id));
     }
     $dbh->bz_commit_transaction();
     return $search;

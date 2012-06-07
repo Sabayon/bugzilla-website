@@ -57,8 +57,9 @@ sub DoAccount {
        Bugzilla::Token::CleanTokenTable();
 
         my @token = $dbh->selectrow_array(
-            "SELECT tokentype, issuedate + " .
-                    $dbh->sql_interval(MAX_TOKEN_AGE, 'DAY') . ", eventdata
+            "SELECT tokentype, " .
+                    $dbh->sql_date_math('issuedate', '+', MAX_TOKEN_AGE, 'DAY')
+                    . ", eventdata
                FROM tokens
               WHERE userid = ?
                 AND tokentype LIKE 'email%'
@@ -83,8 +84,6 @@ sub SaveAccount {
     my $oldpassword = $cgi->param('old_password');
     my $pwd1 = $cgi->param('new_password1');
     my $pwd2 = $cgi->param('new_password2');
-
-    my $old_login_name = $user->login;
     my $new_login_name = trim($cgi->param('new_login_name'));
 
     if ($user->authorizer->can_change_password
@@ -118,7 +117,7 @@ sub SaveAccount {
         && Bugzilla->params->{"allowemailchange"}
         && $new_login_name)
     {
-        if ($old_login_name ne $new_login_name) {
+        if ($user->login ne $new_login_name) {
             $oldpassword || ThrowUserError("old_password_required");
 
             # Block multiple email changes for the same user.
@@ -132,8 +131,7 @@ sub SaveAccount {
             is_available_username($new_login_name)
               || ThrowUserError("account_exists", {email => $new_login_name});
 
-            Bugzilla::Token::IssueEmailChangeToken($user, $old_login_name,
-                                                   $new_login_name);
+            Bugzilla::Token::IssueEmailChangeToken($user, $new_login_name);
 
             $vars->{'email_changes_saved'} = 1;
         }
@@ -516,6 +514,16 @@ check_token_data($token, 'edit_user_prefs') if $save_changes;
 
 # Do any saving, and then display the current tab.
 SWITCH: for ($current_tab_name) {
+
+    # Extensions must set it to 1 to confirm the tab is valid.
+    my $handled = 0;
+    Bugzilla::Hook::process('user_preferences',
+                            { 'vars'       => $vars,
+                              save_changes => $save_changes,
+                              current_tab  => $current_tab_name,
+                              handled      => \$handled });
+    last SWITCH if $handled;
+
     /^account$/ && do {
         SaveAccount() if $save_changes;
         DoAccount();
@@ -540,14 +548,6 @@ SWITCH: for ($current_tab_name) {
         DoSavedSearches();
         last SWITCH;
     };
-    # Extensions must set it to 1 to confirm the tab is valid.
-    my $handled = 0;
-    Bugzilla::Hook::process('user_preferences',
-                            { 'vars'       => $vars,
-                              save_changes => $save_changes,
-                              current_tab  => $current_tab_name,
-                              handled      => \$handled });
-    last SWITCH if $handled;
 
     ThrowUserError("unknown_tab",
                    { current_tab_name => $current_tab_name });

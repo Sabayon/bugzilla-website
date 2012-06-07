@@ -74,6 +74,10 @@ use base qw(Bugzilla::Object Exporter);
 
 use constant DB_TABLE => 'flags';
 use constant LIST_ORDER => 'id';
+# Flags are tracked in bugs_activity.
+use constant AUDIT_CREATES => 0;
+use constant AUDIT_UPDATES => 0;
+use constant AUDIT_REMOVES => 0;
 
 use constant SKIP_REQUESTEE_ON_ERROR => 1;
 
@@ -600,8 +604,6 @@ sub force_retarget {
 sub _set_requestee {
     my ($self, $requestee, $attachment, $skip_requestee_on_error) = @_;
 
-    # Used internally to check if the requestee is retargetting the request.
-    $self->{_old_requestee_id} = $self->requestee ? $self->requestee->id : 0;
     $self->{requestee} =
       $self->_check_requestee($requestee, $attachment, $skip_requestee_on_error);
 
@@ -723,9 +725,9 @@ sub _check_setter {
                           old_status => $self->{_old_status} });
     }
 
-    # If the requester is retargetting the request, we don't
-    # update the setter, so that the setter gets the notification.
-    if ($status eq '?' && $self->{_old_requestee_id} == $setter->id) {
+    # If the request is being retargetted, we don't update
+    # the setter, so that the setter gets the notification.
+    if ($status eq '?' && $self->{_old_status} eq '?') {
         return $self->setter;
     }
     return $setter;
@@ -970,7 +972,7 @@ sub notify {
     # use the default language for email notifications.
     my $default_lang;
     if (grep { !$_ } values %recipients) {
-        $default_lang = Bugzilla::User->new()->settings->{'lang'}->{'value'};
+        $default_lang = Bugzilla::User->new()->setting('lang');
     }
 
     foreach my $to (keys %recipients) {
@@ -987,7 +989,7 @@ sub notify {
                      'threadingmarker' => build_thread_marker($bug->id, $thread_user_id) };
 
         my $lang = $recipients{$to} ?
-          $recipients{$to}->settings->{'lang'}->{'value'} : $default_lang;
+          $recipients{$to}->setting('lang') : $default_lang;
 
         my $template = Bugzilla->template_inner($lang);
         my $message;

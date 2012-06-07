@@ -2519,7 +2519,7 @@ ReadOnly: ENTRY, NA/NA, CANEDIT
             <para>
               <emphasis>Field only appears when:</emphasis>
               A custom field can be made visible when some criteria is met.
-              For instance, when the bug belongs to a given product,
+              For instance, when the bug belongs to one or more products,
               or when the bug is of some given severity. If left empty, then
               the custom field will always be visible, in all bugs.
             </para>
