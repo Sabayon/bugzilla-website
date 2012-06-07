@@ -35,7 +35,7 @@ body {
 }
 
 #header .links, #footer {
-    background-color: #929bb1;
+    background-color: #3663AC;
     color: #ddd;
 }
 
@@ -65,7 +65,7 @@ body {
 }
 
 a {
-    color: #6070cf;
+    color: #264E7A;
 }
 a:hover {
     color: #8090ef;
