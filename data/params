@@ -1,4 +1,4 @@
-%param = (         
+%param = (
            'LDAPBaseDN' => '',
            'LDAPbinddn' => '',
            'LDAPfilter' => '',
@@ -107,4 +107,3 @@
            'webdotbase' => 'http://www.research.att.com/~north/cgi-bin/webdot.cgi/%urlbase%',
            'whinedays' => 7
          );
-
