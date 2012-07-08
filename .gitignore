@@ -1,12 +1,23 @@
-.htaccess
-lib/*
 docs/bugzilla.ent
 docs/en/xml/bugzilla.ent
 docs/en/txt
 docs/en/html
 docs/en/pdf
 graphs
-data
+
+data/attachments
+data/bugzilla-update.xml
+data/db
+data/extensions
+data/mail
+data/mailer.testfile
+data/mimedump-tmp
+data/mining
+data/old-params.txt
+data/service
+data/template
+data/webdot
+
 index.html
 
 FABIO-NOTES
