@@ -1069,7 +1069,7 @@ sub get_accessible_products {
                        @{$self->get_selectable_products},
                        @{$self->get_enterable_products};
     
-    return [ values %products ];
+    return [ sort { $a->name cmp $b->name } values %products ];
 }
 
 sub check_can_admin_product {
@@ -1528,6 +1528,8 @@ sub match_field {
         my @logins;
         for my $query (@queries) {
             $query = trim($query);
+            next if $query eq '';
+
             my $users = match(
                 $query,   # match string
                 $limit,   # match limit
