@@ -20,6 +20,7 @@ Bugzilla::User</title>
   <ul   class='indexList indexList2'>
     <li class='indexItem indexItem2'><a href='#Constructors'>Constructors</a>
     <li class='indexItem indexItem2'><a href='#Saved_and_Shared_Queries'>Saved and Shared Queries</a>
+    <li class='indexItem indexItem2'><a href='#Saved_Recent_Bug_Lists'>Saved Recent Bug Lists</a>
     <li class='indexItem indexItem2'><a href='#Account_Lockout'>Account Lockout</a>
     <li class='indexItem indexItem2'><a href='#Other_Methods'>Other Methods</a>
   </ul>
@@ -159,6 +160,40 @@ name="Saved_and_Shared_Queries"
 
 <dd>
 <p>Returns a hashref with tag IDs as key, and a hashref with tag &#39;id&#39;, &#39;name&#39; and &#39;bug_count&#39; as value.</p>
+</dd>
+</dl>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="Saved_Recent_Bug_Lists"
+>Saved Recent Bug Lists</a></h2>
+
+<dl>
+<dt><a name="recent_searches"
+><code  class="code">recent_searches</code></a></dt>
+
+<dd>
+<p>Returns an arrayref of <a href="../Bugzilla/Search/Recent.html" class="podlinkpod"
+>Bugzilla::Search::Recent</a> objects containing the user&#39;s recent searches.</p>
+
+<dt><a name="recent_search_containing(bug_id)"
+><code  class="code">recent_search_containing(bug_id)</code></a></dt>
+
+<dd>
+<p>Returns a <a href="../Bugzilla/Search/Recent.html" class="podlinkpod"
+>Bugzilla::Search::Recent</a> object that contains the most recent search by the user for the specified bug id. Retuns undef if no match is found.</p>
+
+<dt><a name="recent_search_for(bug)"
+><code  class="code">recent_search_for(bug)</code></a></dt>
+
+<dd>
+<p>Returns a <a href="../Bugzilla/Search/Recent.html" class="podlinkpod"
+>Bugzilla::Search::Recent</a> object that contains a search by the user. Uses the list_id of the current loaded page, or the referrer page, and the bug id if that fails. Finally it will check the BUGLIST cookie, and create an object based on that, or undef if it does not exist.</p>
+
+<dt><a name="save_last_search"
+><code  class="code">save_last_search</code></a></dt>
+
+<dd>
+<p>Saves the users most recent search in the database if logged in, or in the BUGLIST cookie if not logged in. Parameters are bug_ids, order, vars and list_id.</p>
 </dd>
 </dl>
 

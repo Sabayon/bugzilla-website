@@ -64,7 +64,6 @@ my $buffer = $cgi->query_string();
 my $user = Bugzilla->login();
 
 if (length($buffer) == 0) {
-    print $cgi->header(-refresh=> '10; URL=query.cgi');
     ThrowUserError("buglist_parameters_required");
 }
 
@@ -787,7 +786,10 @@ $params->delete('limit') if $vars->{'default_limited'};
 # Query Execution
 ################################################################################
 
-if ($cgi->param('debug')) {
+if ($cgi->param('debug')
+    && Bugzilla->params->{debug_group}
+    && $user->in_group(Bugzilla->params->{debug_group})
+) {
     $vars->{'debug'} = 1;
     $vars->{'query'} = $query;
     # Explains are limited to admins because you could use them to figure

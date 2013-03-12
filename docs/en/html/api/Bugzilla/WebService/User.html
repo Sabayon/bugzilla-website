@@ -485,11 +485,11 @@ and <code  class="code">can_login</code> items.</p>
 
 <dd>
 <dl>
-<dt><a name="51_(Bad_Login_Name_or_Group_Name)"
->51 (Bad Login Name or Group Name)</a></dt>
+<dt><a name="51_(Bad_Login_Name_or_Group_ID)"
+>51 (Bad Login Name or Group ID)</a></dt>
 
 <dd>
-<p>You passed an invalid login name in the &#34;names&#34; array or a bad group name/id in the <code  class="code">groups</code>/<code  class="code">group_ids</code> arguments.</p>
+<p>You passed an invalid login name in the &#34;names&#34; array or a bad group ID in the <code  class="code">group_ids</code> argument.</p>
 
 <dt><a name="304_(Authorization_Required)"
 >304 (Authorization Required)</a></dt>
@@ -503,6 +503,12 @@ but you are not authorized to see one of the users you wanted to get information
 
 <dd>
 <p>Logged-out users cannot use the &#34;ids&#34; or &#34;match&#34; arguments to this function.</p>
+
+<dt><a name="804_(Invalid_Group_Name)"
+>804 (Invalid Group Name)</a></dt>
+
+<dd>
+<p>You passed a group name in the <code  class="code">groups</code> argument which either does not exist or you do not belong to it.</p>
 </dd>
 </dl>
 
@@ -522,6 +528,11 @@ but you are not authorized to see one of the users you wanted to get information
 <dt><a name="include_disabled_added_in_Bugzilla_4.0._Default_behavior_for_match_has_changed_to_only_returning_enabled_accounts."
 ><code  class="code">include_disabled</code> added in Bugzilla <b>4.0</b>.
 Default behavior for <code  class="code">match</code> has changed to only returning enabled accounts.</a></dt>
+
+<dd>
+<dt><a name="Error_804_has_been_added_in_Bugzilla_4.0.9_and_4.2.4._It&#39;s_now_illegal_to_pass_a_group_name_you_don&#39;t_belong_to."
+>Error 804 has been added in Bugzilla 4.0.9 and 4.2.4.
+It&#39;s now illegal to pass a group name you don&#39;t belong to.</a></dt>
 </dl>
 </dd>
 </dl>

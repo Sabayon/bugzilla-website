@@ -1639,6 +1639,11 @@
     [% title = "Unknown Tab" %]
     <code>[% current_tab_name FILTER html %]</code> is not a legal tab name.
 
+  [% ELSIF error == "value_inactive" %]
+    [% title = "Value is Not Active" %]
+    [% type = BLOCK %][% INCLUDE object_name class = class %][% END %]
+    The [% type FILTER html %] value '[% value FILTER html %]' is not active.
+
   [% ELSIF error == "version_already_exists" %]
     [% title = "Version Already Exists" %]
     [% admindocslinks = {'versions.html' => 'Administering versions'} %]
@@ -1809,7 +1814,7 @@
                   
     [% FOREACH q = Bugzilla.user.queries %]
       [% IF q.name == namedcmd %]
-        or <a href="query.cgi?[% q.url FILTER uri %]">edit</a>
+        or <a href="query.cgi?[% q.url FILTER html %]">edit</a>
       [% END %]
     [% END %]
     

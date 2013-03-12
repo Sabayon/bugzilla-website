@@ -78,7 +78,7 @@ name="CONSTANTS"
 ><code  class="code">NAME_FIELD</code></a></dt>
 
 <dd>
-<p>The name of the column that should be considered to be the unique &#34;name&#34; of this object. The &#39;name&#39; is a <b>string</b> that uniquely identifies this Object in the database. Defaults to &#39;name&#39;. When you specify <code  class="code">{name =</code> $name}&#62; to <code  class="code">new()</code>, this is the column that will be matched against in the DB.</p>
+<p>The name of the column that should be considered to be the unique &#34;name&#34; of this object. The &#39;name&#39; is a <b>string</b> that uniquely identifies this Object in the database. Defaults to &#39;name&#39;. When you specify <code  class="code">{name =&#62; $name}</code> to <code  class="code">new()</code>, this is the column that will be matched against in the DB.</p>
 
 <dt><a name="ID_FIELD"
 ><code  class="code">ID_FIELD</code></a></dt>
@@ -238,7 +238,7 @@ name="Constructors"
 
 <p><code  class="code">values</code> is a reference to an array. The array contains the values for each placeholder in <code  class="code">condition</code>, in order.</p>
 
-<p>This is to allow subclasses to have complex parameters, and then to translate those parameters into <code  class="code">condition</code> and <code  class="code">values</code> when they call <code  class="code">$self-</code>SUPER::new&#62; (which is this function, usually).</p>
+<p>This is to allow subclasses to have complex parameters, and then to translate those parameters into <code  class="code">condition</code> and <code  class="code">values</code> when they call <code  class="code">$self-&#62;SUPER::new</code> (which is this function, usually).</p>
 
 <p>If you try to call <code  class="code">new</code> outside of a subclass with the <code  class="code">condition</code> and <code  class="code">values</code> parameters, Bugzilla will throw an error. These parameters are intended <b>only</b> for use by subclasses.</p>
 
@@ -359,12 +359,10 @@ name="Database_Manipulation"
 <p>Notes: In order for this function to work in your subclass, your subclass&#39;s <a href="#ID_FIELD" class="podlinkpod"
 >&#34;ID_FIELD&#34;</a> must be of <code  class="code">SERIAL</code> type in the database.</p>
 
-<pre  class="code">             Subclass Implementors: This function basically just
-             calls L&#60;/check_required_create_fields&#62;, then
-             L&#60;/run_create_validators&#62;, and then finally
-             L&#60;/insert_create_data&#62;. So if you have a complex system that
-             you need to implement, you can do it by calling these
-             three functions instead of C&#60;SUPER::create&#62;.</pre>
+<p>Subclass Implementors: This function basically just calls <a href="#check_required_create_fields" class="podlinkpod"
+>&#34;check_required_create_fields&#34;</a>, then <a href="#run_create_validators" class="podlinkpod"
+>&#34;run_create_validators&#34;</a>, and then finally <a href="#insert_create_data" class="podlinkpod"
+>&#34;insert_create_data&#34;</a>. So if you have a complex system that you need to implement, you can do it by calling these three functions instead of <code  class="code">SUPER::create</code>.</p>
 
 <dt><a name="check_required_create_fields"
 ><code  class="code">check_required_create_fields</code></a></dt>
@@ -562,9 +560,9 @@ name="CLASS_FUNCTIONS"
 
  Returns:     A list of objects, or an empty list if there are none.
 
- Notes:       Note that you must call this as C&#60;$class-&#62;get_all&#62;. For 
-              example, C&#60;Bugzilla::Keyword-&#62;get_all&#62;. 
-              C&#60;Bugzilla::Keyword::get_all&#62; will not work.</pre>
+ Notes:       Note that you must call this as $class-&#62;get_all. For 
+              example, Bugzilla::Keyword-&#62;get_all. 
+              Bugzilla::Keyword::get_all will not work.</pre>
 </dd>
 </dl>
 <p class="backlinkbottom"><b><a name="___bottom" href="../index.html" title="All Documents">&lt;&lt;</a></b></p>
