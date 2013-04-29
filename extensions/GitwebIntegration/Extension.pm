@@ -49,7 +49,7 @@ sub _replace_commit {
 	# arguments to this function.
 	my $repo = $args->{matches}->[0];
 	my $ref = $args->{matches}->[1];
-	return qq{<a href="http://git.sabayon.org/$repo/commit/?id=$ref">$ref</a>};
+	return qq{<a href="https://github.com/Sabayon/$repo/commit/?id=$ref">$ref</a>};
 };
 
 __PACKAGE__->NAME;
