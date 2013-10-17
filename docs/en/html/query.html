@@ -7,7 +7,7 @@
 NAME="GENERATOR"
 CONTENT="Modular DocBook HTML Stylesheet Version 1.79"><LINK
 REL="HOME"
-TITLE="The Bugzilla Guide - 4.2.5 
+TITLE="The Bugzilla Guide - 4.2.7 
     Release"
 HREF="index.html"><LINK
 REL="UP"
@@ -38,7 +38,7 @@ CELLSPACING="0"
 ><TH
 COLSPAN="3"
 ALIGN="center"
->The Bugzilla Guide - 4.2.5 
+>The Bugzilla Guide - 4.2.7 
     Release</TH
 ></TR
 ><TR
@@ -207,7 +207,7 @@ NAME="negation"
 >&#13;          At first glance, negation seems redundant. Rather than
           searching for
           <A
-NAME="AEN2504"
+NAME="AEN2546"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -218,7 +218,7 @@ CLASS="BLOCKQUOTE"
 >
           one could search for 
           <A
-NAME="AEN2506"
+NAME="AEN2548"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -229,7 +229,7 @@ CLASS="BLOCKQUOTE"
 >
           However, the search 
           <A
-NAME="AEN2508"
+NAME="AEN2550"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -241,7 +241,7 @@ CLASS="BLOCKQUOTE"
           would find every bug where anyone on the CC list did not contain 
           "@mozilla.org" while
           <A
-NAME="AEN2510"
+NAME="AEN2552"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -255,7 +255,7 @@ CLASS="BLOCKQUOTE"
           complex expressions to be built using terms OR'd together and then
           negated. Negation permits queries such as
           <A
-NAME="AEN2512"
+NAME="AEN2554"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -268,7 +268,7 @@ CLASS="BLOCKQUOTE"
           to find bugs that are neither 
           in the update product or in the documentation component or
           <A
-NAME="AEN2514"
+NAME="AEN2556"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -296,7 +296,7 @@ NAME="multiplecharts"
           a bug that has two different people cc'd on it, then you need 
           to use two boolean charts. A search for
           <A
-NAME="AEN2519"
+NAME="AEN2561"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -311,7 +311,7 @@ CLASS="BLOCKQUOTE"
           containing "foo@" and someone else containing "@mozilla.org",
           then you would need two boolean charts.
           <A
-NAME="AEN2521"
+NAME="AEN2563"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -392,111 +392,98 @@ NAME="list"
 >The format of the list is configurable. For example, it can be
       sorted by clicking the column headings. Other useful features can be
       accessed using the links at the bottom of the list:
-      <P
+        <P
 ></P
-><TABLE
-BORDER="0"
-><TBODY
-><TR
-><TD
->&#13;        <EM
->Long Format:</EM
->
-
-        this gives you a large page with a non-editable summary of the fields
-        of each bug.</TD
-></TR
-><TR
-><TD
->&#13;        <EM
->XML:</EM
->
-
-        get the buglist in the XML format.</TD
-></TR
-><TR
-><TD
->&#13;        <EM
->CSV:</EM
->
-
-        get the buglist as comma-separated values, for import into e.g.
-        a spreadsheet.</TD
-></TR
-><TR
-><TD
->&#13;        <EM
->Feed:</EM
->
-
-        get the buglist as an Atom feed.  Copy this link into your
-        favorite feed reader.  If you are using Firefox, you can also
-        save the list as a live bookmark by clicking the live bookmark
-        icon in the status bar.  To limit the number of bugs in the feed,
-        add a limit=n parameter to the URL.</TD
-></TR
-><TR
-><TD
->&#13;        <EM
->iCalendar:</EM
->
-
-        Get the buglist as an iCalendar file. Each bug is represented as a
-        to-do item in the imported calendar.</TD
-></TR
-><TR
-><TD
->&#13;        <EM
->Change Columns:</EM
->
-
-        change the bug attributes which appear in the list.</TD
-></TR
-><TR
-><TD
->&#13;        <EM
->Change several bugs at once:</EM
->
-
-        If your account is sufficiently empowered, and more than one bug
-        appear in the bug list, this link is displayed which lets you make
-        the same change to all the bugs in the list - for example, changing
-        their assignee.</TD
-></TR
-><TR
-><TD
->&#13;        <EM
->Send mail to bug assignees:</EM
->
-
-        If more than one bug appear in the bug list and there are at least
-        two distinct bug assignees, this links is displayed which lets you
-        easily send a mail to the assignees of all bugs on the list.</TD
-></TR
-><TR
-><TD
->&#13;        <EM
->Edit Search:</EM
->
-
-        If you didn't get exactly the results you were looking for, you can
-        return to the Query page through this link and make small revisions
-        to the query you just made so you get more accurate results.</TD
-></TR
-><TR
-><TD
->&#13;        <EM
->Remember Search As:</EM
->
-
-        You can give a search a name and remember it; a link will appear
-        in your page footer giving you quick access to run it again later.
-        </TD
-></TR
-></TBODY
-></TABLE
+><DIV
+CLASS="variablelist"
+><DL
+><DT
+>Long Format:</DT
+><DD
 ><P
-></P
+>&#13;                this gives you a large page with a non-editable summary of the fields
+                of each bug.
+              </P
+></DD
+><DT
+>XML:</DT
+><DD
+><P
+>&#13;                get the buglist in the XML format.
+              </P
+></DD
+><DT
+>CSV:</DT
+><DD
+><P
+>&#13;                get the buglist as comma-separated values, for import into e.g.
+                a spreadsheet.
+              </P
+></DD
+><DT
+>Feed:</DT
+><DD
+><P
+>&#13;                get the buglist as an Atom feed.  Copy this link into your
+                favorite feed reader.  If you are using Firefox, you can also
+                save the list as a live bookmark by clicking the live bookmark
+                icon in the status bar.  To limit the number of bugs in the feed,
+                add a limit=n parameter to the URL.
+              </P
+></DD
+><DT
+>iCalendar:</DT
+><DD
+><P
+>&#13;                Get the buglist as an iCalendar file. Each bug is represented as a
+                to-do item in the imported calendar.
+              </P
+></DD
+><DT
+>Change Columns:</DT
+><DD
+><P
+>&#13;                change the bug attributes which appear in the list.
+              </P
+></DD
+><DT
+>Change several bugs at once:</DT
+><DD
+><P
+>&#13;                If your account is sufficiently empowered, and more than one bug
+                appear in the bug list, this link is displayed which lets you make
+                the same change to all the bugs in the list - for example, changing
+                their assignee.
+              </P
+></DD
+><DT
+>Send mail to bug assignees:</DT
+><DD
+><P
+>&#13;                If more than one bug appear in the bug list and there are at least
+                two distinct bug assignees, this links is displayed which lets you
+                easily send a mail to the assignees of all bugs on the list.
+              </P
+></DD
+><DT
+>Edit Search:</DT
+><DD
+><P
+>&#13;                If you didn't get exactly the results you were looking for, you can
+                return to the Query page through this link and make small revisions
+                to the query you just made so you get more accurate results.
+              </P
+></DD
+><DT
+>Remember Search As:</DT
+><DD
+><P
+>&#13;                You can give a search a name and remember it; a link will appear
+                in your page footer giving you quick access to run it again later.
+              </P
+></DD
+></DL
+></DIV
 >
       </P
 ></DIV

@@ -2070,7 +2070,7 @@ sub validate_password {
     my $complexity_level = Bugzilla->params->{password_complexity};
     if ($complexity_level eq 'letters_numbers_specialchars') {
         ThrowUserError('password_not_complex')
-          if ($password !~ /\w/ || $password !~ /\d/ || $password !~ /[[:punct:]]/);
+          if ($password !~ /[[:alpha:]]/ || $password !~ /\d/ || $password !~ /[[:punct:]]/);
     } elsif ($complexity_level eq 'letters_numbers') {
         ThrowUserError('password_not_complex')
           if ($password !~ /[[:lower:]]/ || $password !~ /[[:upper:]]/ || $password !~ /\d/);
@@ -2428,7 +2428,8 @@ the database again. Used mostly by L<Bugzilla::Product>.
 
 =item C<can_enter_product($product_name, $warn)>
 
- Description: Returns 1 if the user can enter bugs into the specified product.
+ Description: Returns a product object if the user can enter bugs into the
+              specified product.
               If the user cannot enter bugs into the product, the behavior of
               this method depends on the value of $warn:
               - if $warn is false (or not given), a 'false' value is returned;
@@ -2439,7 +2440,7 @@ the database again. Used mostly by L<Bugzilla::Product>.
                               must be thrown if the user cannot enter bugs
                               into the specified product.
 
- Returns:     1 if the user can enter bugs into the product,
+ Returns:     A product object if the user can enter bugs into the product,
               0 if the user cannot enter bugs into the product and if $warn
               is false (an error is thrown if $warn is true).
 

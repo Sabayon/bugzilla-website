@@ -1,8 +1,8 @@
-The Bugzilla Guide - 4.2.5 Release
+The Bugzilla Guide - 4.2.7 Release
 
 The Bugzilla Team
 
-   2013-02-19
+   2013-10-16
 
    This is the documentation for Bugzilla, a bug-tracking system from
    mozilla.org. Bugzilla is an enterprise-class piece of software that
@@ -175,7 +175,7 @@ Chapter 1. About This Guide
 
 1.3. New Versions
 
-   This is the 4.2.5 version of The Bugzilla Guide. It is so named to
+   This is the 4.2.7 version of The Bugzilla Guide. It is so named to
    match the current version of Bugzilla. This version of the guide, like
    its associated Bugzilla version, is a development version.
 
@@ -483,7 +483,7 @@ Chapter 2. Installing Bugzilla
     2. Date::Format (2.21)
     3. DateTime (0.28)
     4. DateTime::TimeZone (0.71)
-    5. DBI (1.41)
+    5. DBI (1.614)
     6. DBD::mysql (4.001) if using MySQL
     7. DBD::Pg (1.45) if using PostgreSQL
     8. DBD::Oracle (1.19) if using Oracle
@@ -510,7 +510,7 @@ Chapter 2. Installing Bugzilla
    13. SOAP::Lite (0.712) for the web service interface
    14. JSON::RPC (any) for the JSON-RPC interface
    15. Test::Taint (any) for the web service interface
-   16. HTML::Parser (3.40) for More HTML in Product/Group Descriptions
+   16. HTML::Parser (3.67) for More HTML in Product/Group Descriptions
    17. HTML::Scrubber (any) for More HTML in Product/Group Descriptions
    18. Email::MIME::Attachment::Stripper (any) for Inbound Email
    19. Email::Reply (any) for Inbound Email
@@ -1226,21 +1226,6 @@ AddType application/rdf+xml .rdf
    that you use it. If you prefer to use ppm from the command-line, type:
 C:\perl> ppm install <module name>
 
-   The best source for the Windows PPM modules needed for Bugzilla is
-   probably the theory58S website, which you can add to your list of
-   repositories as follows (for Perl 5.8.x):
-ppm repo add theory58S http://theoryx5.uwinnipeg.ca/ppms/
-
-   If you are using Perl 5.10.x, you cannot use the same PPM modules as
-   Perl 5.8.x as they are incompatible. In this case, you should add the
-   following repository:
-ppm repo add theory58S http://cpan.uwinnipeg.ca/PPMPackages/10xx/
-
-   Note
-
-   In versions prior to 5.8.8 build 819 of PPM the command is
-ppm repository add theory58S http://theoryx5.uwinnipeg.ca/ppms/
-
    Note
 
    The PPM repository stores modules in 'packages' that may have a
@@ -1546,10 +1531,10 @@ pid-file=/home/foo/mymysql/the.pid
    server runs under. You will need to run the following shell commands
    after running ./checksetup.pl, every time you run it (or modify
    checksetup.pl to do them for you via the system() command).
-        for i in docs graphs images js skins; do find $i -type d -exec chmod o+
-rx {} \; ; done
-        for i in jpg gif css js png html rdf xul; do find . -name \*.$i -exec c
-hmod o+r {} \; ; done
+        for i in docs graphs images js skins; do find $i -type d -exec chmod o+r
+x {} \; ; done
+        for i in jpg gif css js png html rdf xul; do find . -name \*.$i -exec ch
+mod o+r {} \; ; done
         find . -name .htaccess -exec chmod o+r {} \;
         chmod o+x . data data/webdot
 
@@ -1701,8 +1686,7 @@ All changes applied successfully.
    /var/www/html directory (or its equivalent, if you use something else)
    and omit the first three lines of the example.
 bash$ cd /var/www/html
-bash$ wget http://ftp.mozilla.org/pub/mozilla.org/webtools/bugzilla-4.2.1.tar.g
-z
+bash$ wget http://ftp.mozilla.org/pub/mozilla.org/webtools/bugzilla-4.2.1.tar.gz
 (Output omitted)
 bash$ tar xzvf bugzilla-4.2.1.tar.gz
 bugzilla-4.2.1/
@@ -1748,8 +1732,8 @@ bash$ mv bugzilla-4.2.1 bugzilla
    line. If you have already downloaded it, you can omit the first two
    commands.
 bash$ cd /var/www/html/bugzilla
-bash$ wget http://ftp.mozilla.org/pub/mozilla.org/webtools/bugzilla-4.2-to-4.2.
-1.diff.gz
+bash$ wget http://ftp.mozilla.org/pub/mozilla.org/webtools/bugzilla-4.2-to-4.2.1
+.diff.gz
 (Output omitted)
 bash$ gunzip bugzilla-4.2-to-4.2.1.diff.gz
 bash$ patch -p1 < bugzilla-4.2-to-4.2.1.diff
@@ -2427,9 +2411,9 @@ Chapter 3. Administering Bugzilla
    Once you have found your user, you can change the following fields:
 
      * Login Name: This is generally the user's full email address.
-       However, if you have are using the "emailsuffix" parameter, this
-       may just be the user's login name. Note that users can now change
-       their login names themselves (to any valid email address).
+       However, if you are using the "emailsuffix" parameter, this may
+       just be the user's login name. Note that users can now change their
+       login names themselves (to any valid email address).
      * Real Name: The user's real name. Note that Bugzilla does not
        require this to create an account.
      * Password: You can change the user's password here. Users can
@@ -3247,20 +3231,33 @@ ReadOnly: ENTRY, NA/NA, CANEDIT
      * Type: The type of field to create. There are several types
        available:
 
-   Bug ID: A field where you can enter the ID of another bug from the same
-   Bugzilla installation. To point to a bug in a remote installation, use
-   the See Also field instead.
-       Large Text Box: A multiple line box for entering free text.
-       Free Text: A single line box for entering free text.
-   Multiple-Selection Box: A list box where multiple options can be
-   selected. After creating this field, it must be edited to add the
-   selection options. See Section 3.11.1 for information about editing
-   legal values.
-   Drop Down: A list box where only one option can be selected. After
-   creating this field, it must be edited to add the selection options.
-   See Section 3.11.1 for information about editing legal values.
-   Date/Time: A date field. This field appears with a calendar widget for
-   choosing the date.
+        Bug ID:
+                A field where you can enter the ID of another bug from the
+                same Bugzilla installation. To point to a bug in a remote
+                installation, use the See Also field instead.
+
+        Large Text Box:
+                A multiple line box for entering free text.
+
+        Free Text:
+                A single line box for entering free text.
+
+        Multiple-Selection Box:
+                A list box where multiple options can be selected. After
+                creating this field, it must be edited to add the
+                selection options. See Section 3.11.1 for information
+                about editing legal values.
+
+        Drop Down:
+                A list box where only one option can be selected. After
+                creating this field, it must be edited to add the
+                selection options. See Section 3.11.1 for information
+                about editing legal values.
+
+        Date/Time:
+                A date field. This field appears with a calendar widget
+                for choosing the date.
+
      * Sortkey: Integer that determines in which order Custom Fields are
        displayed in the User Interface, especially when viewing a bug.
        Fields with lower values are displayed first.
@@ -3855,23 +3852,42 @@ Chapter 5. Using Bugzilla
        example, bugzilla.mozilla.org's "Bugzilla" Product is composed of
        several Components:
 
-       Administration: Administration of a Bugzilla installation.
-   Bugzilla-General: Anything that doesn't fit in the other components, or
-   spans multiple components.
-       Creating/Changing Bugs: Creating, changing, and viewing bugs.
-   Documentation: The Bugzilla documentation, including The Bugzilla
-   Guide.
-       Email: Anything to do with email sent by Bugzilla.
-       Installation: The installation process of Bugzilla.
-   Query/Buglist: Anything to do with searching for bugs and viewing the
-   buglists.
-       Reporting/Charting: Getting reports from Bugzilla.
-   User Accounts: Anything about managing a user account from the user's
-   perspective. Saved queries, creating accounts, changing passwords,
-   logging in, etc.
-   User Interface: General issues having to do with the user interface
-   cosmetics (not functionality) including cosmetic issues, HTML
-   templates, etc.
+        Administration:
+                Administration of a Bugzilla installation.
+
+        Bugzilla-General:
+                Anything that doesn't fit in the other components, or
+                spans multiple components.
+
+        Creating/Changing Bugs:
+                Creating, changing, and viewing bugs.
+
+        Documentation:
+                The Bugzilla documentation, including The Bugzilla Guide.
+
+        Email:
+                Anything to do with email sent by Bugzilla.
+
+        Installation:
+                The installation process of Bugzilla.
+
+        Query/Buglist:
+                Anything to do with searching for bugs and viewing the
+                buglists.
+
+        Reporting/Charting:
+                Getting reports from Bugzilla.
+
+        User Accounts:
+                Anything about managing a user account from the user's
+                perspective. Saved queries, creating accounts, changing
+                passwords, logging in, etc.
+
+        User Interface:
+                General issues having to do with the user interface
+                cosmetics (not functionality) including cosmetic issues,
+                HTML templates, etc.
+
     2. Status and Resolution: These define exactly what state the bug is
        in - from not even being confirmed as a bug, through to being fixed
        and the fix confirmed by Quality Assurance. The different possible
@@ -3910,16 +3926,30 @@ Chapter 5. Using Bugzilla
        this feature, you have to be blessed group membership specified by
        the "timetrackinggroup" parameter.
 
-       Orig. Est.: This field shows the original estimated time.
-   Current Est.: This field shows the current estimated time. This number
-   is calculated from "Hours Worked" and "Hours Left".
-       Hours Worked: This field shows the number of hours worked.
-   Hours Left: This field shows the "Current Est." - "Hours Worked". This
-   value + "Hours Worked" will become the new Current Est.
-       %Complete: This field shows what percentage of the task is complete.
-   Gain: This field shows the number of hours that the bug is ahead of the
-   "Orig. Est.".
-       Deadline: This field shows the deadline for this bug.
+        Orig. Est.:
+                This field shows the original estimated time.
+
+        Current Est.:
+                This field shows the current estimated time. This number
+                is calculated from "Hours Worked" and "Hours Left".
+
+        Hours Worked:
+                This field shows the number of hours worked.
+
+        Hours Left:
+                This field shows the "Current Est." - "Hours Worked". This
+                value + "Hours Worked" will become the new Current Est.
+
+        %Complete:
+                This field shows what percentage of the task is complete.
+
+        Gain:
+                This field shows the number of hours that the bug is ahead
+                of the "Orig. Est.".
+
+        Deadline:
+                This field shows the deadline for this bug.
+
    17. Attachments: You can attach files (e.g. testcases or patches) to
        bugs. If there are any attachments, they are listed in this
        section.
@@ -4093,33 +4123,53 @@ Chapter 5. Using Bugzilla
    by clicking the column headings. Other useful features can be accessed
    using the links at the bottom of the list:
 
-   Long Format: this gives you a large page with a non-editable summary of
-   the fields of each bug.
-   XML: get the buglist in the XML format.
-   CSV: get the buglist as comma-separated values, for import into e.g. a
-   spreadsheet.
-   Feed: get the buglist as an Atom feed. Copy this link into your
-   favorite feed reader. If you are using Firefox, you can also save the
-   list as a live bookmark by clicking the live bookmark icon in the
-   status bar. To limit the number of bugs in the feed, add a limit=n
-   parameter to the URL.
-   iCalendar: Get the buglist as an iCalendar file. Each bug is
-   represented as a to-do item in the imported calendar.
-   Change Columns: change the bug attributes which appear in the list.
-   Change several bugs at once: If your account is sufficiently empowered,
-   and more than one bug appear in the bug list, this link is displayed
-   which lets you make the same change to all the bugs in the list - for
-   example, changing their assignee.
-   Send mail to bug assignees: If more than one bug appear in the bug list
-   and there are at least two distinct bug assignees, this links is
-   displayed which lets you easily send a mail to the assignees of all
-   bugs on the list.
-   Edit Search: If you didn't get exactly the results you were looking
-   for, you can return to the Query page through this link and make small
-   revisions to the query you just made so you get more accurate results.
-   Remember Search As: You can give a search a name and remember it; a
-   link will appear in your page footer giving you quick access to run it
-   again later.
+   Long Format:
+          this gives you a large page with a non-editable summary of the
+          fields of each bug.
+
+   XML:
+          get the buglist in the XML format.
+
+   CSV:
+          get the buglist as comma-separated values, for import into e.g.
+          a spreadsheet.
+
+   Feed:
+          get the buglist as an Atom feed. Copy this link into your
+          favorite feed reader. If you are using Firefox, you can also
+          save the list as a live bookmark by clicking the live bookmark
+          icon in the status bar. To limit the number of bugs in the feed,
+          add a limit=n parameter to the URL.
+
+   iCalendar:
+          Get the buglist as an iCalendar file. Each bug is represented as
+          a to-do item in the imported calendar.
+
+   Change Columns:
+          change the bug attributes which appear in the list.
+
+   Change several bugs at once:
+          If your account is sufficiently empowered, and more than one bug
+          appear in the bug list, this link is displayed which lets you
+          make the same change to all the bugs in the list - for example,
+          changing their assignee.
+
+   Send mail to bug assignees:
+          If more than one bug appear in the bug list and there are at
+          least two distinct bug assignees, this links is displayed which
+          lets you easily send a mail to the assignees of all bugs on the
+          list.
+
+   Edit Search:
+          If you didn't get exactly the results you were looking for, you
+          can return to the Query page through this link and make small
+          revisions to the query you just made so you get more accurate
+          results.
+
+   Remember Search As:
+          You can give a search a name and remember it; a link will appear
+          in your page footer giving you quick access to run it again
+          later.
      __________________________________________________________________
 
 5.5.5. Adding/removing tags to/from bugs
@@ -5380,8 +5430,8 @@ bash$ ./testserver.pl http://landfill.bugzilla.org/bugzilla-tip
 TEST-OK Webserver is running under group id in $webservergroup.
 TEST-OK Got ant picture.
 TEST-OK Webserver is executing CGIs.
-TEST-OK Webserver is preventing fetch of http://landfill.bugzilla.org/bugzilla-
-tip/localconfig.
+TEST-OK Webserver is preventing fetch of http://landfill.bugzilla.org/bugzilla-t
+ip/localconfig.
      __________________________________________________________________
 
 A.3. I installed a Perl module, but checksetup.pl claims it's not installed!
@@ -5402,8 +5452,8 @@ A.4. DBD::Sponge::db prepare failed
 
    The following error message may appear due to a bug in DBD::mysql (over
    which the Bugzilla team have no control):
- DBD::Sponge::db prepare failed: Cannot determine NUM_OF_FIELDS at D:/Perl/site
-/lib/DBD/mysql.pm line 248.
+ DBD::Sponge::db prepare failed: Cannot determine NUM_OF_FIELDS at D:/Perl/site/
+lib/DBD/mysql.pm line 248.
   SV = NULL(0x0) at 0x20fc444
   REFCNT = 1
   FLAGS = (PADBUSY,PADMY)
@@ -5625,9 +5675,8 @@ C.2. Download Locations
 
    Running Bugzilla on Windows requires the use of ActiveState Perl 5.8.1
    or higher. Many modules already exist in the core distribution of
-   ActiveState Perl. Additional modules can be downloaded from
-   http://theoryx5.uwinnipeg.ca/ppms/ if you use Perl 5.8.x or from
-   http://cpan.uwinnipeg.ca/PPMPackages/10xx/ if you use Perl 5.10.x.
+   ActiveState Perl. If some modules are missing, upgrade ActiveState Perl
+   to at least 5.12; it has all the required modules.
 
    CGI:
 
