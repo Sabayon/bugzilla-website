@@ -41,6 +41,7 @@ sub check_credentials {
     my $dbh = Bugzilla->dbh;
 
     my $username = $login_data->{username};
+    my $password = $login_data->{password};
     my $user_id  = login_to_id($username);
 
     trick_taint($username);
