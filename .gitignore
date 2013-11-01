@@ -20,5 +20,3 @@ FABIO-NOTES
 update_bugzilla_to_latest_stable.sh
 .cvsignore
 
-lib/*
-!lib/.htaccess
