@@ -20,6 +20,8 @@ Bugzilla::WebService::Util</title>
     <li class='indexItem indexItem2'><a href='#filter'>filter</a>
     <li class='indexItem indexItem2'><a href='#filter_wants'>filter_wants</a>
     <li class='indexItem indexItem2'><a href='#validate'>validate</a>
+    <li class='indexItem indexItem2'><a href='#translate'>translate</a>
+    <li class='indexItem indexItem2'><a href='#params_to_objects'>params_to_objects</a>
   </ul>
 </ul>
 </div>
@@ -58,6 +60,10 @@ name="filter"
 
 <p>This helps implement the <code  class="code">include_fields</code> and <code  class="code">exclude_fields</code> arguments of WebService methods. Given a hash (the second argument to this subroutine), this will remove any keys that are <i>not</i> in <code  class="code">include_fields</code> and then remove any keys that <i>are</i> in <code  class="code">exclude_fields</code>.</p>
 
+<p>An optional third option can be passed that prefixes the field name to allow filtering of data two or more levels deep.</p>
+
+<p>For example, if you want to filter out the <code  class="code">id</code> key/value in components returned by Product.get, you would use the value <code  class="code">component.id</code> in your <code  class="code">exclude_fields</code> list.</p>
+
 <h2><a class='u' href='#___top' title='click to go to top of document'
 name="filter_wants"
 >filter_wants</a></h2>
@@ -70,6 +76,18 @@ name="validate"
 >validate</a></h2>
 
 <p>This helps in the validation of parameters passed into the WebService methods. Currently it converts listed parameters into an array reference if the client only passed a single scalar value. It modifies the parameters hash in place so other parameters should be unaltered.</p>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="translate"
+>translate</a></h2>
+
+<p>WebService methods frequently take parameters with different names than the ones that we use internally in Bugzilla. This function takes a hashref that has field names for keys and returns a hashref with those keys renamed according to the mapping passed in with the second parameter (which is also a hashref).</p>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="params_to_objects"
+>params_to_objects</a></h2>
+
+<p>Creates objects of the type passed in as the second parameter, using the parameters passed to a WebService method (the first parameter to this function). Helps make life simpler for WebService methods that internally create objects via both &#34;ids&#34; and &#34;names&#34; fields. Also de-duplicates objects that were loaded by both &#34;ids&#34; and &#34;names&#34;. Returns an arrayref of objects.</p>
 <p class="backlinkbottom"><b><a name="___bottom" href="../../index.html" title="All Documents">&lt;&lt;</a></b></p>
 
 <!-- end doc -->

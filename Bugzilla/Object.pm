@@ -1,23 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Everything Solved.
-# Portions created by Everything Solved are Copyright (C) 2006 
-# Everything Solved. All Rights Reserved.
-#
-# Contributor(s): Max Kanat-Alexander <mkanat@bugzilla.org>
-#                 Frédéric Buclin <LpSolit@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 use strict;
 
@@ -228,8 +214,11 @@ sub match {
             }            
             next;
         }
-        
-        $class->_check_field($field, 'match');
+
+        # It's always safe to use the field defined by classes as being
+        # their ID field. In particular, this means that new_from_list()
+        # is exempted from this check.
+        $class->_check_field($field, 'match') unless $field eq $class->ID_FIELD;
 
         if (ref $value eq 'ARRAY') {
             # IN () is invalid SQL, and if we have an empty list
@@ -332,12 +321,17 @@ sub set_all {
     my %field_values = %$params;
 
     my @sorted_names = $self->_sort_by_dep(keys %field_values);
+
     foreach my $key (@sorted_names) {
         # It's possible for one set_ method to delete a key from $params
         # for another set method, so if that's happened, we don't call the
         # other set method.
         next if !exists $field_values{$key};
         my $method = "set_$key";
+        if (!$self->can($method)) {
+            my $class = ref($self) || $self;
+            ThrowCodeError("unknown_method", { method => "${class}::${method}" });
+        }
         $self->$method($field_values{$key}, \%field_values);
     }
     Bugzilla::Hook::process('object_end_of_set_all', 

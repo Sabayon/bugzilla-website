@@ -33,7 +33,7 @@ Bugzilla::WebService</title>
   <li class='indexItem indexItem1'><a href='#SEE_ALSO'>SEE ALSO</a>
   <ul   class='indexList indexList2'>
     <li class='indexItem indexItem2'><a href='#Server_Types'>Server Types</a>
-    <li class='indexItem indexItem2'><a href='#WebService_Methods'>WebService Methods</a>
+    <li class='indexItem indexItem2'><a href='#WebService_Modules'>WebService Modules</a>
   </ul>
 </ul>
 </div>
@@ -281,6 +281,8 @@ name="Limiting_What_Fields_Are_Returned"
 
 <p>If you specify all the fields, then this function will return empty hashes.</p>
 
+<p>Some RPC calls support specifying sub fields. If an RPC call states that it support sub field restrictions, you can restrict what information is returned within the first field. For example, if you call Products.get with an include_fields of components.name, then only the component name would be returned (and nothing else). You can include the main field, and exclude a sub field.</p>
+
 <p>Invalid field names are ignored.</p>
 
 <p>Specifying fields here overrides <code  class="code">include_fields</code>, so if you specify a field in both, it will be excluded, not included.</p>
@@ -315,8 +317,8 @@ name="Server_Types"
 </dl>
 
 <h2><a class='u' href='#___top' title='click to go to top of document'
-name="WebService_Methods"
->WebService Methods</a></h2>
+name="WebService_Modules"
+>WebService Modules</a></h2>
 
 <dl>
 <dt><a name="Bugzilla::WebService::Bug"
@@ -327,6 +329,11 @@ name="WebService_Methods"
 <dt><a name="Bugzilla::WebService::Bugzilla"
 ><a href="../Bugzilla/WebService/Bugzilla.html" class="podlinkpod"
 >Bugzilla::WebService::Bugzilla</a></a></dt>
+
+<dd>
+<dt><a name="Bugzilla::WebService::Classification"
+><a href="../Bugzilla/WebService/Classification.html" class="podlinkpod"
+>Bugzilla::WebService::Classification</a></a></dt>
 
 <dd>
 <dt><a name="Bugzilla::WebService::Group"

@@ -1,26 +1,10 @@
 #!/usr/bin/perl -wT
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Terry Weissman <terry@mozilla.org>
-#                 Myk Melez <myk@mozilla.org>
-#                 Frank Becker <Frank@Frank-Becker.de>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 ################################################################################
 # Script Initialization
@@ -44,14 +28,15 @@ use Digest::MD5 qw(md5_base64);
 my $user = Bugzilla->login(LOGIN_OPTIONAL);
 my $cgi  = Bugzilla->cgi;
 
+# Get data from the shadow DB as they don't change very often.
+Bugzilla->switch_to_shadow_db;
+
 # If the 'requirelogin' parameter is on and the user is not
 # authenticated, return empty fields.
 if (Bugzilla->params->{'requirelogin'} && !$user->id) {
     display_data();
+    exit;
 }
-
-# Get data from the shadow DB as they don't change very often.
-Bugzilla->switch_to_shadow_db;
 
 # Pass a bunch of Bugzilla configuration to the templates.
 my $vars = {};
@@ -59,7 +44,7 @@ $vars->{'priority'}  = get_legal_field_values('priority');
 $vars->{'severity'}  = get_legal_field_values('bug_severity');
 $vars->{'platform'}  = get_legal_field_values('rep_platform');
 $vars->{'op_sys'}    = get_legal_field_values('op_sys');
-$vars->{'keyword'}    = [map($_->name, Bugzilla::Keyword->get_all)];
+$vars->{'keywords'}  = [Bugzilla::Keyword->get_all];
 $vars->{'resolution'} = get_legal_field_values('resolution');
 $vars->{'status'}    = get_legal_field_values('bug_status');
 $vars->{'custom_fields'} =
@@ -84,6 +69,18 @@ if ($cgi->param('product')) {
 # We set the 2nd argument to 1 to also preload flag types.
 Bugzilla::Product::preload($vars->{'products'}, 1);
 
+if (Bugzilla->params->{'useclassification'}) {
+    my $class = {};
+    # Get all classifications with at least one selectable product.
+    foreach my $product (@{$vars->{'products'}}) {
+        $class->{$product->classification_id} ||= $product->classification;
+    }
+    my @classifications = sort {$a->sortkey <=> $b->sortkey
+        || lc($a->name) cmp lc($b->name)} (values %$class);
+    $vars->{'class_names'} = $class;
+    $vars->{'classifications'} = \@classifications;
+}
+
 # Allow consumers to specify whether or not they want flag data.
 if (defined $cgi->param('flags')) {
     $vars->{'show_flags'} = $cgi->param('flags');
@@ -107,8 +104,20 @@ $vars->{'closed_status'} = \@closed_status;
 # Generate a list of fields that can be queried.
 my @fields = @{Bugzilla::Field->match({obsolete => 0})};
 # Exclude fields the user cannot query.
-if (!Bugzilla->user->is_timetracker) {
+if (!$user->is_timetracker) {
     @fields = grep { $_->name !~ /^(estimated_time|remaining_time|work_time|percentage_complete|deadline)$/ } @fields;
+}
+
+my %FIELD_PARAMS = (
+    classification    => 'useclassification',
+    target_milestone  => 'usetargetmilestone',
+    qa_contact        => 'useqacontact',
+    status_whiteboard => 'usestatuswhiteboard',
+    see_also          => 'use_see_also',
+);
+foreach my $field (@fields) {
+    my $param = $FIELD_PARAMS{$field->name};
+    $field->{is_active} =  Bugzilla->params->{$param} if $param;
 }
 $vars->{'field'} = \@fields;
 
@@ -136,31 +145,9 @@ sub display_data {
     utf8::encode($digest_data) if utf8::is_utf8($digest_data);
     my $digest = md5_base64($digest_data);
 
-    # ETag support.
-    my $if_none_match = $cgi->http('If-None-Match') || "";
-    my $found304;
-    my @if_none = split(/[\s,]+/, $if_none_match);
-    foreach my $if_none (@if_none) {
-        # remove quotes from begin and end of the string
-        $if_none =~ s/^\"//g;
-        $if_none =~ s/\"$//g;
-        if ($if_none eq $digest or $if_none eq '*') {
-            # leave the loop after the first match
-            $found304 = $if_none;
-            last;
-        }
-    }
- 
-   if ($found304) {
-        print $cgi->header(-type => 'text/html',
-                           -ETag => $found304,
-                           -status => '304 Not Modified');
-    }
-    else {
-        # Return HTTP headers.
-        print $cgi->header (-ETag => $digest,
-                            -type => $format->{'ctype'});
-        print $output;
-    }
-    exit;
+    $cgi->check_etag($digest);
+
+    print $cgi->header (-ETag => $digest,
+                        -type => $format->{'ctype'});
+    print $output;
 }

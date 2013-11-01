@@ -47,7 +47,7 @@ name="SYNOPSIS"
 
     my $token = Bugzilla::Token::GenerateUniqueToken($table, $column);
     my $token = Bugzilla::Token::HasEmailChangeToken($user_id);
-    my ($token, $date, $data) = Bugzilla::Token::GetTokenData($token);</pre>
+    my ($token, $date, $data, $type) = Bugzilla::Token::GetTokenData($token);</pre>
 
 <h1><a class='u' href='#___top' title='click to go to top of document'
 name="SUBROUTINES"
@@ -166,8 +166,8 @@ name="SUBROUTINES"
 
  Params:      $token - A valid token.
 
- Returns:     The user ID, the date and time when the token was created and
-              the (event)data stored with that token.</pre>
+ Returns:     The user ID, the date and time when the token was created,
+              the (event)data stored with that token, and its type.</pre>
 </dd>
 </dl>
 

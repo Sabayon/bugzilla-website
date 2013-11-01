@@ -1,23 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Everything Solved, Inc.
-# Portions created by the Initial Developer are Copyright (C) 2008
-# the Initial Developer. All Rights Reserved.
-#
-# Contributor(s): 
-#   Max Kanat-Alexander <mkanat@bugzilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::WebService::Util;
 use strict;
@@ -32,32 +18,55 @@ our @EXPORT_OK = qw(
     filter_wants
     taint_data
     validate
+    translate
+    params_to_objects
 );
 
-sub filter ($$) {
-    my ($params, $hash) = @_;
+sub filter ($$;$) {
+    my ($params, $hash, $prefix) = @_;
     my %newhash = %$hash;
 
     foreach my $key (keys %$hash) {
-        delete $newhash{$key} if !filter_wants($params, $key);
+        delete $newhash{$key} if !filter_wants($params, $key, $prefix);
     }
 
     return \%newhash;
 }
 
-sub filter_wants ($$) {
-    my ($params, $field) = @_;
+sub filter_wants ($$;$) {
+    my ($params, $field, $prefix) = @_;
+
+    # Since this is operation is resource intensive, we will cache the results
+    # This assumes that $params->{*_fields} doesn't change between calls
+    my $cache = Bugzilla->request_cache->{filter_wants} ||= {};
+    $field = "${prefix}.${field}" if $prefix;
+
+    if (exists $cache->{$field}) {
+        return $cache->{$field};
+    }
+
     my %include = map { $_ => 1 } @{ $params->{'include_fields'} || [] };
     my %exclude = map { $_ => 1 } @{ $params->{'exclude_fields'} || [] };
 
-    if (defined $params->{include_fields}) {
-        return 0 if !$include{$field};
+    my $wants = 1;
+    if (defined $params->{exclude_fields} && $exclude{$field}) {
+        $wants = 0;
     }
-    if (defined $params->{exclude_fields}) {
-        return 0 if $exclude{$field};
+    elsif (defined $params->{include_fields} && !$include{$field}) {
+        if ($prefix) {
+            # Include the field if the parent is include (and this one is not excluded)
+            $wants = 0 if !$include{$prefix};
+        }
+        else {
+            # We want to include this if one of the sub keys is included
+            my $key = $field . '.';
+            my $len = length($key);
+            $wants = 0 if ! grep { substr($_, 0, $len) eq $key  } keys %include;
+        }
     }
 
-    return 1;
+    $cache->{$field} = $wants;
+    return $wants;
 }
 
 sub taint_data {
@@ -108,6 +117,32 @@ sub validate  {
     return ($self, $params);
 }
 
+sub translate {
+    my ($params, $mapped) = @_;
+    my %changes;
+    while (my ($key,$value) = each (%$params)) {
+        my $new_field = $mapped->{$key} || $key;
+        $changes{$new_field} = $value;
+    }
+    return \%changes;
+}
+
+sub params_to_objects {
+    my ($params, $class) = @_;
+    my (@objects, @objects_by_ids);
+
+    @objects = map { $class->check($_) } 
+        @{ $params->{names} } if $params->{names};
+
+    @objects_by_ids = map { $class->check({ id => $_ }) } 
+        @{ $params->{ids} } if $params->{ids};
+
+    push(@objects, @objects_by_ids);
+    my %seen;
+    @objects = grep { !$seen{$_->id}++ } @objects;
+    return \@objects;
+}
+
 __END__
 
 =head1 NAME
@@ -136,6 +171,13 @@ of WebService methods. Given a hash (the second argument to this subroutine),
 this will remove any keys that are I<not> in C<include_fields> and then remove
 any keys that I<are> in C<exclude_fields>.
 
+An optional third option can be passed that prefixes the field name to allow
+filtering of data two or more levels deep.
+
+For example, if you want to filter out the C<id> key/value in components returned
+by Product.get, you would use the value C<component.id> in your C<exclude_fields>
+list.
+
 =head2 filter_wants
 
 Returns C<1> if a filter would preserve the specified field when passing
@@ -147,3 +189,19 @@ This helps in the validation of parameters passed into the WebService
 methods. Currently it converts listed parameters into an array reference
 if the client only passed a single scalar value. It modifies the parameters
 hash in place so other parameters should be unaltered.
+
+=head2 translate
+
+WebService methods frequently take parameters with different names than
+the ones that we use internally in Bugzilla. This function takes a hashref
+that has field names for keys and returns a hashref with those keys renamed
+according to the mapping passed in with the second parameter (which is also
+a hashref).
+
+=head2 params_to_objects
+
+Creates objects of the type passed in as the second parameter, using the
+parameters passed to a WebService method (the first parameter to this function).
+Helps make life simpler for WebService methods that internally create objects
+via both "ids" and "names" fields. Also de-duplicates objects that were loaded
+by both "ids" and "names". Returns an arrayref of objects.

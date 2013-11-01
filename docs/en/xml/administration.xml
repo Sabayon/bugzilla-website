@@ -1,4 +1,17 @@
-<!-- <!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook V4.1//EN"> -->
+<?xml version="1.0"?>
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+     This Source Code Form is "Incompatible With Secondary Licenses", as
+     defined by the Mozilla Public License, v. 2.0.
+-->
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+                      "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd" [
+    <!ENTITY % myents SYSTEM "bugzilla.ent">
+    %myents;
+]>
+
 <chapter id="administration">
   <title>Administering Bugzilla</title>
 
@@ -23,10 +36,6 @@
           can be used. Administrators should review this list before 
           deploying a new Bugzilla installation.
         </para>
-
-        <indexterm>
-          <primary>checklist</primary>
-        </indexterm>
 
         <variablelist>
 
@@ -279,11 +288,11 @@
               <para>
                 Defines the regular expression used to validate email addresses
                 used for login names. The default attempts to match fully
-                qualified email addresses (i.e. 'user@example.com'). Some
-                Bugzilla installations allow only local user names (i.e 'user' 
-                instead of 'user@example.com'). In that case, the 
-                <command>emailsuffix</command> parameter should be used to define
-                the email domain.    
+                qualified email addresses (i.e. 'user@example.com') in a slightly
+                more restrictive way than what is allowed in RFC 2822.
+                Some Bugzilla installations allow only local user names (i.e 'user'
+                instead of 'user@example.com'). In that case, this parameter
+                should be used to define the email domain.
               </para>
             </listitem>
           </varlistentry>
@@ -2353,7 +2362,7 @@ ReadOnly: ENTRY, NA/NA, CANEDIT
     <para>
     Keywords are global, rather than per-product. If the administrator changes
     a keyword currently applied to any bugs, the keyword cache must be rebuilt
-    using the <xref linkend="sanitycheck"/> script. Currently keywords can not
+    using the <xref linkend="sanitycheck"/> script. Currently keywords cannot
     be marked obsolete to prevent future usage.
     </para>
     <para>
@@ -2377,7 +2386,7 @@ ReadOnly: ENTRY, NA/NA, CANEDIT
     </para>
     <tip>
       <para>
-        Before adding a Custom Field, make sure that Bugzilla can not already
+        Before adding a Custom Field, make sure that Bugzilla cannot already
         do the desired behavior. Many Bugzilla options are not enabled by 
         default, and many times Administrators find that simply enabling
         certain options that already exist is sufficient. 
@@ -3151,7 +3160,7 @@ ReadOnly: ENTRY, NA/NA, CANEDIT
     To run the "Sanity Check" script, log in as an Administrator and click the
     "Sanity Check" link in the admin page. Any problems that are found will be
     displayed in red letters. If the script is capable of fixing a problem,
-    it will present a link to initiate the fix. If the script can not
+    it will present a link to initiate the fix. If the script cannot
     fix the problem it will require manual database administration or recovery.
     </para>
     <para>
@@ -3196,4 +3205,3 @@ sgml-shorttag:t
 sgml-tag-region-if-active:t
 End:
 -->
-

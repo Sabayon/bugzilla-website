@@ -87,10 +87,12 @@ name="METHODS"
 
  Params:      $param - If you pass an integer, the integer is the
                        component ID from the database that we want to
-                       read in. If you pass in a hash with the &#39;name&#39;
-                       and &#39;product&#39; keys, then the value of the name
-                       key is the name of a component being in the given
-                       product.
+                       read in. 
+                       However, If you pass in a hash, it must contain
+                       two keys:
+                       name (string): the name of the component
+                       product (object): an object of Bugzilla::Product
+                       representing the product that the component belongs to.
 
  Returns:     A Bugzilla::Component object.</pre>
 
@@ -134,7 +136,8 @@ name="METHODS"
 
  Params:      none.
 
- Returns:     A Bugzilla::User object.</pre>
+ Returns:     A Bugzilla::User object if the default QA contact is defined for
+              the component. Otherwise, returns undef.</pre>
 
 <dt><a name="initial_cc"
 ><code  class="code">initial_cc</code></a></dt>
@@ -259,17 +262,17 @@ name="CLASS_METHODS"
 <pre  class="code"> Description: Create a new component for the given product.
 
  Params:      The hashref must have the following keys:
-              name            - name of the new component (string). This name
-                                must be unique within the product.
-              product         - a Bugzilla::Product object to which
-                                the Component is being added.
-              description     - description of the new component (string).
-              initialowner    - login name of the default assignee (string).
+              name             - name of the new component (string). This name
+                                 must be unique within the product.
+              product          - a Bugzilla::Product object to which
+                                 the Component is being added.
+              description      - description of the new component (string).
+              initialowner     - login name of the default assignee (string).
               The following keys are optional:
-              initiaqacontact - login name of the default QA contact (string),
-                                or an empty string to clear it.
-              initial_cc      - an arrayref of login names to add to the
-                                CC list by default.
+              initialqacontact - login name of the default QA contact (string),
+                                 or an empty string to clear it.
+              initial_cc       - an arrayref of login names to add to the
+                                 CC list by default.
 
  Returns:     A Bugzilla::Component object.</pre>
 </dd>

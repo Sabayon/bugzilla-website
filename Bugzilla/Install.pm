@@ -1,18 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# Contributor(s): Max Kanat-Alexander <mkanat@bugzilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::Install;
 
@@ -34,7 +25,7 @@ use Bugzilla::Group;
 use Bugzilla::Product;
 use Bugzilla::User;
 use Bugzilla::User::Setting;
-use Bugzilla::Util qw(get_text);
+use Bugzilla::Util qw(get_text say);
 use Bugzilla::Version;
 
 use constant STATUS_WORKFLOW => (
@@ -70,8 +61,6 @@ sub SETTINGS {
     csv_colsepchar     => { options => [',',';'], default => ',' },
     # 2005-10-26 wurblzap@gmail.com -- Bug 291459
     zoom_textareas     => { options => ["on", "off"], default => "on" },
-    # 2005-10-21 LpSolit@gmail.com -- Bug 313020
-    per_bug_queries    => { options => ['on', 'off'], default => 'off' },
     # 2006-05-01 olav@bkor.dhs.org -- Bug 7710
     state_addselfcc    => { options => ['always', 'never',  'cc_unless_role'],
                             default => 'cc_unless_role' },
@@ -93,6 +82,10 @@ sub SETTINGS {
     # 2011-06-21 glob@mozilla.com -- Bug 589128
     email_format       => { options => ['html', 'text_only'],
                             default => 'html' },
+    # 2011-10-11 glob@mozilla.com -- Bug 301656
+    requestee_cc       => { options => ['on', 'off'], default => 'on' },
+    # 2012-04-30 glob@mozilla.com -- Bug 663747
+    bugmail_new_prefix => { options => ['on', 'off'], default => 'on' },
     }
 };
 
@@ -188,7 +181,7 @@ sub update_settings {
     my $any_settings = $dbh->selectrow_array(
         'SELECT 1 FROM setting ' . $dbh->sql_limit(1));
     if (!$any_settings) {
-        print get_text('install_setting_setup'), "\n";
+        say get_text('install_setting_setup');
     }
 
     my %settings = %{SETTINGS()};
@@ -199,6 +192,9 @@ sub update_settings {
                     $settings{$setting}->{subclass}, undef,
                     !$any_settings);
     }
+
+    # Delete the obsolete 'per_bug_queries' user preference. Bug 616191.
+    $dbh->do('DELETE FROM setting WHERE name = ?', undef, 'per_bug_queries');
 }
 
 sub update_system_groups {
@@ -210,7 +206,7 @@ sub update_system_groups {
     # adding groups.
     my $editbugs_exists = new Bugzilla::Group({ name => 'editbugs' });
     if (!$editbugs_exists) {
-        print get_text('install_groups_setup'), "\n";
+        say get_text('install_groups_setup');
     }
 
     # Create most of the system groups
@@ -281,7 +277,7 @@ sub init_workflow {
     my $has_workflow = $dbh->selectrow_array('SELECT 1 FROM status_workflow');
     return if $has_workflow;
 
-    print get_text('install_workflow_init'), "\n";
+    say get_text('install_workflow_init');
 
     my %status_ids = @{ $dbh->selectcol_arrayref(
         'SELECT value, id FROM bug_status', {Columns=>[1,2]}) };
@@ -316,16 +312,16 @@ sub create_admin {
     my $full_name = $answer{'ADMIN_REALNAME'};
 
     if (!$login || !$password || !$full_name) {
-        print "\n" . get_text('install_admin_setup') . "\n\n";
+        say "\n" . get_text('install_admin_setup') . "\n";
     }
 
     while (!$login) {
         print get_text('install_admin_get_email') . ' ';
         $login = <STDIN>;
         chomp $login;
-        eval { Bugzilla::User->check_login_name_for_creation($login); };
+        eval { Bugzilla::User->check_login_name($login); };
         if ($@) {
-            print $@ . "\n";
+            say $@;
             undef $login;
         }
     }
@@ -382,8 +378,14 @@ sub make_admin {
         write_params();
     }
 
+    # Make sure the new admin isn't disabled
+    if ($user->disabledtext) {
+        $user->set_disabledtext('');
+        $user->update();
+    }
+
     if (Bugzilla->usage_mode == USAGE_MODE_CMDLINE) {
-        print "\n", get_text('install_admin_created', { user => $user }), "\n";
+        say "\n", get_text('install_admin_created', { user => $user });
     }
 }
 
@@ -408,7 +410,7 @@ sub _prompt_for_password {
         chomp $pass2;
         eval { validate_password($password, $pass2); };
         if ($@) {
-            print "\n$@\n";
+            say "\n$@";
             undef $password;
         }
         system("stty","echo") unless ON_WINDOWS;
@@ -430,7 +432,7 @@ sub reset_password {
     my $password = _prompt_for_password($prompt);
     $user->set_password($password);
     $user->update();
-    print "\n", get_text('install_reset_password_done'), "\n";
+    say "\n", get_text('install_reset_password_done');
 }
 
 1;

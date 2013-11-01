@@ -1,51 +1,25 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Terry Weissman <terry@mozilla.org>
-#                 Dan Mosedale <dmose@mozilla.org>
-#                 Jacob Steenhagen <jake@bugzilla.org>
-#                 Bradley Baetz <bbaetz@student.usyd.edu.au>
-#                 Christopher Aillon <christopher@aillon.com>
-#                 Tobias Burnus <burnus@net-b.de>
-#                 Myk Melez <myk@mozilla.org>
-#                 Max Kanat-Alexander <mkanat@bugzilla.org>
-#                 Frédéric Buclin <LpSolit@gmail.com>
-#                 Greg Hendricks <ghendricks@novell.com>
-#                 David D. Kilzer <ddkilzer@kilzer.net>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 
 package Bugzilla::Template;
 
 use strict;
 
-use Bugzilla::Bug;
 use Bugzilla::Constants;
+use Bugzilla::WebService::Constants;
 use Bugzilla::Hook;
 use Bugzilla::Install::Requirements;
 use Bugzilla::Install::Util qw(install_string template_include_path 
                                include_languages);
 use Bugzilla::Keyword;
 use Bugzilla::Util;
-use Bugzilla::User;
 use Bugzilla::Error;
 use Bugzilla::Search;
-use Bugzilla::Status;
 use Bugzilla::Token;
 
 use Cwd qw(abs_path);
@@ -72,9 +46,9 @@ sub SAFE_URL_REGEXP {
     return qr/($safe_protocols):[^:\s<>\"][^\s<>\"]+[\w\/]/i;
 }
 
-# Convert the constants in the Bugzilla::Constants module into a hash we can
-# pass to the template object for reflection into its "constants" namespace
-# (which is like its "variables" namespace, but for constants).  To do so, we
+# Convert the constants in the Bugzilla::Constants and Bugzilla::WebService::Constants
+# modules into a hash we can pass to the template object for reflection into its "constants" 
+# namespace (which is like its "variables" namespace, but for constants). To do so, we
 # traverse the arrays of exported and exportable symbols and ignoring the rest
 # (which, if Constants.pm exports only constants, as it should, will be nothing else).
 sub _load_constants {
@@ -87,6 +61,18 @@ sub _load_constants {
         }
         else {
             my @list = (Bugzilla::Constants->$constant);
+            $constants{$constant} = (scalar(@list) == 1) ? $list[0] : \@list;
+        }
+    }
+
+    foreach my $constant (@Bugzilla::WebService::Constants::EXPORT, 
+                          @Bugzilla::WebService::Constants::EXPORT_OK)
+    {
+        if (ref Bugzilla::WebService::Constants->$constant) {
+            $constants{$constant} = Bugzilla::WebService::Constants->$constant;
+        }
+        else {
+            my @list = (Bugzilla::WebService::Constants->$constant);
             $constants{$constant} = (scalar(@list) == 1) ? $list[0] : \@list;
         }
     }
@@ -112,9 +98,12 @@ sub get_format {
     $ctype ||= 'html';
     $format ||= '';
 
-    # Security - allow letters and a hyphen only
-    $ctype =~ s/[^a-zA-Z\-]//g;
-    $format =~ s/[^a-zA-Z\-]//g;
+    # ctype and format can have letters and a hyphen only.
+    if ($ctype =~ /[^a-zA-Z\-]/ || $format =~ /[^a-zA-Z\-]/) {
+        ThrowUserError('format_not_found', {'format' => $format,
+                                            'ctype'  => $ctype,
+                                            'invalid' => 1});
+    }
     trick_taint($ctype);
     trick_taint($format);
 
@@ -332,7 +321,10 @@ sub get_bug_link {
     my $dbh = Bugzilla->dbh;
 
     if (defined $bug) {
-        $bug = blessed($bug) ? $bug : new Bugzilla::Bug($bug);
+        if (!blessed($bug)) {
+            require Bugzilla::Bug;
+            $bug = new Bugzilla::Bug($bug);
+        }
         return $link_text if $bug->{error};
     }
 
@@ -399,13 +391,10 @@ sub mtime_filter {
 #
 #  1. YUI CSS
 #  2. Standard Bugzilla stylesheet set (persistent)
-#  3. Standard Bugzilla stylesheet set (selectable)
-#  4. All third-party "skin" stylesheet sets (selectable)
-#  5. Page-specific styles
-#  6. Custom Bugzilla stylesheet set (persistent)
-#
-# "Selectable" skin file sets may be either preferred or alternate.
-# Exactly one is preferred, determined by the "skin" user preference.
+#  3. Third-party "skin" stylesheet set, per user prefs (persistent)
+#  4. Page-specific styles
+#  5. Custom Bugzilla stylesheet set (persistent)
+
 sub css_files {
     my ($style_urls, $yui, $yui_css) = @_;
     
@@ -422,18 +411,10 @@ sub css_files {
     
     my @css_sets = map { _css_link_set($_) } @requested_css;
     
-    my %by_type = (standard => [], alternate => {}, skin => [], custom => []);
+    my %by_type = (standard => [], skin => [], custom => []);
     foreach my $set (@css_sets) {
         foreach my $key (keys %$set) {
-            if ($key eq 'alternate') {
-                foreach my $alternate_skin (keys %{ $set->{alternate} }) {
-                    my $files = $by_type{alternate}->{$alternate_skin} ||= [];
-                    push(@$files, $set->{alternate}->{$alternate_skin});
-                }
-            }
-            else {
-                push(@{ $by_type{$key} }, $set->{$key});
-            }
+            push(@{ $by_type{$key} }, $set->{$key});
         }
     }
     
@@ -450,27 +431,15 @@ sub _css_link_set {
     if ($file_name !~ m{(^|/)skins/standard/}) {
         return \%set;
     }
-    
-    my $skin_user_prefs = Bugzilla->user->settings->{skin};
+
+    my $skin = Bugzilla->user->settings->{skin}->{value};
     my $cgi_path = bz_locations()->{'cgi_path'};
-    # If the DB is not accessible, user settings are not available.
-    my $all_skins = $skin_user_prefs ? $skin_user_prefs->legal_values : [];
-    my %skin_urls;
-    foreach my $option (@$all_skins) {
-        next if $option eq 'standard';
-        my $skin_file_name = $file_name;
-        $skin_file_name =~ s{(^|/)skins/standard/}{skins/contrib/$option/};
-        if (my $mtime = _mtime("$cgi_path/$skin_file_name")) {
-            $skin_urls{$option} = mtime_filter($skin_file_name, $mtime);
-        }
+    my $skin_file_name = $file_name;
+    $skin_file_name =~ s{(^|/)skins/standard/}{skins/contrib/$skin/};
+    if (my $mtime = _mtime("$cgi_path/$skin_file_name")) {
+        $set{skin} = mtime_filter($skin_file_name, $mtime);
     }
-    $set{alternate} = \%skin_urls;
-    
-    my $skin = $skin_user_prefs->{'value'};
-    if ($skin ne 'standard' and defined $set{alternate}->{$skin}) {
-        $set{skin} = delete $set{alternate}->{$skin};
-    }
-    
+
     my $custom_file_name = $file_name;
     $custom_file_name =~ s{(^|/)skins/standard/}{skins/custom/};
     if (my $custom_mtime = _mtime("$cgi_path/$custom_file_name")) {
@@ -615,8 +584,12 @@ sub create {
 
         COMPILE_DIR => bz_locations()->{'template_cache'},
 
+        # Don't check for a template update until 1 hour has passed since the
+        # last check.
+        STAT_TTL    => 60 * 60,
+
         # Initialize templates (f.e. by loading plugins like Hook).
-        PRE_PROCESS => ["global/initialize.none.tmpl"],
+        PRE_PROCESS => ["global/variables.none.tmpl"],
 
         ENCODING => Bugzilla->params->{'utf8'} ? 'UTF-8' : undef,
 
@@ -881,14 +854,9 @@ sub create {
             # Currently logged in user, if any
             # If an sudo session is in progress, this is the user we're faking
             'user' => sub { return Bugzilla->user; },
-           
+
             # Currenly active language
-            # XXX Eventually this should probably be replaced with something
-            # like Bugzilla->language.
-            'current_language' => sub {
-                my ($language) = include_languages();
-                return $language;
-            },
+            'current_language' => sub { return Bugzilla->current_language; },
 
             # If an sudo session is in progress, this is the user who
             # started the session.
@@ -899,7 +867,7 @@ sub create {
 
             # Allow templates to access docs url with users' preferred language
             'docs_urlbase' => sub { 
-                my ($language) = include_languages();
+                my $language = Bugzilla->current_language;
                 my $docs_urlbase = Bugzilla->params->{'docs_urlbase'};
                 $docs_urlbase =~ s/\%lang\%/$language/;
                 return $docs_urlbase;
@@ -928,7 +896,15 @@ sub create {
                     Bugzilla->fields({ by_name => 1 });
                 return $cache->{template_bug_fields};
             },
-            
+
+            # A general purpose cache to store rendered templates for reuse.
+            # Make sure to not mix language-specific data.
+            'template_cache' => sub {
+                my $cache = Bugzilla->request_cache->{template_cache} ||= {};
+                $cache->{users} ||= {};
+                return $cache;
+            },
+
             'css_files' => \&css_files,
             yui_resolve_deps => \&yui_resolve_deps,
 
@@ -936,7 +912,9 @@ sub create {
             'use_keywords' => sub { return Bugzilla::Keyword->any_exist; },
 
             # All the keywords.
-            'all_keywords' => sub { return Bugzilla::Keyword->get_all(); },
+            'all_keywords' => sub {
+                return [map { $_->name } Bugzilla::Keyword->get_all()];
+            },
 
             'feature_enabled' => sub { return Bugzilla->feature(@_); },
 
@@ -975,6 +953,12 @@ sub create {
             'default_authorizer' => sub { return Bugzilla::Auth->new() },
         },
     };
+    # Use a per-process provider to cache compiled templates in memory across
+    # requests.
+    my $provider_key = join(':', @{ $config->{INCLUDE_PATH} });
+    my $shared_providers = Bugzilla->process_cache->{shared_providers} ||= {};
+    $shared_providers->{$provider_key} ||= Template::Provider->new($config);
+    $config->{LOAD_TEMPLATES} = [ $shared_providers->{$provider_key} ];
 
     local $Template::Config::CONTEXT = 'Bugzilla::Template::Context';
 
@@ -1039,6 +1023,9 @@ sub precompile_templates {
             # effect of writing the compiled version to disk.
             $template->context->template($file);
         }
+
+        # Clear out the cached Provider object
+        Bugzilla->process_cache->{shared_providers} = undef;
     }
 
     # Under mod_perl, we look for templates using the absolute path of the

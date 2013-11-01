@@ -1,29 +1,10 @@
 #!/usr/bin/perl -wT
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Terry Weissman <terry@mozilla.org>
-#                 Dan Mosedale <dmose@mozilla.org>
-#                 Stephan Niemz  <st.n@gmx.net>
-#                 Andreas Franke <afranke@mathweb.org>
-#                 Myk Melez <myk@mozilla.org>
-#                 Max Kanat-Alexander <mkanat@bugzilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 ################################################################################
 # Script Initialization
@@ -42,10 +23,8 @@ use Bugzilla::Search;
 use Bugzilla::Search::Quicksearch;
 use Bugzilla::Search::Recent;
 use Bugzilla::Search::Saved;
-use Bugzilla::User;
 use Bugzilla::Bug;
 use Bugzilla::Product;
-use Bugzilla::Keyword;
 use Bugzilla::Field;
 use Bugzilla::Status;
 use Bugzilla::Token;
@@ -56,18 +35,19 @@ my $cgi = Bugzilla->cgi;
 my $dbh = Bugzilla->dbh;
 my $template = Bugzilla->template;
 my $vars = {};
-my $buffer = $cgi->query_string();
 
 # We have to check the login here to get the correct footer if an error is
 # thrown and to prevent a logged out user to use QuickSearch if 'requirelogin'
 # is turned 'on'.
 my $user = Bugzilla->login();
 
+$cgi->redirect_search_url();
+
+my $buffer = $cgi->query_string();
 if (length($buffer) == 0) {
     ThrowUserError("buglist_parameters_required");
 }
 
-$cgi->redirect_search_url();
 
 # Determine whether this is a quicksearch query.
 my $searchstring = $cgi->param('quicksearch');
@@ -111,13 +91,6 @@ if (defined $cgi->param('ctype') && $cgi->param('ctype') eq "rss") {
     $cgi->param('ctype', "atom");
 }
 
-# An agent is a program that automatically downloads and extracts data
-# on its user's behalf.  If this request comes from an agent, we turn off
-# various aspects of bug list functionality so agent requests succeed
-# and coexist nicely with regular user requests.  Currently the only agent
-# we know about is Firefox's microsummary feature.
-my $agent = ($cgi->http('X-Moz') && $cgi->http('X-Moz') =~ /\bmicrosummary\b/);
-
 # Determine the format in which the user would like to receive the output.
 # Uses the default format if the user did not specify an output format;
 # otherwise validates the user's choice against the list of available formats.
@@ -129,21 +102,17 @@ my $format = $template->get_format("list/list", scalar $cgi->param('format'),
 # the bug list as HTML and they have not disabled it by adding &serverpush=0
 # to the URL.
 #
-# Server push is a Netscape 3+ hack incompatible with MSIE, Lynx, and others. 
-# Even Communicator 4.51 has bugs with it, especially during page reload.
-# http://www.browsercaps.org used as source of compatible browsers.
-# Safari (WebKit) does not support it, despite a UA that says otherwise (bug 188712)
-# MSIE 5+ supports it on Mac (but not on Windows) (bug 190370)
-#
+# Server push is compatible with Gecko-based browsers and Opera, but not with
+# MSIE, Lynx or Safari (bug 441496).
+
 my $serverpush =
   $format->{'extension'} eq "html"
     && exists $ENV{'HTTP_USER_AGENT'} 
-      && $ENV{'HTTP_USER_AGENT'} =~ /Mozilla.[3-9]/ 
-        && (($ENV{'HTTP_USER_AGENT'} !~ /[Cc]ompatible/) || ($ENV{'HTTP_USER_AGENT'} =~ /MSIE 5.*Mac_PowerPC/))
+      && $ENV{'HTTP_USER_AGENT'} =~ /(Mozilla.[3-9]|Opera)/
+        && $ENV{'HTTP_USER_AGENT'} !~ /compatible/i
           && $ENV{'HTTP_USER_AGENT'} !~ /(?:WebKit|Trident|KHTML)/
-            && !$agent
-              && !defined($cgi->param('serverpush'))
-                || $cgi->param('serverpush');
+            && !defined($cgi->param('serverpush'))
+              || $cgi->param('serverpush');
 
 my $order = $cgi->param('order') || "";
 
@@ -382,7 +351,7 @@ if ($cmdtype eq "dorem") {
         # so that it can be modified easily.
         $vars->{'searchname'} = $cgi->param('namedcmd');
         if (!$cgi->param('sharer_id') ||
-            $cgi->param('sharer_id') == Bugzilla->user->id) {
+            $cgi->param('sharer_id') == $user->id) {
             $vars->{'searchtype'} = "saved";
             $vars->{'search_id'} = $query_id;
         }
@@ -475,51 +444,18 @@ elsif (($cmdtype eq "doit") && defined $cgi->param('remtype')) {
         my $new_query = $cgi->param('newquery');
         my $token = $cgi->param('token');
         check_hash_token($token, ['savedsearch']);
-        # If list_of_bugs is true, we are adding/removing tags to/from
-        # individual bugs.
-        if ($cgi->param('list_of_bugs')) {
-            # We add/remove tags based on the action choosen.
-            my $action = trim($cgi->param('action') || '');
-            $action =~ /^(add|remove)$/
-              || ThrowUserError('unknown_action', {action => $action});
-
-            my $method = "${action}_tag";
-
-            # If no new tag name has been given, use the selected one.
-            $query_name ||= $cgi->param('oldqueryname')
-              or ThrowUserError('no_tag_to_edit', {action => $action});
-
-            my @buglist;
-            # Validate all bug IDs before editing tags in any of them.
-            foreach my $bug_id (split(/[\s,]+/, $cgi->param('bug_ids'))) {
-                next unless $bug_id;
-                push(@buglist, Bugzilla::Bug->check($bug_id));
-            }
-
-            foreach my $bug (@buglist) {
-                $bug->$method($query_name);
-            }
-
-            $vars->{'message'} = 'tag_updated';
-            $vars->{'action'} = $action;
-            $vars->{'tag'} = $query_name;
-            $vars->{'buglist'} = [map { $_->id } @buglist];
+        my $existed_before = InsertNamedQuery($query_name, $new_query, 1);
+        if ($existed_before) {
+            $vars->{'message'} = "buglist_updated_named_query";
         }
         else {
-            my $existed_before = InsertNamedQuery($query_name, $new_query, 1);
-            if ($existed_before) {
-                $vars->{'message'} = "buglist_updated_named_query";
-            }
-            else {
-                $vars->{'message'} = "buglist_new_named_query";
-            }
-
-            # Make sure to invalidate any cached query data, so that the footer is
-            # correctly displayed
-            $user->flush_queries_cache();
-
-            $vars->{'queryname'} = $query_name;
+            $vars->{'message'} = "buglist_new_named_query";
         }
+        $vars->{'queryname'} = $query_name;
+
+        # Make sure to invalidate any cached query data, so that the footer is
+        # correctly displayed
+        $user->flush_queries_cache();
 
         print $cgi->header();
         $template->process("global/message.html.tmpl", $vars)
@@ -589,7 +525,7 @@ else {
 
 # Remove the timetracking columns if they are not a part of the group
 # (happens if a user had access to time tracking and it was revoked/disabled)
-if (!Bugzilla->user->is_timetracker) {
+if (!$user->is_timetracker) {
    @displaycolumns = grep($_ ne 'estimated_time', @displaycolumns);
    @displaycolumns = grep($_ ne 'remaining_time', @displaycolumns);
    @displaycolumns = grep($_ ne 'actual_time', @displaycolumns);
@@ -697,69 +633,39 @@ if (!$order || $order =~ /^reuse/i) {
     }
 }
 
+my @order_columns;
 if ($order) {
     # Convert the value of the "order" form field into a list of columns
     # by which to sort the results.
     ORDER: for ($order) {
         /^Bug Number$/ && do {
-            $order = "bug_id";
+            @order_columns = ("bug_id");
             last ORDER;
         };
         /^Importance$/ && do {
-            $order = "priority,bug_severity";
+            @order_columns = ("priority", "bug_severity");
             last ORDER;
         };
         /^Assignee$/ && do {
-            $order = "assigned_to,bug_status,priority,bug_id";
+            @order_columns = ("assigned_to", "bug_status", "priority",
+                              "bug_id");
             last ORDER;
         };
         /^Last Changed$/ && do {
-            $order = "changeddate,bug_status,priority,assigned_to,bug_id";
+            @order_columns = ("changeddate", "bug_status", "priority",
+                              "assigned_to", "bug_id");
             last ORDER;
         };
         do {
-            my (@order, @invalid_fragments);
-
-            # A custom list of columns.  Make sure each column is valid.
-            foreach my $fragment (split(/,/, $order)) {
-                $fragment = trim($fragment);
-                next unless $fragment;
-                my ($column_name, $direction) = split_order_term($fragment);
-                $column_name = translate_old_column($column_name);
-
-                # Special handlings for certain columns
-                next if $column_name eq 'relevance' && !$fulltext;
-                                
-                if (exists $columns->{$column_name}) {
-                    $direction = " $direction" if $direction;
-                    push(@order, "$column_name$direction");
-                }
-                else {
-                    push(@invalid_fragments, $fragment);
-                }
-            }
-            if (scalar @invalid_fragments) {
-                $vars->{'message'} = 'invalid_column_name';
-                $vars->{'invalid_fragments'} = \@invalid_fragments;
-            }
-
-            $order = join(",", @order);
-            # Now that we have checked that all columns in the order are valid,
-            # detaint the order string.
-            trick_taint($order) if $order;
+            # A custom list of columns. Bugzilla::Search will validate items.
+            @order_columns = split(/\s*,\s*/, $order);
         };
     }
 }
 
-if (!$order) {
+if (!scalar @order_columns) {
     # DEFAULT
-    $order = "bug_status,priority,assigned_to,bug_id";
-}
-
-my @orderstrings = split(/,\s*/, $order);
-
-if ($fulltext and grep { /^relevance/ } @orderstrings) {
-    $vars->{'message'} = 'buglist_sorted_by_relevance'
+    @order_columns = ("bug_status", "priority", "assigned_to", "bug_id");
 }
 
 # In the HTML interface, by default, we limit the returned results,
@@ -773,10 +679,19 @@ if ($format->{'extension'} eq 'html' && !defined $params->param('limit')) {
 # Generate the basic SQL query that will be used to generate the bug list.
 my $search = new Bugzilla::Search('fields' => \@selectcolumns, 
                                   'params' => scalar $params->Vars,
-                                  'order'  => \@orderstrings,
+                                  'order'  => \@order_columns,
                                   'sharer' => $sharer_id);
-my $query = $search->sql;
-$vars->{'search_description'} = $search->search_description;
+
+$order = join(',', $search->order);
+
+if (scalar @{$search->invalid_order_columns}) {
+    $vars->{'message'} = 'invalid_column_name';
+    $vars->{'invalid_fragments'} = $search->invalid_order_columns;
+}
+
+if ($fulltext and grep { /^relevance/ } $search->order) {
+    $vars->{'message'} = 'buglist_sorted_by_relevance'
+}
 
 # We don't want saved searches and other buglist things to save
 # our default limit.
@@ -785,21 +700,6 @@ $params->delete('limit') if $vars->{'default_limited'};
 ################################################################################
 # Query Execution
 ################################################################################
-
-if ($cgi->param('debug')
-    && Bugzilla->params->{debug_group}
-    && $user->in_group(Bugzilla->params->{debug_group})
-) {
-    $vars->{'debug'} = 1;
-    $vars->{'query'} = $query;
-    # Explains are limited to admins because you could use them to figure
-    # out how many hidden bugs are in a particular product (by doing
-    # searches and looking at the number of rows the explain says it's
-    # examining).
-    if (Bugzilla->user->in_group('admin')) {
-        $vars->{'query_explain'} = $dbh->bz_explain($query);
-    }
-}
 
 # Time to use server push to display an interim message to the user until
 # the query completes and we can display the bug list.
@@ -833,9 +733,28 @@ $::SIG{TERM} = 'DEFAULT';
 $::SIG{PIPE} = 'DEFAULT';
 
 # Execute the query.
-my $buglist_sth = $dbh->prepare($query);
-$buglist_sth->execute();
+my ($data, $extra_data) = $search->data;
+$vars->{'search_description'} = $search->search_description;
 
+if ($cgi->param('debug')
+    && Bugzilla->params->{debug_group}
+    && $user->in_group(Bugzilla->params->{debug_group})
+) {
+    $vars->{'debug'} = 1;
+    $vars->{'queries'} = $extra_data;
+    my $query_time = 0;
+    $query_time += $_->{'time'} foreach @$extra_data;
+    $vars->{'query_time'} = $query_time;
+    # Explains are limited to admins because you could use them to figure
+    # out how many hidden bugs are in a particular product (by doing
+    # searches and looking at the number of rows the explain says it's
+    # examining).
+    if ($user->in_group('admin')) {
+        foreach my $query (@$extra_data) {
+            $query->{explain} = $dbh->bz_explain($query->{sql});
+        }
+    }
+}
 
 ################################################################################
 # Results Retrieval
@@ -867,14 +786,14 @@ my @bugidlist;
 
 my @bugs; # the list of records
 
-while (my @row = $buglist_sth->fetchrow_array()) {
+foreach my $row (@$data) {
     my $bug = {}; # a record
 
     # Slurp the row of data into the record.
     # The second from last column in the record is the number of groups
     # to which the bug is restricted.
     foreach my $column (@selectcolumns) {
-        $bug->{$column} = shift @row;
+        $bug->{$column} = shift @$row;
     }
 
     # Process certain values further (i.e. date format conversion).
@@ -979,10 +898,10 @@ $vars->{'order'} = $order;
 $vars->{'caneditbugs'} = 1;
 $vars->{'time_info'} = $time_info;
 
-if (!Bugzilla->user->in_group('editbugs')) {
+if (!$user->in_group('editbugs')) {
     foreach my $product (keys %$bugproducts) {
         my $prod = new Bugzilla::Product({name => $product});
-        if (!Bugzilla->user->in_group('editbugs', $prod->id)) {
+        if (!$user->in_group('editbugs', $prod->id)) {
             $vars->{'caneditbugs'} = 0;
             last;
         }
@@ -990,7 +909,7 @@ if (!Bugzilla->user->in_group('editbugs')) {
 }
 
 my @bugowners = keys %$bugowners;
-if (scalar(@bugowners) > 1 && Bugzilla->user->in_group('editbugs')) {
+if (scalar(@bugowners) > 1 && $user->in_group('editbugs')) {
     my $suffix = Bugzilla->params->{'emailsuffix'};
     map(s/$/$suffix/, @bugowners) if $suffix;
     my $bugowners = join(",", @bugowners);
@@ -1019,7 +938,7 @@ elsif (my @product_input = $cgi->param('product')) {
 }
 # We only want the template to use it if the user can actually 
 # enter bugs against it.
-if ($one_product && Bugzilla->user->can_enter_product($one_product)) {
+if ($one_product && $user->can_enter_product($one_product)) {
     $vars->{'one_product'} = $one_product;
 }
 
@@ -1038,7 +957,7 @@ if ($dotweak && scalar @bugs) {
     $vars->{'token'} = issue_session_token('buglist_mass_change');
     Bugzilla->switch_to_shadow_db();
 
-    $vars->{'products'} = Bugzilla->user->get_enterable_products;
+    $vars->{'products'} = $user->get_enterable_products;
     $vars->{'platforms'} = get_legal_field_values('rep_platform');
     $vars->{'op_sys'} = get_legal_field_values('op_sys');
     $vars->{'priorities'} = get_legal_field_values('priority');
@@ -1107,7 +1026,7 @@ $vars->{'quicksearch'} = $searchstring;
 my $contenttype;
 my $disposition = "inline";
 
-if ($format->{'extension'} eq "html" && !$agent) {
+if ($format->{'extension'} eq "html") {
     my $list_id = $cgi->param('list_id') || $cgi->param('regetlastlist');
     my $search = $user->save_last_search(
         { bugs => \@bugidlist, order => $order, vars => $vars, list_id => $list_id });

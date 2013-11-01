@@ -32,6 +32,8 @@ Bugzilla::Hook</title>
     <li class='indexItem indexItem2'><a href='#bug_check_can_change_field'>bug_check_can_change_field</a>
     <li class='indexItem indexItem2'><a href='#bug_fields'>bug_fields</a>
     <li class='indexItem indexItem2'><a href='#bug_format_comment'>bug_format_comment</a>
+    <li class='indexItem indexItem2'><a href='#bug_start_of_update'>bug_start_of_update</a>
+    <li class='indexItem indexItem2'><a href='#bug_url_sub_classes'>bug_url_sub_classes</a>
     <li class='indexItem indexItem2'><a href='#buglist_columns'>buglist_columns</a>
     <li class='indexItem indexItem2'><a href='#buglist_column_joins'>buglist_column_joins</a>
     <li class='indexItem indexItem2'><a href='#search_operator_field_override'>search_operator_field_override</a>
@@ -66,6 +68,7 @@ Bugzilla::Hook</title>
     <li class='indexItem indexItem2'><a href='#object_update_columns'>object_update_columns</a>
     <li class='indexItem indexItem2'><a href='#object_validators'>object_validators</a>
     <li class='indexItem indexItem2'><a href='#page_before_template'>page_before_template</a>
+    <li class='indexItem indexItem2'><a href='#path_info_whitelist'>path_info_whitelist</a>
     <li class='indexItem indexItem2'><a href='#post_bug_after_creation'>post_bug_after_creation</a>
     <li class='indexItem indexItem2'><a href='#product_confirm_delete'>product_confirm_delete</a>
     <li class='indexItem indexItem2'><a href='#product_end_of_create'>product_end_of_create</a>
@@ -482,6 +485,60 @@ name="bug_format_comment"
 <p>The <a href="../Bugzilla/User.html" class="podlinkpod"
 >Bugzilla::User</a> object representing the user who will see the text. This is useful to determine how much confidential information can be displayed to the user.</p>
 </dd>
+</dl>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="bug_start_of_update"
+>bug_start_of_update</a></h2>
+
+<p>This happens near the beginning of <a href="../Bugzilla/Bug.html#update" class="podlinkpod"
+>&#34;update&#34; in Bugzilla::Bug</a>, after <a href="../Bugzilla/Object.html#update" class="podlinkpod"
+>&#34;update&#34; in Bugzilla::Object</a> is called, but before all other special changes are made to the database. Once use case is this allows for adding your own entries to the <code  class="code">changes</code> hash which gets added to the bugs_activity table later keeping you from having to do it yourself. Also this is also helpful if your extension needs to add CC members, flags, keywords, groups, etc. This generally occurs inside a database transaction.</p>
+
+<p>Params:</p>
+
+<dl>
+<dt><a name="bug"
+><code  class="code">bug</code></a></dt>
+
+<dd>
+<p>The changed bug object, with all fields set to their updated values.</p>
+
+<dt><a name="old_bug"
+><code  class="code">old_bug</code></a></dt>
+
+<dd>
+<p>A bug object pulled from the database before the fields were set to their updated values (so it has the old values available for each field).</p>
+
+<dt><a name="timestamp"
+><code  class="code">timestamp</code></a></dt>
+
+<dd>
+<p>The timestamp used for all updates in this transaction, as a SQL date string.</p>
+
+<dt><a name="changes"
+><code  class="code">changes</code></a></dt>
+
+<dd>
+<p>The hash of changed fields. <code  class="code">$changes-&#62;{field} = [old, new]</code></p>
+</dd>
+</dl>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="bug_url_sub_classes"
+>bug_url_sub_classes</a></h2>
+
+<p>Allows you to add more <a href="../Bugzilla/BugUrl.html" class="podlinkpod"
+>Bugzilla::BugUrl</a> sub-classes.</p>
+
+<p>See the <code  class="code">MoreBugUrl</code> extension to see how things work.</p>
+
+<p>Params:</p>
+
+<dl>
+<dt><a name="sub_classes_-_An_arrayref_of_strings_which_represent_Bugzilla::BugUrl_sub-classes."
+><code  class="code">sub_classes</code> - An arrayref of strings which represent <a href="../Bugzilla/BugUrl.html" class="podlinkpod"
+>Bugzilla::BugUrl</a> sub-classes.</a></dt>
 </dl>
 
 <h2><a class='u' href='#___top' title='click to go to top of document'
@@ -1324,6 +1381,23 @@ name="page_before_template"
 
 <dd>
 <p>This is a hashref--put variables into here if you want them passed to your template.</p>
+</dd>
+</dl>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="path_info_whitelist"
+>path_info_whitelist</a></h2>
+
+<p>By default, Bugzilla removes the Path-Info information from URLs before passing data to CGI scripts. If this information is needed for your customizations, you can enumerate the pages you want to whitelist here.</p>
+
+<p>Params:</p>
+
+<dl>
+<dt><a name="whitelist"
+><code  class="code">whitelist</code></a></dt>
+
+<dd>
+<p>An array of script names that will not have their Path-Info automatically removed.</p>
 </dd>
 </dl>
 

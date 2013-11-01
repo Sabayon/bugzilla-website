@@ -1,24 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Oracle Corporation. 
-# Portions created by Oracle are Copyright (C) 2007 Oracle Corporation. 
-# All Rights Reserved.
-#
-# Contributor(s): Lance Larsh <lance.larsh@oracle.com>
-#                 Xiaoou Wu   <xiaoou.wu@oracle.com>
-#                 Max Kanat-Alexander <mkanat@bugzilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 =head1 NAME
 
@@ -314,9 +299,8 @@ sub adjust_statement {
     my $is_select = ($part =~ m/^\s*SELECT\b/io);
     my $has_from =  ($part =~ m/\bFROM\b/io) if $is_select;
 
-    # Oracle recognizes CURRENT_DATE, but not CURRENT_DATE()
-    # and its CURRENT_DATE is a date+time, so wrap in TRUNC()
-    $part =~ s/\bCURRENT_DATE\b(?:\(\))?/TRUNC(CURRENT_DATE)/io;
+    # Oracle includes the time in CURRENT_DATE.
+    $part =~ s/\bCURRENT_DATE\b/TRUNC(CURRENT_DATE)/io;
 
     # Oracle use SUBSTR instead of SUBSTRING
     $part =~ s/\bSUBSTRING\b/SUBSTR/io;
@@ -346,19 +330,14 @@ sub adjust_statement {
         $has_from = ($nonstring =~ m/\bFROM\b/io) 
                     if ($is_select and !$has_from);
 
-        # Oracle recognizes CURRENT_DATE, but not CURRENT_DATE()
-        # and its CURRENT_DATE is a date+time, so wrap in TRUNC()
-        $nonstring =~ s/\bCURRENT_DATE\b(?:\(\))?/TRUNC(CURRENT_DATE)/io;
+        # Oracle includes the time in CURRENT_DATE.
+        $nonstring =~ s/\bCURRENT_DATE\b/TRUNC(CURRENT_DATE)/io;
 
         # Oracle use SUBSTR instead of SUBSTRING
         $nonstring =~ s/\bSUBSTRING\b/SUBSTR/io;
-        
+
         # Oracle need no 'AS'
         $nonstring =~ s/\bAS\b//ig;
-        
-        # Take the first 4000 chars for comparison  
-        $nonstring =~ s/\(\s*(longdescs_\d+\.thetext|attachdata_\d+\.thedata)/
-                      \(DBMS_LOB.SUBSTR\($1, 4000, 1\)/ig;
 
         # Look for a LIMIT clause
         ($limit) = ($nonstring =~ m(/\* LIMIT (\d*) \*/)o);

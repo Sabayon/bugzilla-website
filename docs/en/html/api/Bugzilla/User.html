@@ -289,6 +289,19 @@ name="Other_Methods"
 <dd>
 <p>Returns the disable text of the user, if any.</p>
 
+<dt><a name="reports"
+><code  class="code">reports</code></a></dt>
+
+<dd>
+<p>Returns an arrayref of the user&#39;s own saved reports. The array contains <a href="../Bugzilla/Reports.html" class="podlinkpod"
+>Bugzilla::Reports</a> objects.</p>
+
+<dt><a name="flush_reports_cache"
+><code  class="code">flush_reports_cache</code></a></dt>
+
+<dd>
+<p>Some code modifies the set of stored reports. Because <code  class="code">Bugzilla::User</code> does not handle these modifications, but does cache the result of calling <code  class="code">reports</code> internally, such code must call this method to flush the cached result.</p>
+
 <dt><a name="settings"
 ><code  class="code">settings</code></a></dt>
 
@@ -520,12 +533,6 @@ name="Other_Methods"
 
 <dd>
 <p>Returns a reference to an array of users. The array is populated with hashrefs containing the login, identity and visibility. Users that are not visible to this user will have &#39;visible&#39; set to zero.</p>
-
-<dt><a name="direct_group_membership"
-><code  class="code">direct_group_membership</code></a></dt>
-
-<dd>
-<p>Returns a reference to an array of group objects. Groups the user belong to by group inheritance are excluded from the list.</p>
 
 <dt><a name="visible_groups_inherited"
 ><code  class="code">visible_groups_inherited</code></a></dt>

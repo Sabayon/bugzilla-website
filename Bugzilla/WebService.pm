@@ -1,19 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# Contributor(s): Marc Schumann <wurblzap@gmail.com>
-#                 Max Kanat-Alexander <mkanat@bugzilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 # This is the base class for $self in WebService method calls. For the 
 # actual RPC server, see Bugzilla::WebService::Server and its subclasses.
@@ -277,6 +267,13 @@ the returned hashes.
 If you specify all the fields, then this function will return empty
 hashes.
 
+Some RPC calls support specifying sub fields. If an RPC call states that
+it support sub field restrictions, you can restrict what information is
+returned within the first field. For example, if you call Products.get
+with an include_fields of components.name, then only the component name
+would be returned (and nothing else). You can include the main field,
+and exclude a sub field.
+
 Invalid field names are ignored.
 
 Specifying fields here overrides C<include_fields>, so if you specify a
@@ -304,13 +301,15 @@ would return something like:
 
 =back
 
-=head2 WebService Methods
+=head2 WebService Modules
 
 =over
 
 =item L<Bugzilla::WebService::Bug>
 
 =item L<Bugzilla::WebService::Bugzilla>
+
+=item L<Bugzilla::WebService::Classification>
 
 =item L<Bugzilla::WebService::Group>
 

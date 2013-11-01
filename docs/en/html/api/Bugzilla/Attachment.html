@@ -176,7 +176,7 @@ name="Instance_Properties"
 ><code  class="code">datasize</code></a></dt>
 
 <dd>
-<p>the length (in characters) of the attachment content</p>
+<p>the length (in bytes) of the attachment content</p>
 </dd>
 </dl>
 
@@ -203,13 +203,13 @@ name="Class_Methods"
 >Class Methods</a></h2>
 
 <dl>
-<dt><a name="get_attachments_by_bug($bug_id)"
-><code  class="code">get_attachments_by_bug($bug_id)</code></a></dt>
+<dt><a name="get_attachments_by_bug($bug)"
+><code  class="code">get_attachments_by_bug($bug)</code></a></dt>
 
 <dd>
 <p>Description: retrieves and returns the attachments the currently logged in user can view for the given bug.</p>
 
-<p>Params: <code  class="code">$bug_id</code> - integer - the ID of the bug for which to retrieve and return attachments.</p>
+<p>Params: <code  class="code">$bug</code> - Bugzilla::Bug object - the bug for which to retrieve and return attachments.</p>
 
 <p>Returns: a reference to an array of attachment objects.</p>
 

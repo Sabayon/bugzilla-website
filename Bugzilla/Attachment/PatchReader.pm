@@ -1,19 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# Contributor(s): John Keiser <john@johnkeiser.com>
-#                 Frédéric Buclin <LpSolit@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 use strict;
 
@@ -46,7 +36,7 @@ sub process_diff {
         if ($lc->{interdiffbin} && $lc->{diffpath}) {
             # Get the list of attachments that the user can view in this bug.
             my @attachments =
-                @{Bugzilla::Attachment->get_attachments_by_bug($attachment->bug_id)};
+                @{Bugzilla::Attachment->get_attachments_by_bug($attachment->bug)};
             # Extract patches only.
             @attachments = grep {$_->ispatch == 1} @attachments;
             # We want them sorted from newer to older.
@@ -208,7 +198,9 @@ sub warn_if_interdiff_might_fail {
 
     # Verify that the revisions in the files are the same.
     foreach my $file (keys %{$old_file_list}) {
-        if ($old_file_list->{$file}{old_revision} ne
+        if (exists $old_file_list->{$file}{old_revision}
+            && exists $new_file_list->{$file}{old_revision}
+            && $old_file_list->{$file}{old_revision} ne
             $new_file_list->{$file}{old_revision})
         {
             return 'interdiff2';
@@ -276,8 +268,7 @@ sub setup_template_patch_reader {
                             && Bugzilla->params->{'cvsroot_get'} && !$vars->{'newid'};
 
     # Print everything out.
-    print $cgi->header(-type => 'text/html',
-                       -expires => '+3M');
+    print $cgi->header(-type => 'text/html');
 
     $last_reader->sends_data_to(new PatchReader::DiffPrinter::template($template,
                                 "attachment/diff-header.$format.tmpl",

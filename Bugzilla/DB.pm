@@ -1,30 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Terry Weissman <terry@mozilla.org>
-#                 Dan Mosedale <dmose@mozilla.org>
-#                 Jacob Steenhagen <jake@bugzilla.org>
-#                 Bradley Baetz <bbaetz@student.usyd.edu.au>
-#                 Christopher Aillon <christopher@aillon.com>
-#                 Tomas Kopal <Tomas.Kopal@altap.cz>
-#                 Max Kanat-Alexander <mkanat@bugzilla.org>
-#                 Lance Larsh <lance.larsh@oracle.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::DB;
 
@@ -256,7 +235,7 @@ sub bz_create_database {
 
     if (!$conn_success) {
         $dbh = _get_no_db_connection();
-        print "Creating database $db_name...\n";
+        say "Creating database $db_name...";
 
         # Try to create the DB, and if we fail print a friendly error.
         my $success  = eval {
@@ -494,7 +473,7 @@ sub bz_setup_database {
     my @desired_tables = $self->_bz_schema->get_table_list();
     my $bugs_exists = $self->bz_table_info('bugs');
     if (!$bugs_exists) {
-        print install_string('db_table_setup'), "\n";
+        say install_string('db_table_setup');
     }
 
     foreach my $table_name (@desired_tables) {
@@ -531,7 +510,7 @@ sub bz_setup_foreign_keys {
     my $activity_fk = $self->bz_fk_info('profiles_activity', 'userid');
     my $any_fks = $activity_fk && $activity_fk->{created};
     if (!$any_fks) {
-        print get_text('install_fk_setup'), "\n";
+        say get_text('install_fk_setup');
     }
 
     my @tables = $self->bz_table_list();
@@ -722,12 +701,12 @@ sub bz_alter_column_raw {
         $table, $name, $new_def,
         defined $set_nulls_to ? $self->quote($set_nulls_to) : undef);
     my $new_ddl = $self->_bz_schema->get_type_ddl($new_def);
-    print "Updating column $name in table $table ...\n";
+    say "Updating column $name in table $table ...";
     if (defined $current_def) {
         my $old_ddl = $self->_bz_schema->get_type_ddl($current_def);
-        print "Old: $old_ddl\n";
+        say "Old: $old_ddl";
     }
-    print "New: $new_ddl\n";
+    say "New: $new_ddl";
     $self->do($_) foreach (@statements);
 }
 
@@ -821,7 +800,7 @@ sub _bz_add_table_raw {
     if (Bugzilla->usage_mode == USAGE_MODE_CMDLINE
         and !$options->{silently})
     {
-        print install_string('db_table_new', { table => $name }), "\n";
+        say install_string('db_table_new', { table => $name });
     }
     $self->do($_) foreach (@statements);
 }
@@ -1342,7 +1321,7 @@ sub _bz_init_schema_storage {
             $self->_bz_add_table_raw('bz_schema');
         }
 
-        print install_string('db_schema_init'), "\n";
+        say install_string('db_schema_init');
         my $sth = $self->prepare("INSERT INTO bz_schema "
                                  ." (schema_data, version) VALUES (?,?)");
         $sth->bind_param(1, $store_me, $self->BLOB_TYPE);

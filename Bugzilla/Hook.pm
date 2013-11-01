@@ -1,24 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Zach Lipton <zach@zachlipton.com>
-#                 Max Kanat-Alexander <mkanat@bugzilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::Hook;
 use strict;
@@ -431,6 +416,54 @@ the summary line).
 The L<Bugzilla::User> object representing the user who will see the text.
 This is useful to determine how much confidential information can be displayed
 to the user.
+
+=back
+
+=head2 bug_start_of_update
+
+This happens near the beginning of L<Bugzilla::Bug/update>, after L<Bugzilla::Object/update>
+is called, but before all other special changes are made to the database. Once use case is
+this allows for adding your own entries to the C<changes> hash which gets added to the
+bugs_activity table later keeping you from having to do it yourself. Also this is also helpful
+if your extension needs to add CC members, flags, keywords, groups, etc. This generally
+occurs inside a database transaction.
+
+Params:
+
+=over
+
+=item C<bug> 
+
+The changed bug object, with all fields set to their updated values.
+
+=item C<old_bug>
+
+A bug object pulled from the database before the fields were set to
+their updated values (so it has the old values available for each field).
+
+=item C<timestamp> 
+
+The timestamp used for all updates in this transaction, as a SQL date
+string.
+
+=item C<changes> 
+
+The hash of changed fields. C<< $changes->{field} = [old, new] >>
+
+=back
+
+=head2 bug_url_sub_classes
+
+Allows you to add more L<Bugzilla::BugUrl> sub-classes.
+
+See the C<MoreBugUrl> extension to see how things work.
+
+Params:
+
+=over
+
+=item C<sub_classes> - An arrayref of strings which represent L<Bugzilla::BugUrl>
+sub-classes.
 
 =back
 
@@ -1289,6 +1322,22 @@ your template.
 
 =back
 
+=head2 path_info_whitelist
+
+By default, Bugzilla removes the Path-Info information from URLs before
+passing data to CGI scripts. If this information is needed for your
+customizations, you can enumerate the pages you want to whitelist here.
+
+Params:
+
+=over
+
+=item C<whitelist>
+
+An array of script names that will not have their Path-Info automatically
+removed.
+
+=back
 
 =head2 post_bug_after_creation
 

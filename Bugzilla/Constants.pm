@@ -1,33 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Terry Weissman <terry@mozilla.org>
-#                 Dawn Endico <endico@mozilla.org>
-#                 Dan Mosedale <dmose@mozilla.org>
-#                 Joe Robins <jmrobins@tgix.com>
-#                 Jake <jake@bugzilla.org>
-#                 J. Paul Reed <preed@sigkill.com>
-#                 Bradley Baetz <bbaetz@student.usyd.edu.au>
-#                 Christopher Aillon <christopher@aillon.com>
-#                 Shane H. W. Travis <travis@sedsystems.ca>
-#                 Max Kanat-Alexander <mkanat@bugzilla.org>
-#                 Marc Schumann <wurblzap@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::Constants;
 use strict;
@@ -105,7 +81,7 @@ use Memoize;
     POS_EVENTS
     EVT_OTHER EVT_ADDED_REMOVED EVT_COMMENT EVT_ATTACHMENT EVT_ATTACHMENT_DATA
     EVT_PROJ_MANAGEMENT EVT_OPENED_CLOSED EVT_KEYWORD EVT_CC EVT_DEPEND_BLOCK
-    EVT_BUG_CREATED
+    EVT_BUG_CREATED EVT_COMPONENT
 
     NEG_EVENTS
     EVT_UNCONFIRMED EVT_CHANGED_BY_ME 
@@ -164,6 +140,7 @@ use Memoize;
     MAX_SUDO_TOKEN_AGE
     MAX_LOGIN_ATTEMPTS
     LOGIN_LOCKOUT_INTERVAL
+    ACCOUNT_CHANGE_INTERVAL
     MAX_STS_AGE
 
     SAFE_PROTOCOLS
@@ -179,9 +156,12 @@ use Memoize;
     MAX_MILESTONE_SIZE
     MAX_COMPONENT_SIZE
     MAX_FIELD_VALUE_SIZE
+    MAX_FIELD_LONG_DESC_LENGTH
     MAX_FREETEXT_LENGTH
     MAX_BUG_URL_LENGTH
     MAX_POSSIBLE_DUPLICATES
+    MAX_ATTACH_FILENAME_LENGTH
+    MAX_QUIP_LENGTH
 
     PASSWORD_DIGEST_ALGORITHM
     PASSWORD_SALT_LENGTH
@@ -202,7 +182,7 @@ use Memoize;
 # CONSTANTS
 #
 # Bugzilla version
-use constant BUGZILLA_VERSION => "4.2.7";
+use constant BUGZILLA_VERSION => "4.4.1";
 
 # Location of the remote and local XML files to track new releases.
 use constant REMOTE_FILE => 'http://updates.bugzilla.org/bugzilla-update.xml';
@@ -355,11 +335,13 @@ use constant EVT_KEYWORD            => 7;
 use constant EVT_CC                 => 8;
 use constant EVT_DEPEND_BLOCK       => 9;
 use constant EVT_BUG_CREATED        => 10;
+use constant EVT_COMPONENT          => 11;
 
 use constant POS_EVENTS => EVT_OTHER, EVT_ADDED_REMOVED, EVT_COMMENT, 
                            EVT_ATTACHMENT, EVT_ATTACHMENT_DATA, 
                            EVT_PROJ_MANAGEMENT, EVT_OPENED_CLOSED, EVT_KEYWORD,
-                           EVT_CC, EVT_DEPEND_BLOCK, EVT_BUG_CREATED;
+                           EVT_CC, EVT_DEPEND_BLOCK, EVT_BUG_CREATED,
+                           EVT_COMPONENT;
 
 use constant EVT_UNCONFIRMED        => 50;
 use constant EVT_CHANGED_BY_ME      => 51;
@@ -430,6 +412,10 @@ use constant MAX_LOGIN_ATTEMPTS => 5;
 # account is locked.
 use constant LOGIN_LOCKOUT_INTERVAL => 30;
 
+# The time in minutes a user must wait before he can request another email to
+# create a new account or change his password.
+use constant ACCOUNT_CHANGE_INTERVAL => 10;
+
 # The maximum number of seconds the Strict-Transport-Security header
 # will remain valid. Default is one week.
 use constant MAX_STS_AGE => 604800;
@@ -445,15 +431,16 @@ use constant LEGAL_CONTENT_TYPES => ('application', 'audio', 'image', 'message',
 
 use constant contenttypes =>
   {
-   "html"=> "text/html" ,
-   "rdf" => "application/rdf+xml" ,
-   "atom"=> "application/atom+xml" ,
-   "xml" => "application/xml" ,
-   "js"  => "application/x-javascript" ,
-   "json"=> "application/json" ,
-   "csv" => "text/csv" ,
-   "png" => "image/png" ,
-   "ics" => "text/calendar" ,
+   "html" => "text/html" ,
+   "rdf"  => "application/rdf+xml" ,
+   "atom" => "application/atom+xml" ,
+   "xml"  => "application/xml" ,
+   "dtd"  => "application/xml-dtd" , 
+   "js"   => "application/x-javascript" ,
+   "json" => "application/json" ,
+   "csv"  => "text/csv" ,
+   "png"  => "image/png" ,
+   "ics"  => "text/calendar" ,
   };
 
 # Usage modes. Default USAGE_MODE_BROWSER. Use with Bugzilla->usage_mode.
@@ -500,7 +487,9 @@ use constant DB_MODULE => {
                 dbd => {
                     package => 'DBD-Pg',
                     module  => 'DBD::Pg',
-                    version => '1.45',
+                    # 2.7.0 fixes a problem with quoting strings
+                    # containing backslashes in them.
+                    version => '2.7.0',
                 },
                 name => 'PostgreSQL'},
      'oracle'=> {db => 'Bugzilla::DB::Oracle', db_version => '10.02.0',
@@ -544,13 +533,16 @@ use constant MAX_CLASSIFICATION_SIZE => 64;
 use constant MAX_PRODUCT_SIZE => 64;
 
 # The longest milestone name allowed.
-use constant MAX_MILESTONE_SIZE => 20;
+use constant MAX_MILESTONE_SIZE => 64;
 
 # The longest component name allowed.
 use constant MAX_COMPONENT_SIZE => 64;
 
 # The maximum length for values of <select> fields.
 use constant MAX_FIELD_VALUE_SIZE => 64;
+
+# The maximum length for the long description of fields.
+use constant MAX_FIELD_LONG_DESC_LENGTH => 255;
 
 # Maximum length allowed for free text fields.
 use constant MAX_FREETEXT_LENGTH => 255;
@@ -561,6 +553,14 @@ use constant MAX_BUG_URL_LENGTH => 255;
 # The largest number of possible duplicates that Bug::possible_duplicates
 # will return.
 use constant MAX_POSSIBLE_DUPLICATES => 25;
+
+# Maximum length of filename stored in attachments table (longer ones will
+# be truncated to this value). Do not increase above 255 without making the
+# necessary schema changes to store longer names.
+use constant MAX_ATTACH_FILENAME_LENGTH => 255;
+
+# Maximum length of a quip.
+use constant MAX_QUIP_LENGTH => 512;
 
 # This is the name of the algorithm used to hash passwords before storing
 # them in the database. This can be any string that is valid to pass to
@@ -574,7 +574,8 @@ use constant PASSWORD_SALT_LENGTH => 8;
 # Certain scripts redirect to GET even if the form was submitted originally
 # via POST such as buglist.cgi. This value determines whether the redirect
 # can be safely done or not based on the web server's URI length setting.
-use constant CGI_URI_LIMIT => 8000;
+# See http://support.microsoft.com/kb/208427 for why MSIE is different
+use constant CGI_URI_LIMIT => ($ENV{'HTTP_USER_AGENT'} || '') =~ /MSIE/ ? 2083 : 8000;
 
 # If the user isn't allowed to change a field, we must tell him who can.
 # We store the required permission set into the $PrivilegesRequired

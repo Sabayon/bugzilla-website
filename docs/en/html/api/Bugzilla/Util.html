@@ -23,7 +23,6 @@ Bugzilla::Util</title>
     <li class='indexItem indexItem2'><a href='#Data_Manipulation'>Data Manipulation</a>
     <li class='indexItem indexItem2'><a href='#String_Manipulation'>String Manipulation</a>
     <li class='indexItem indexItem2'><a href='#Formatting_Time'>Formatting Time</a>
-    <li class='indexItem indexItem2'><a href='#Files'>Files</a>
     <li class='indexItem indexItem2'><a href='#Cryptography'>Cryptography</a>
     <li class='indexItem indexItem2'><a href='#Validation'>Validation</a>
     <li class='indexItem indexItem2'><a href='#Database'>Database</a>
@@ -69,15 +68,13 @@ name="SYNOPSIS"
   format_time($time);
   datetime_from($time, $timezone);
 
-  # Functions for dealing with files
-  $time = file_mod_time($filename);
-
   # Cryptographic Functions
   $crypted_password = bz_crypt($password);
   $new_password = generate_random_password($password_length);
 
   # Validation Functions
   validate_email_syntax($email);
+  check_email_syntax($email);
   validate_date($date);
 
   # DB-related functions
@@ -266,6 +263,12 @@ name="String_Manipulation"
 <dd>
 <p>Search for a comma, a whitespace or a hyphen to split $string, within the first $maxpos characters. If none of them is found, just split $string at $maxpos. The search starts at $maxpos and goes back to the beginning of the string.</p>
 
+<dt><a name="join_activity_entries($field,_$current_change,_$new_change)"
+><code  class="code">join_activity_entries($field, $current_change, $new_change)</code></a></dt>
+
+<dd>
+<p>Joins two strings together so they appear as one. The field name is specified as the method of joining the two strings depends on this. Returns the combined string.</p>
+
 <dt><a name="is_7bit_clean($str)"
 ><code  class="code">is_7bit_clean($str)</code></a></dt>
 
@@ -355,19 +358,6 @@ name="Formatting_Time"
 </dl>
 
 <h2><a class='u' href='#___top' title='click to go to top of document'
-name="Files"
->Files</a></h2>
-
-<dl>
-<dt><a name="file_mod_time($filename)"
-><code  class="code">file_mod_time($filename)</code></a></dt>
-
-<dd>
-<p>Takes a filename and returns the modification time. It returns it in the format of the &#34;mtime&#34; parameter of the perl &#34;stat&#34; function.</p>
-</dd>
-</dl>
-
-<h2><a class='u' href='#___top' title='click to go to top of document'
 name="Cryptography"
 >Cryptography</a></h2>
 
@@ -398,6 +388,12 @@ name="Validation"
 
 <dd>
 <p>Do a syntax checking for a legal email address and returns 1 if the check is successful, else returns 0. Untaints <code  class="code">$email</code> if successful.</p>
+
+<dt><a name="check_email_syntax($email)"
+><code  class="code">check_email_syntax($email)</code></a></dt>
+
+<dd>
+<p>Do a syntax checking for a legal email address and throws an error if the check fails. Untaints <code  class="code">$email</code> if successful.</p>
 
 <dt><a name="validate_date($date)"
 ><code  class="code">validate_date($date)</code></a></dt>

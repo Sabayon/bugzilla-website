@@ -58,7 +58,7 @@ name="SYNOPSIS"
   # Instantiate a Field object for an existing field.
   my $field = new Bugzilla::Field({name =&#62; &#39;qacontact_accessible&#39;});
   if ($field-&#62;obsolete) {
-      print $field-&#62;description . &#34; is obsolete\n&#34;;
+      say $field-&#62;description . &#34; is obsolete&#34;;
   }
 
   # Validation Routines
@@ -93,6 +93,15 @@ name="Instance_Properties"
 
 <dd>
 <p>a short string describing the field; displayed to Bugzilla users in several places within Bugzilla&#39;s UI, f.e. as the form field label on the &#34;show bug&#34; page;</p>
+</dd>
+</dl>
+
+<dl>
+<dt><a name="long_desc"
+><code  class="code">long_desc</code></a></dt>
+
+<dd>
+<p>A string providing detailed info about the field;</p>
 </dd>
 </dl>
 
@@ -312,6 +321,10 @@ name="Instance_Mutators"
 ><code  class="code">set_description</code></a></dt>
 
 <dd>
+<dt><a name="set_long_desc"
+><code  class="code">set_long_desc</code></a></dt>
+
+<dd>
 <dt><a name="set_enter_bug"
 ><code  class="code">set_enter_bug</code></a></dt>
 
@@ -384,6 +397,10 @@ name="Class_Methods"
 <dd>
 <dt><a name="description_Required_-_The_field_label_to_display_in_the_UI."
 ><code  class="code">description</code> <b>Required</b> - The field label to display in the UI.</a></dt>
+
+<dd>
+<dt><a name="long_desc_-_A_longer_description_of_the_field."
+><code  class="code">long_desc</code> - A longer description of the field.</a></dt>
 
 <dd>
 <dt><a name="mailhead_-_boolean_-_Whether_this_field_appears_at_the_top_of_the_bugmail_for_a_newly-filed_bug._Defaults_to_0."

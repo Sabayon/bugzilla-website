@@ -1,177 +1,21 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<HTML
-><HEAD
-><TITLE
->&#13;      checksetup.pl reports "Client does not support authentication protocol
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>A.8.  checksetup.pl reports "Client does not support authentication protocol requested by server..."</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.1 Release"><link rel="up" href="troubleshooting.html" title="Appendix A. Troubleshooting"><link rel="prev" href="trbl-index.html" title="A.7. index.cgi doesn't show up unless specified in the URL"><link rel="next" href="patches.html" title="Appendix B. Contrib"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">A.8. 
+      checksetup.pl reports "Client does not support authentication protocol
       requested by server..."
-    </TITLE
-><META
-NAME="GENERATOR"
-CONTENT="Modular DocBook HTML Stylesheet Version 1.79"><LINK
-REL="HOME"
-TITLE="The Bugzilla Guide - 4.2.7 
-    Release"
-HREF="index.html"><LINK
-REL="UP"
-TITLE="Troubleshooting"
-HREF="troubleshooting.html"><LINK
-REL="PREVIOUS"
-TITLE="index.cgi doesn't show up unless specified in the URL"
-HREF="trbl-index.html"><LINK
-REL="NEXT"
-TITLE="Contrib"
-HREF="patches.html"></HEAD
-><BODY
-CLASS="section"
-BGCOLOR="#FFFFFF"
-TEXT="#000000"
-LINK="#0000FF"
-VLINK="#840084"
-ALINK="#0000FF"
-><DIV
-CLASS="NAVHEADER"
-><TABLE
-SUMMARY="Header navigation table"
-WIDTH="100%"
-BORDER="0"
-CELLPADDING="0"
-CELLSPACING="0"
-><TR
-><TH
-COLSPAN="3"
-ALIGN="center"
->The Bugzilla Guide - 4.2.7 
-    Release</TH
-></TR
-><TR
-><TD
-WIDTH="10%"
-ALIGN="left"
-VALIGN="bottom"
-><A
-HREF="trbl-index.html"
-ACCESSKEY="P"
->Prev</A
-></TD
-><TD
-WIDTH="80%"
-ALIGN="center"
-VALIGN="bottom"
->Appendix A. Troubleshooting</TD
-><TD
-WIDTH="10%"
-ALIGN="right"
-VALIGN="bottom"
-><A
-HREF="patches.html"
-ACCESSKEY="N"
->Next</A
-></TD
-></TR
-></TABLE
-><HR
-ALIGN="LEFT"
-WIDTH="100%"></DIV
-><DIV
-CLASS="section"
-><H1
-CLASS="section"
-><A
-NAME="trbl-passwd-encryption"
->A.8. checksetup.pl reports "Client does not support authentication protocol
-      requested by server..."</A
-></H1
-><P
->&#13;      This error is occurring because you are using the new password
+    </th></tr><tr><td width="20%" align="left"><a accesskey="p" href="trbl-index.html">Prev</a> </td><th width="60%" align="center">Appendix A. Troubleshooting</th><td width="20%" align="right"> <a accesskey="n" href="patches.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="trbl-passwd-encryption"></a>A.8. 
+      checksetup.pl reports "Client does not support authentication protocol
+      requested by server..."
+    </h2></div></div></div><p>
+      This error is occurring because you are using the new password
       encryption that comes with MySQL 4.1, while your
-      <TT
-CLASS="filename"
->DBD::mysql</TT
-> module was compiled against an
-      older version of MySQL. If you recompile <TT
-CLASS="filename"
->DBD::mysql</TT
->
+      <code class="filename">DBD::mysql</code> module was compiled against an
+      older version of MySQL. If you recompile <code class="filename">DBD::mysql</code>
       against the current MySQL libraries (or just obtain a newer version
       of this module) then the error may go away.
-    </P
-><P
->&#13;      If that does not fix the problem, or if you cannot recompile the
+    </p><p>
+      If that does not fix the problem, or if you cannot recompile the
       existing module (e.g. you're running Windows) and/or don't want to
       replace it (e.g. you want to keep using a packaged version), then a
       workaround is available from the MySQL docs:
-      <A
-HREF="http://dev.mysql.com/doc/mysql/en/Old_client.html"
-TARGET="_top"
->http://dev.mysql.com/doc/mysql/en/Old_client.html</A
->
-    </P
-></DIV
-><DIV
-CLASS="NAVFOOTER"
-><HR
-ALIGN="LEFT"
-WIDTH="100%"><TABLE
-SUMMARY="Footer navigation table"
-WIDTH="100%"
-BORDER="0"
-CELLPADDING="0"
-CELLSPACING="0"
-><TR
-><TD
-WIDTH="33%"
-ALIGN="left"
-VALIGN="top"
-><A
-HREF="trbl-index.html"
-ACCESSKEY="P"
->Prev</A
-></TD
-><TD
-WIDTH="34%"
-ALIGN="center"
-VALIGN="top"
-><A
-HREF="index.html"
-ACCESSKEY="H"
->Home</A
-></TD
-><TD
-WIDTH="33%"
-ALIGN="right"
-VALIGN="top"
-><A
-HREF="patches.html"
-ACCESSKEY="N"
->Next</A
-></TD
-></TR
-><TR
-><TD
-WIDTH="33%"
-ALIGN="left"
-VALIGN="top"
-><TT
-CLASS="filename"
->index.cgi</TT
-> doesn't show up unless specified in the URL</TD
-><TD
-WIDTH="34%"
-ALIGN="center"
-VALIGN="top"
-><A
-HREF="troubleshooting.html"
-ACCESSKEY="U"
->Up</A
-></TD
-><TD
-WIDTH="33%"
-ALIGN="right"
-VALIGN="top"
->Contrib</TD
-></TR
-></TABLE
-></DIV
-></BODY
-></HTML
->
+      <a class="ulink" href="http://dev.mysql.com/doc/mysql/en/Old_client.html" target="_top">http://dev.mysql.com/doc/mysql/en/Old_client.html</a>
+    </p></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="trbl-index.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="troubleshooting.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="patches.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">A.7. <code class="filename">index.cgi</code> doesn't show up unless specified in the URL </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Appendix B. Contrib</td></tr></table></div></body></html>

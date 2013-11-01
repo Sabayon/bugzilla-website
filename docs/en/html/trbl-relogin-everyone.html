@@ -1,268 +1,44 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<HTML
-><HEAD
-><TITLE
->Everybody is constantly being forced to relogin</TITLE
-><META
-NAME="GENERATOR"
-CONTENT="Modular DocBook HTML Stylesheet Version 1.79"><LINK
-REL="HOME"
-TITLE="The Bugzilla Guide - 4.2.7 
-    Release"
-HREF="index.html"><LINK
-REL="UP"
-TITLE="Troubleshooting"
-HREF="troubleshooting.html"><LINK
-REL="PREVIOUS"
-TITLE="cannot chdir(/var/spool/mqueue)"
-HREF="paranoid-security.html"><LINK
-REL="NEXT"
-TITLE="index.cgi doesn't show up unless specified in the URL"
-HREF="trbl-index.html"></HEAD
-><BODY
-CLASS="section"
-BGCOLOR="#FFFFFF"
-TEXT="#000000"
-LINK="#0000FF"
-VLINK="#840084"
-ALINK="#0000FF"
-><DIV
-CLASS="NAVHEADER"
-><TABLE
-SUMMARY="Header navigation table"
-WIDTH="100%"
-BORDER="0"
-CELLPADDING="0"
-CELLSPACING="0"
-><TR
-><TH
-COLSPAN="3"
-ALIGN="center"
->The Bugzilla Guide - 4.2.7 
-    Release</TH
-></TR
-><TR
-><TD
-WIDTH="10%"
-ALIGN="left"
-VALIGN="bottom"
-><A
-HREF="paranoid-security.html"
-ACCESSKEY="P"
->Prev</A
-></TD
-><TD
-WIDTH="80%"
-ALIGN="center"
-VALIGN="bottom"
->Appendix A. Troubleshooting</TD
-><TD
-WIDTH="10%"
-ALIGN="right"
-VALIGN="bottom"
-><A
-HREF="trbl-index.html"
-ACCESSKEY="N"
->Next</A
-></TD
-></TR
-></TABLE
-><HR
-ALIGN="LEFT"
-WIDTH="100%"></DIV
-><DIV
-CLASS="section"
-><H1
-CLASS="section"
-><A
-NAME="trbl-relogin-everyone"
->A.6. Everybody is constantly being forced to relogin</A
-></H1
-><P
->The most-likely cause is that the <SPAN
-CLASS="QUOTE"
->"cookiepath"</SPAN
-> parameter
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>A.6. Everybody is constantly being forced to relogin</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.1 Release"><link rel="up" href="troubleshooting.html" title="Appendix A. Troubleshooting"><link rel="prev" href="paranoid-security.html" title="A.5. cannot chdir(/var/spool/mqueue)"><link rel="next" href="trbl-index.html" title="A.7. index.cgi doesn't show up unless specified in the URL"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">A.6. Everybody is constantly being forced to relogin</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="paranoid-security.html">Prev</a> </td><th width="60%" align="center">Appendix A. Troubleshooting</th><td width="20%" align="right"> <a accesskey="n" href="trbl-index.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="trbl-relogin-everyone"></a>A.6. Everybody is constantly being forced to relogin</h2></div></div></div><p>The most-likely cause is that the <span class="quote">“<span class="quote">cookiepath</span>”</span> parameter
   is not set correctly in the Bugzilla configuration.  You can change this (if
   you're a Bugzilla administrator) from the editparams.cgi page via the web interface.
-  </P
-><P
->The value of the cookiepath parameter should be the actual directory
-  containing your Bugzilla installation, <EM
->as seen by the end-user's
-  web browser</EM
->. Leading and trailing slashes are mandatory. You can
+  </p><p>The value of the cookiepath parameter should be the actual directory
+  containing your Bugzilla installation, <span class="emphasis"><em>as seen by the end-user's
+  web browser</em></span>. Leading and trailing slashes are mandatory. You can
   also set the cookiepath to any directory which is a parent of the Bugzilla
   directory (such as '/', the root directory). But you can't put something
   that isn't at least a partial match or it won't work. What you're actually
   doing is restricting the end-user's browser to sending the cookies back only
   to that directory.
-  </P
-><P
->How do you know if you want your specific Bugzilla directory or the
+  </p><p>How do you know if you want your specific Bugzilla directory or the
   whole site?
-  </P
-><P
->If you have only one Bugzilla running on the server, and you don't
+  </p><p>If you have only one Bugzilla running on the server, and you don't
   mind having other applications on the same server with it being able to see
   the cookies (you might be doing this on purpose if you have other things on
   your site that share authentication with Bugzilla), then you'll want to have
   the cookiepath set to "/", or to a sufficiently-high enough directory that
   all of the involved apps can see the cookies.
-  </P
-><DIV
-CLASS="example"
-><A
-NAME="trbl-relogin-everyone-share"
-></A
-><P
-><B
->Example A-1. Examples of urlbase/cookiepath pairs for sharing login cookies</B
-></P
-><A
-NAME="AEN3216"
-></A
-><BLOCKQUOTE
-CLASS="BLOCKQUOTE"
-><P
-CLASS="literallayout"
-><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;urlbase&nbsp;is&nbsp;<A
-HREF="http://bugzilla.mozilla.org/"
-TARGET="_top"
->http://bugzilla.mozilla.org/</A
-><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cookiepath&nbsp;is&nbsp;/<br>
+  </p><div class="example"><a name="trbl-relogin-everyone-share"></a><p class="title"><b>Example A.1. Examples of urlbase/cookiepath pairs for sharing login cookies</b></p><div class="example-contents"><div class="blockquote"><blockquote class="blockquote"><div class="literallayout"><p><br>
+urlbase is http://bugzilla.mozilla.org/<br>
+cookiepath is /<br>
 <br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;urlbase&nbsp;is&nbsp;<A
-HREF="http://tools.mysite.tld/bugzilla/"
-TARGET="_top"
->http://tools.mysite.tld/bugzilla/</A
-><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;but&nbsp;you&nbsp;have&nbsp;http://tools.mysite.tld/someotherapp/&nbsp;which&nbsp;shares<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;authentication&nbsp;with&nbsp;your&nbsp;Bugzilla<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cookiepath&nbsp;is&nbsp;/<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</P
-></BLOCKQUOTE
-></DIV
-><P
->On the other hand, if you have more than one Bugzilla running on the
+urlbase is http://tools.mysite.tld/bugzilla/<br>
+        but you have http://tools.mysite.tld/someotherapp/ which shares<br>
+        authentication with your Bugzilla<br>
+cookiepath is /<br>
+      </p></div></blockquote></div></div></div><br class="example-break"><p>On the other hand, if you have more than one Bugzilla running on the
    server (some people do - we do on landfill) then you need to have the
    cookiepath restricted enough so that the different Bugzillas don't
    confuse their cookies with one another.
-   </P
-><DIV
-CLASS="example"
-><A
-NAME="trbl-relogin-everyone-restrict"
-></A
-><P
-><B
->Example A-2. Examples of urlbase/cookiepath pairs to restrict the login cookie</B
-></P
-><A
-NAME="AEN3223"
-></A
-><BLOCKQUOTE
-CLASS="BLOCKQUOTE"
-><P
-CLASS="literallayout"
-><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;urlbase&nbsp;is&nbsp;<A
-HREF="http://landfill.bugzilla.org/bugzilla-tip/"
-TARGET="_top"
->http://landfill.bugzilla.org/bugzilla-tip/</A
-><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cookiepath&nbsp;is&nbsp;/bugzilla-tip/<br>
+   </p><div class="example"><a name="trbl-relogin-everyone-restrict"></a><p class="title"><b>Example A.2. Examples of urlbase/cookiepath pairs to restrict the login cookie</b></p><div class="example-contents"><div class="blockquote"><blockquote class="blockquote"><div class="literallayout"><p><br>
+urlbase is http://landfill.bugzilla.org/bugzilla-tip/<br>
+cookiepath is /bugzilla-tip/<br>
 <br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;urlbase&nbsp;is&nbsp;<A
-HREF="http://landfill.bugzilla.org/bugzilla-2.16-branch/"
-TARGET="_top"
->http://landfill.bugzilla.org/bugzilla-2.16-branch/</A
-><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cookiepath&nbsp;is&nbsp;/bugzilla-2.16-branch/<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</P
-></BLOCKQUOTE
-></DIV
-><P
->If you had cookiepath set to <SPAN
-CLASS="QUOTE"
->"/"</SPAN
-> at any point in the
+urlbase is http://landfill.bugzilla.org/bugzilla-4.0-branch/<br>
+cookiepath is /bugzilla-4.0-branch/<br>
+        </p></div></blockquote></div></div></div><br class="example-break"><p>If you had cookiepath set to <span class="quote">“<span class="quote">/</span>”</span> at any point in the
     past and need to set it to something more restrictive
-    (i.e. <SPAN
-CLASS="QUOTE"
->"/bugzilla/"</SPAN
->), you can safely do this without
+    (i.e. <span class="quote">“<span class="quote">/bugzilla/</span>”</span>), you can safely do this without
     requiring users to delete their Bugzilla-related cookies in their
     browser (this is true starting with Bugzilla 2.18 and Bugzilla 2.16.5).
-    </P
-></DIV
-><DIV
-CLASS="NAVFOOTER"
-><HR
-ALIGN="LEFT"
-WIDTH="100%"><TABLE
-SUMMARY="Footer navigation table"
-WIDTH="100%"
-BORDER="0"
-CELLPADDING="0"
-CELLSPACING="0"
-><TR
-><TD
-WIDTH="33%"
-ALIGN="left"
-VALIGN="top"
-><A
-HREF="paranoid-security.html"
-ACCESSKEY="P"
->Prev</A
-></TD
-><TD
-WIDTH="34%"
-ALIGN="center"
-VALIGN="top"
-><A
-HREF="index.html"
-ACCESSKEY="H"
->Home</A
-></TD
-><TD
-WIDTH="33%"
-ALIGN="right"
-VALIGN="top"
-><A
-HREF="trbl-index.html"
-ACCESSKEY="N"
->Next</A
-></TD
-></TR
-><TR
-><TD
-WIDTH="33%"
-ALIGN="left"
-VALIGN="top"
->cannot chdir(/var/spool/mqueue)</TD
-><TD
-WIDTH="34%"
-ALIGN="center"
-VALIGN="top"
-><A
-HREF="troubleshooting.html"
-ACCESSKEY="U"
->Up</A
-></TD
-><TD
-WIDTH="33%"
-ALIGN="right"
-VALIGN="top"
-><TT
-CLASS="filename"
->index.cgi</TT
-> doesn't show up unless specified in the URL</TD
-></TR
-></TABLE
-></DIV
-></BODY
-></HTML
->
+    </p></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="paranoid-security.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="troubleshooting.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="trbl-index.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">A.5. cannot chdir(/var/spool/mqueue) </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> A.7. <code class="filename">index.cgi</code> doesn't show up unless specified in the URL</td></tr></table></div></body></html>

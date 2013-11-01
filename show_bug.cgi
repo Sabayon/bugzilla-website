@@ -1,24 +1,10 @@
 #!/usr/bin/perl -wT
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Terry Weissman <terry@mozilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 use strict;
 
@@ -27,8 +13,7 @@ use lib qw(. lib);
 use Bugzilla;
 use Bugzilla::Constants;
 use Bugzilla::Error;
-use Bugzilla::User;
-use Bugzilla::Keyword;
+use Bugzilla::Util;
 use Bugzilla::Bug;
 
 my $cgi = Bugzilla->cgi;
@@ -45,13 +30,13 @@ my $single = !$format->{format} && $format->{extension} eq 'html';
 
 # If we don't have an ID, _AND_ we're only doing a single bug, then prompt
 if (!$cgi->param('id') && $single) {
-    print Bugzilla->cgi->header();
+    print $cgi->header();
     $template->process("bug/choose.html.tmpl", $vars) ||
       ThrowTemplateError($template->error());
     exit;
 }
 
-my @bugs;
+my (@bugs, @illegal_bugs);
 my %marks;
 
 # If the user isn't logged in, we use data from the shadow DB. If he plans
@@ -77,22 +62,36 @@ if ($single) {
     foreach my $id ($cgi->param('id')) {
         # Be kind enough and accept URLs of the form: id=1,2,3.
         my @ids = split(/,/, $id);
-        foreach (@ids) {
-            my $bug = new Bugzilla::Bug($_);
-            # This is basically a backwards-compatibility hack from when
-            # Bugzilla::Bug->new used to set 'NotPermitted' if you couldn't
-            # see the bug.
-            if (!$bug->{error} && !$user->can_see_bug($bug->bug_id)) {
-                $bug->{error} = 'NotPermitted';
+        my @check_bugs;
+
+        foreach my $bug_id (@ids) {
+            next unless $bug_id;
+            my $bug = new Bugzilla::Bug($bug_id);
+            if (!$bug->{error}) {
+                push(@check_bugs, $bug);
             }
-            push(@bugs, $bug);
+            else {
+                push(@illegal_bugs, { bug_id => trim($bug_id), error => $bug->{error} });
+            }
+        }
+
+        $user->visible_bugs(\@check_bugs);
+
+        foreach my $bug (@check_bugs) {
+            if ($user->can_see_bug($bug->id)) {
+                push(@bugs, $bug);
+            }
+            else {
+                my $error = 'NotPermitted'; # Trick to make 012throwables.t happy.
+                push(@illegal_bugs, { bug_id => $bug->id, error => $error });
+            }
         }
     }
 }
 
 Bugzilla::Bug->preload(\@bugs);
 
-$vars->{'bugs'} = \@bugs;
+$vars->{'bugs'} = [@bugs, @illegal_bugs];
 $vars->{'marks'} = \%marks;
 
 my @bugids = map {$_->bug_id} grep {!$_->error} @bugs;
@@ -110,7 +109,7 @@ if ($cgi->param("field")) {
     @fieldlist = $cgi->param("field");
 }
 
-unless (Bugzilla->user->is_timetracker) {
+unless ($user->is_timetracker) {
     @fieldlist = grep($_ !~ /(^deadline|_time)$/, @fieldlist);
 }
 

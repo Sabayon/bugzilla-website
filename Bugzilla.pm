@@ -1,26 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Bradley Baetz <bbaetz@student.usyd.edu.au>
-#                 Erik Stambaugh <erik@dasbistro.com>
-#                 A. Karl Kornel <karl@kornel.name>
-#                 Marc Schumann <wurblzap@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla;
 
@@ -44,7 +27,7 @@ use Bugzilla::Extension;
 use Bugzilla::DB;
 use Bugzilla::Install::Localconfig qw(read_localconfig);
 use Bugzilla::Install::Requirements qw(OPTIONAL_MODULES);
-use Bugzilla::Install::Util qw(init_console);
+use Bugzilla::Install::Util qw(init_console include_languages);
 use Bugzilla::Template;
 use Bugzilla::User;
 use Bugzilla::Error;
@@ -286,9 +269,7 @@ sub input_params {
 }
 
 sub localconfig {
-    my $class = shift;
-    $class->request_cache->{localconfig} ||= read_localconfig();
-    return $class->request_cache->{localconfig};
+    return $_[0]->process_cache->{localconfig} ||= read_localconfig();
 }
 
 sub params {
@@ -388,6 +369,12 @@ sub login {
         $class->set_user($authenticated_user);
     }
 
+    if ($class->sudoer) {
+        $class->sudoer->update_last_seen_date();
+    } else {
+        $class->user->update_last_seen_date();
+    }
+
     return $class->user;
 }
 
@@ -451,13 +438,23 @@ sub languages {
     return Bugzilla::Install::Util::supported_languages();
 }
 
+sub current_language {
+    return $_[0]->request_cache->{current_language} ||= (include_languages())[0];
+}
+
 sub error_mode {
     my ($class, $newval) = @_;
     if (defined $newval) {
         $class->request_cache->{error_mode} = $newval;
     }
-    return $class->request_cache->{error_mode}
-        || (i_am_cgi() ? ERROR_MODE_WEBPAGE : ERROR_MODE_DIE);
+
+    # XXX - Once we require Perl 5.10.1, this test can be replaced by //.
+    if (exists $class->request_cache->{error_mode}) {
+        return $class->request_cache->{error_mode};
+    }
+    else {
+        return (i_am_cgi() ? ERROR_MODE_WEBPAGE : ERROR_MODE_DIE);
+    }
 }
 
 # This is used only by Bugzilla::Error to throw errors.
@@ -496,8 +493,14 @@ sub usage_mode {
         }
         $class->request_cache->{usage_mode} = $newval;
     }
-    return $class->request_cache->{usage_mode}
-        || (i_am_cgi()? USAGE_MODE_BROWSER : USAGE_MODE_CMDLINE);
+
+    # XXX - Once we require Perl 5.10.1, this test can be replaced by //.
+    if (exists $class->request_cache->{usage_mode}) {
+        return $class->request_cache->{usage_mode};
+    }
+    else {
+        return (i_am_cgi()? USAGE_MODE_BROWSER : USAGE_MODE_CMDLINE);
+    }
 }
 
 sub installation_mode {
@@ -617,11 +620,11 @@ sub has_flags {
 sub local_timezone {
     my $class = shift;
 
-    if (!defined $class->request_cache->{local_timezone}) {
-        $class->request_cache->{local_timezone} =
+    if (!defined $class->process_cache->{local_timezone}) {
+        $class->process_cache->{local_timezone} =
           DateTime::TimeZone->new(name => 'local');
     }
-    return $class->request_cache->{local_timezone};
+    return $class->process_cache->{local_timezone};
 }
 
 # This creates the request cache for non-mod_perl installations.
@@ -642,6 +645,27 @@ sub request_cache {
     return $_request_cache;
 }
 
+sub clear_request_cache {
+    $_request_cache = {};
+    if ($ENV{MOD_PERL}) {
+        require Apache2::RequestUtil;
+        my $request = eval { Apache2::RequestUtil->request };
+        if ($request) {
+            my $pnotes = $request->pnotes;
+            delete @$pnotes{(keys %$pnotes)};
+        }
+    }
+}
+
+# This is a per-process cache.  Under mod_cgi it's identical to the
+# request_cache.  When using mod_perl, items in this cache live until the
+# worker process is terminated.
+our $_process_cache = {};
+
+sub process_cache {
+    return $_process_cache;
+}
+
 # Private methods
 
 # Per-process cleanup. Note that this is a plain subroutine, not a method,
@@ -654,7 +678,7 @@ sub _cleanup {
         $dbh->bz_rollback_transaction() if $dbh->bz_in_transaction;
         $dbh->disconnect;
     }
-    undef $_request_cache;
+    clear_request_cache();
 
     # These are both set by CGI.pm but need to be undone so that
     # Apache can actually shut down its children if it needs to.
@@ -775,10 +799,10 @@ not an arrayref.
 
 =item C<user>
 
-C<undef> if there is no currently logged in user or if the login code has not
-yet been run.  If an sudo session is in progress, the C<Bugzilla::User>
-corresponding to the person who is being impersonated.  If no session is in
-progress, the current C<Bugzilla::User>.
+Default C<Bugzilla::User> object if there is no currently logged in user or
+if the login code has not yet been run.  If an sudo session is in progress,
+the C<Bugzilla::User> corresponding to the person who is being impersonated.
+If no session is in progress, the current C<Bugzilla::User>.
 
 =item C<set_user>
 
@@ -914,6 +938,10 @@ The main database handle. See L<DBI>.
 
 Currently installed languages.
 Returns a reference to a list of RFC 1766 language tags of installed languages.
+
+=item C<current_language>
+
+The currently active language.
 
 =item C<switch_to_shadow_db>
 

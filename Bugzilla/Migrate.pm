@@ -1,23 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is The Bugzilla Migration Tool.
-#
-# The Initial Developer of the Original Code is Lambda Research
-# Corporation. Portions created by the Initial Developer are Copyright
-# (C) 2009 the Initial Developer. All Rights Reserved.
-#
-# Contributor(s): 
-#   Max Kanat-Alexander <mkanat@bugzilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::Migrate;
 use strict;
@@ -30,7 +16,7 @@ use Bugzilla::Error;
 use Bugzilla::Install::Requirements ();
 use Bugzilla::Install::Util qw(indicate_progress);
 use Bugzilla::Product;
-use Bugzilla::Util qw(get_text trim generate_random_password);
+use Bugzilla::Util qw(get_text trim generate_random_password say);
 use Bugzilla::User ();
 use Bugzilla::Status ();
 use Bugzilla::Version;
@@ -261,7 +247,7 @@ sub bug_fields {
 sub users {
     my $self = shift;
     if (!exists $self->{users}) {
-        print get_text('migrate_reading_users'), "\n";
+        say get_text('migrate_reading_users');
         $self->{users} = $self->_read_users();
     }
     return $self->{users};
@@ -270,7 +256,7 @@ sub users {
 sub products {
     my $self = shift;
     if (!exists $self->{products}) {
-        print get_text('migrate_reading_products'), "\n";
+        say get_text('migrate_reading_products');
         $self->{products} = $self->_read_products();
     }
     return $self->{products};
@@ -279,7 +265,7 @@ sub products {
 sub bugs {
     my $self = shift;
     if (!exists $self->{bugs}) {
-        print get_text('migrate_reading_bugs'), "\n";
+        say get_text('migrate_reading_bugs');
         $self->{bugs} = $self->_read_bugs();
     }
     return $self->{bugs};
@@ -341,7 +327,7 @@ sub reset_serial_values {
 
 sub translate_all_bugs {
     my ($self, $bugs) = @_;
-    print get_text('migrate_translating_bugs'), "\n";
+    say get_text('migrate_translating_bugs');
     # We modify the array in place so that $self->bugs will return the
     # modified bugs, in case $self->before_insert wants them.
     my $num_bugs = scalar(@$bugs);
@@ -609,7 +595,7 @@ sub create_custom_fields {
         if (!$self->dry_run) {
             $created = Bugzilla::Field->create($created);
         }
-        print get_text('migrate_field_created', { field => $created }), "\n";
+        say get_text('migrate_field_created', { field => $created });
     }
     delete $self->{bug_fields};
 }
@@ -681,7 +667,7 @@ sub create_legal_values {
 sub insert_bugs {
     my ($self, $bugs) = @_;
     my $dbh = Bugzilla->dbh;
-    print get_text('migrate_creating_bugs'), "\n";
+    say get_text('migrate_creating_bugs');
 
     my $init_statuses = Bugzilla::Status->can_change_to();
     my %allowed_statuses = map { lc($_->name) => 1 } @$init_statuses;
@@ -827,7 +813,7 @@ sub _insert_comments {
         $self->_do_table_insert('longdescs', \%copy);
         $self->debug("  Inserted comment from " . $who->login, 2);
     }
-    $bug->_sync_fulltext();
+    $bug->_sync_fulltext( update_comments => 1 );
 }
 
 sub _insert_history {

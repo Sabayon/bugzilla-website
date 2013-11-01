@@ -20,10 +20,11 @@ Bugzilla::Webservice::User</title>
     <li class='indexItem indexItem2'><a href='#login'>login</a>
     <li class='indexItem indexItem2'><a href='#logout'>logout</a>
   </ul>
-  <li class='indexItem indexItem1'><a href='#Account_Creation'>Account Creation</a>
+  <li class='indexItem indexItem1'><a href='#Account_Creation_and_Modification'>Account Creation and Modification</a>
   <ul   class='indexList indexList2'>
     <li class='indexItem indexItem2'><a href='#offer_account_by_email'>offer_account_by_email</a>
     <li class='indexItem indexItem2'><a href='#create'>create</a>
+    <li class='indexItem indexItem2'><a href='#update'>update</a>
   </ul>
   <li class='indexItem indexItem1'><a href='#User_Info'>User Info</a>
   <ul   class='indexList indexList2'>
@@ -121,11 +122,11 @@ for the duration of the session.</p>
 <p>The username does not exist,
 or the password is wrong.</p>
 
-<dt><a name="301_(Account_Disabled)"
->301 (Account Disabled)</a></dt>
+<dt><a name="301_(Login_Disabled)"
+>301 (Login Disabled)</a></dt>
 
 <dd>
-<p>The account has been disabled.
+<p>The ability to login with this account has been disabled.
 A reason may be specified with the error.</p>
 
 <dt><a name="305_(New_Password_Required)"
@@ -172,8 +173,8 @@ Does nothing if there is no user logged in.</p>
 </dl>
 
 <h1><a class='u' href='#___top' title='click to go to top of document'
-name="Account_Creation"
->Account Creation</a></h1>
+name="Account_Creation_and_Modification"
+>Account Creation and Modification</a></h1>
 
 <h2><a class='u' href='#___top' title='click to go to top of document'
 name="offer_account_by_email"
@@ -307,6 +308,134 @@ this means the password is under three characters.)</p>
 <dl>
 <dt><a name="Error_503_(Password_Too_Long)_removed_in_Bugzilla_3.6."
 >Error 503 (Password Too Long) removed in Bugzilla <b>3.6</b>.</a></dt>
+</dl>
+</dd>
+</dl>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="update"
+>update</a></h2>
+
+<p><b>EXPERIMENTAL</b></p>
+
+<dl>
+<dt><a name="Description"
+><b>Description</b></a></dt>
+
+<dd>
+<p>Updates user accounts in Bugzilla.</p>
+
+<dt><a name="Params"
+><b>Params</b></a></dt>
+
+<dd>
+<dl>
+<dt><a name="ids"
+><code  class="code">ids</code></a></dt>
+
+<dd>
+<p><code  class="code">array</code> Contains ids of user to update.</p>
+
+<dt><a name="names"
+><code  class="code">names</code></a></dt>
+
+<dd>
+<p><code  class="code">array</code> Contains email/login of user to update.</p>
+
+<dt><a name="full_name"
+><code  class="code">full_name</code></a></dt>
+
+<dd>
+<p><code  class="code">string</code> The new name of the user.</p>
+
+<dt><a name="email"
+><code  class="code">email</code></a></dt>
+
+<dd>
+<p><code  class="code">string</code> The email of the user.
+Note that email used to login to bugzilla.
+Also note that you can only update one user at a time when changing the login name / email.
+(An error will be thrown if you try to update this field for multiple users at once.)</p>
+
+<dt><a name="password"
+><code  class="code">password</code></a></dt>
+
+<dd>
+<p><code  class="code">string</code> The password of the user.</p>
+
+<dt><a name="email_enabled"
+><code  class="code">email_enabled</code></a></dt>
+
+<dd>
+<p><code  class="code">boolean</code> A boolean value to enable/disable sending bug-related mail to the user.</p>
+
+<dt><a name="login_denied_text"
+><code  class="code">login_denied_text</code></a></dt>
+
+<dd>
+<p><code  class="code">string</code> A text field that holds the reason for disabling a user from logging into bugzilla,
+if empty then the user account is enabled otherwise it is disabled/closed.</p>
+</dd>
+</dl>
+
+<dt><a name="Returns"
+><b>Returns</b></a></dt>
+
+<dd>
+<p>A <code  class="code">hash</code> with a single field &#34;users&#34;.
+This points to an array of hashes with the following fields:</p>
+
+<dl>
+<dt><a name="id"
+><code  class="code">id</code></a></dt>
+
+<dd>
+<p><code  class="code">int</code> The id of the user that was updated.</p>
+
+<dt><a name="changes"
+><code  class="code">changes</code></a></dt>
+
+<dd>
+<p><code  class="code">hash</code> The changes that were actually done on this user.
+The keys are the names of the fields that were changed,
+and the values are a hash with two keys:</p>
+
+<dl>
+<dt><a name="added"
+><code  class="code">added</code></a></dt>
+
+<dd>
+<p><code  class="code">string</code> The values that were added to this field,
+possibly a comma-and-space-separated list if multiple values were added.</p>
+
+<dt><a name="removed"
+><code  class="code">removed</code></a></dt>
+
+<dd>
+<p><code  class="code">string</code> The values that were removed from this field,
+possibly a comma-and-space-separated list if multiple values were removed.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+
+<dt><a name="Errors"
+><b>Errors</b></a></dt>
+
+<dd>
+<dl>
+<dt><a name="51_(Bad_Login_Name)"
+>51 (Bad Login Name)</a></dt>
+
+<dd>
+<p>You passed an invalid login name in the &#34;names&#34; array.</p>
+
+<dt><a name="304_(Authorization_Required)"
+>304 (Authorization Required)</a></dt>
+
+<dd>
+<p>Logged-in users are not authorized to edit other users.</p>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -467,6 +596,94 @@ Note that in some situations this is different than their email.</p>
 if empty then the user account is enabled.
 Otherwise it is disabled/closed.</p>
 
+<dt><a name="groups"
+>groups</a></dt>
+
+<dd>
+<p><code  class="code">array</code> An array of group hashes the user is a member of.
+If the currently logged in user is querying his own account or is a member of the &#39;editusers&#39; group,
+the array will contain all the groups that the user is a member of.
+Otherwise,
+the array will only contain groups that the logged in user can bless.
+Each hash describes the group and contains the following items:</p>
+
+<dl>
+<dt><a name="id"
+>id</a></dt>
+
+<dd>
+<p><code  class="code">int</code> The group id</p>
+
+<dt><a name="name"
+>name</a></dt>
+
+<dd>
+<p><code  class="code">string</code> The name of the group</p>
+
+<dt><a name="description"
+>description</a></dt>
+
+<dd>
+<p><code  class="code">string</code> The description for the group</p>
+</dd>
+</dl>
+
+<dt><a name="saved_searches"
+>saved_searches</a></dt>
+
+<dd>
+<p><code  class="code">array</code> An array of hashes,
+each of which represents a user&#39;s saved search and has the following keys:</p>
+
+<dl>
+<dt><a name="id"
+>id</a></dt>
+
+<dd>
+<p><code  class="code">int</code> An integer id uniquely identifying the saved search.</p>
+
+<dt><a name="name"
+>name</a></dt>
+
+<dd>
+<p><code  class="code">string</code> The name of the saved search.</p>
+
+<dt><a name="query"
+>query</a></dt>
+
+<dd>
+<p><code  class="code">string</code> The CGI parameters for the saved search.</p>
+</dd>
+</dl>
+
+<dt><a name="saved_reports"
+>saved_reports</a></dt>
+
+<dd>
+<p><code  class="code">array</code> An array of hashes,
+each of which represents a user&#39;s saved report and has the following keys:</p>
+
+<dl>
+<dt><a name="id"
+>id</a></dt>
+
+<dd>
+<p><code  class="code">int</code> An integer id uniquely identifying the saved report.</p>
+
+<dt><a name="name"
+>name</a></dt>
+
+<dd>
+<p><code  class="code">string</code> The name of the saved report.</p>
+
+<dt><a name="query"
+>query</a></dt>
+
+<dd>
+<p><code  class="code">string</code> The CGI parameters for the saved report.</p>
+</dd>
+</dl>
+
 <p><b>Note</b>: If you are not logged in to Bugzilla when you call this function,
 you will only be returned the <code  class="code">id</code>,
 <code  class="code">name</code>,
@@ -476,7 +693,11 @@ you will only be returned the <code  class="code">id</code>,
 <code  class="code">name</code>,
 <code  class="code">real_name</code>,
 <code  class="code">email</code>,
-and <code  class="code">can_login</code> items.</p>
+<code  class="code">can_login</code>,
+and <code  class="code">groups</code> items.
+The groups returned are filtered based on your permission to bless each group.
+The <code  class="code">saved_searches</code> and <code  class="code">saved_reports</code> items are only returned if you are querying your own account,
+even if you are in the editusers group.</p>
 </dd>
 </dl>
 
@@ -525,14 +746,20 @@ but you are not authorized to see one of the users you wanted to get information
 ><code  class="code">group_ids</code> and <code  class="code">groups</code> were added in Bugzilla <b>4.0</b>.</a></dt>
 
 <dd>
-<dt><a name="include_disabled_added_in_Bugzilla_4.0._Default_behavior_for_match_has_changed_to_only_returning_enabled_accounts."
-><code  class="code">include_disabled</code> added in Bugzilla <b>4.0</b>.
-Default behavior for <code  class="code">match</code> has changed to only returning enabled accounts.</a></dt>
+<dt><a name="include_disabled_was_added_in_Bugzilla_4.0._Default_behavior_for_match_was_changed_to_only_return_enabled_accounts."
+><code  class="code">include_disabled</code> was added in Bugzilla <b>4.0</b>.
+Default behavior for <code  class="code">match</code> was changed to only return enabled accounts.</a></dt>
 
 <dd>
 <dt><a name="Error_804_has_been_added_in_Bugzilla_4.0.9_and_4.2.4._It&#39;s_now_illegal_to_pass_a_group_name_you_don&#39;t_belong_to."
 >Error 804 has been added in Bugzilla 4.0.9 and 4.2.4.
 It&#39;s now illegal to pass a group name you don&#39;t belong to.</a></dt>
+
+<dd>
+<dt><a name="groups,_saved_searches,_and_saved_reports_were_added_in_Bugzilla_4.4."
+><code  class="code">groups</code>,
+<code  class="code">saved_searches</code>,
+and <code  class="code">saved_reports</code> were added in Bugzilla <b>4.4</b>.</a></dt>
 </dl>
 </dd>
 </dl>

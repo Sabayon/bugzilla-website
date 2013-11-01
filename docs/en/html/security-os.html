@@ -1,292 +1,33 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<HTML
-><HEAD
-><TITLE
->Operating System</TITLE
-><META
-NAME="GENERATOR"
-CONTENT="Modular DocBook HTML Stylesheet Version 1.79"><LINK
-REL="HOME"
-TITLE="The Bugzilla Guide - 4.2.7 
-    Release"
-HREF="index.html"><LINK
-REL="UP"
-TITLE="Bugzilla Security"
-HREF="security.html"><LINK
-REL="PREVIOUS"
-TITLE="Bugzilla Security"
-HREF="security.html"><LINK
-REL="NEXT"
-TITLE="Web server"
-HREF="security-webserver.html"></HEAD
-><BODY
-CLASS="section"
-BGCOLOR="#FFFFFF"
-TEXT="#000000"
-LINK="#0000FF"
-VLINK="#840084"
-ALINK="#0000FF"
-><DIV
-CLASS="NAVHEADER"
-><TABLE
-SUMMARY="Header navigation table"
-WIDTH="100%"
-BORDER="0"
-CELLPADDING="0"
-CELLSPACING="0"
-><TR
-><TH
-COLSPAN="3"
-ALIGN="center"
->The Bugzilla Guide - 4.2.7 
-    Release</TH
-></TR
-><TR
-><TD
-WIDTH="10%"
-ALIGN="left"
-VALIGN="bottom"
-><A
-HREF="security.html"
-ACCESSKEY="P"
->Prev</A
-></TD
-><TD
-WIDTH="80%"
-ALIGN="center"
-VALIGN="bottom"
->Chapter 4. Bugzilla Security</TD
-><TD
-WIDTH="10%"
-ALIGN="right"
-VALIGN="bottom"
-><A
-HREF="security-webserver.html"
-ACCESSKEY="N"
->Next</A
-></TD
-></TR
-></TABLE
-><HR
-ALIGN="LEFT"
-WIDTH="100%"></DIV
-><DIV
-CLASS="section"
-><H1
-CLASS="section"
-><A
-NAME="security-os"
->4.1. Operating System</A
-></H1
-><DIV
-CLASS="section"
-><H2
-CLASS="section"
-><A
-NAME="security-os-ports"
->4.1.1. TCP/IP Ports</A
-></H2
-><P
->The TCP/IP standard defines more than 65,000 ports for sending
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>4.1. Operating System</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.1 Release"><link rel="up" href="security.html" title="Chapter 4. Bugzilla Security"><link rel="prev" href="security.html" title="Chapter 4. Bugzilla Security"><link rel="next" href="security-webserver.html" title="4.2. Web server"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">4.1. Operating System</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="security.html">Prev</a> </td><th width="60%" align="center">Chapter 4. Bugzilla Security</th><td width="20%" align="right"> <a accesskey="n" href="security-webserver.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="security-os"></a>4.1. Operating System</h2></div></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="security-os-ports"></a>4.1.1. TCP/IP Ports</h3></div></div></div><p>The TCP/IP standard defines more than 65,000 ports for sending
       and receiving traffic. Of those, Bugzilla needs exactly one to operate
       (different configurations and options may require up to 3). You should
       audit your server and make sure that you aren't listening on any ports
       you don't need to be. It's also highly recommended that the server
       Bugzilla resides on, along with any other machines you administer, be
       placed behind some kind of firewall.
-      </P
-></DIV
-><DIV
-CLASS="section"
-><H2
-CLASS="section"
-><A
-NAME="security-os-accounts"
->4.1.2. System User Accounts</A
-></H2
-><P
->Many <A
-HREF="glossary.html#gloss-daemon"
-><I
-CLASS="glossterm"
->daemons</I
-></A
->, such
-      as Apache's <TT
-CLASS="filename"
->httpd</TT
-> or MySQL's
-      <TT
-CLASS="filename"
->mysqld</TT
->, run as either <SPAN
-CLASS="QUOTE"
->"root"</SPAN
-> or
-      <SPAN
-CLASS="QUOTE"
->"nobody"</SPAN
->. This is even worse on Windows machines where the
-      majority of <A
-HREF="glossary.html#gloss-service"
-><I
-CLASS="glossterm"
->services</I
-></A
->
-      run as <SPAN
-CLASS="QUOTE"
->"SYSTEM"</SPAN
->. While running as <SPAN
-CLASS="QUOTE"
->"root"</SPAN
-> or
-      <SPAN
-CLASS="QUOTE"
->"SYSTEM"</SPAN
-> introduces obvious security concerns, the
-      problems introduced by running everything as <SPAN
-CLASS="QUOTE"
->"nobody"</SPAN
-> may
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="security-os-accounts"></a>4.1.2. System User Accounts</h3></div></div></div><p>Many <a class="glossterm" href="glossary.html#gloss-daemon"><em class="glossterm">daemons</em></a>, such
+      as Apache's <code class="filename">httpd</code> or MySQL's
+      <code class="filename">mysqld</code>, run as either <span class="quote">“<span class="quote">root</span>”</span> or
+      <span class="quote">“<span class="quote">nobody</span>”</span>. This is even worse on Windows machines where the
+      majority of <a class="glossterm" href="glossary.html#gloss-service"><em class="glossterm">services</em></a>
+      run as <span class="quote">“<span class="quote">SYSTEM</span>”</span>. While running as <span class="quote">“<span class="quote">root</span>”</span> or
+      <span class="quote">“<span class="quote">SYSTEM</span>”</span> introduces obvious security concerns, the
+      problems introduced by running everything as <span class="quote">“<span class="quote">nobody</span>”</span> may
       not be so obvious. Basically, if you run every daemon as
-      <SPAN
-CLASS="QUOTE"
->"nobody"</SPAN
-> and one of them gets compromised it can
-      compromise every other daemon running as <SPAN
-CLASS="QUOTE"
->"nobody"</SPAN
-> on your
+      <span class="quote">“<span class="quote">nobody</span>”</span> and one of them gets compromised it can
+      compromise every other daemon running as <span class="quote">“<span class="quote">nobody</span>”</span> on your
       machine. For this reason, it is recommended that you create a user
       account for each daemon.
-      </P
-><DIV
-CLASS="note"
-><P
-></P
-><TABLE
-CLASS="note"
-WIDTH="100%"
-BORDER="0"
-><TR
-><TD
-WIDTH="25"
-ALIGN="CENTER"
-VALIGN="TOP"
-><IMG
-SRC="../images/note.gif"
-HSPACE="5"
-ALT="Note"></TD
-><TD
-ALIGN="LEFT"
-VALIGN="TOP"
-><P
->You will need to set the <CODE
-CLASS="option"
->webservergroup</CODE
-> option
-        in <TT
-CLASS="filename"
->localconfig</TT
-> to the group your web server runs
-        as. This will allow <TT
-CLASS="filename"
->./checksetup.pl</TT
-> to set file
+      </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>You will need to set the <code class="option">webservergroup</code> option
+        in <code class="filename">localconfig</code> to the group your web server runs
+        as. This will allow <code class="filename">./checksetup.pl</code> to set file
         permissions on Unix systems so that nothing is world-writable.
-        </P
-></TD
-></TR
-></TABLE
-></DIV
-></DIV
-><DIV
-CLASS="section"
-><H2
-CLASS="section"
-><A
-NAME="security-os-chroot"
->4.1.3. The <TT
-CLASS="filename"
->chroot</TT
-> Jail</A
-></H2
-><P
->&#13;        If your system supports it, you may wish to consider running
-        Bugzilla inside of a <TT
-CLASS="filename"
->chroot</TT
-> jail. This option
+        </p></td></tr></table></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="security-os-chroot"></a>4.1.3. The <code class="filename">chroot</code> Jail</h3></div></div></div><p>
+        If your system supports it, you may wish to consider running
+        Bugzilla inside of a <code class="filename">chroot</code> jail. This option
         provides unprecedented security by restricting anything running
         inside the jail from accessing any information outside of it. If you
         wish to use this option, please consult the documentation that came
         with your system.
-      </P
-></DIV
-></DIV
-><DIV
-CLASS="NAVFOOTER"
-><HR
-ALIGN="LEFT"
-WIDTH="100%"><TABLE
-SUMMARY="Footer navigation table"
-WIDTH="100%"
-BORDER="0"
-CELLPADDING="0"
-CELLSPACING="0"
-><TR
-><TD
-WIDTH="33%"
-ALIGN="left"
-VALIGN="top"
-><A
-HREF="security.html"
-ACCESSKEY="P"
->Prev</A
-></TD
-><TD
-WIDTH="34%"
-ALIGN="center"
-VALIGN="top"
-><A
-HREF="index.html"
-ACCESSKEY="H"
->Home</A
-></TD
-><TD
-WIDTH="33%"
-ALIGN="right"
-VALIGN="top"
-><A
-HREF="security-webserver.html"
-ACCESSKEY="N"
->Next</A
-></TD
-></TR
-><TR
-><TD
-WIDTH="33%"
-ALIGN="left"
-VALIGN="top"
->Bugzilla Security</TD
-><TD
-WIDTH="34%"
-ALIGN="center"
-VALIGN="top"
-><A
-HREF="security.html"
-ACCESSKEY="U"
->Up</A
-></TD
-><TD
-WIDTH="33%"
-ALIGN="right"
-VALIGN="top"
->Web server</TD
-></TR
-></TABLE
-></DIV
-></BODY
-></HTML
->
+      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="security.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="security.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="security-webserver.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">Chapter 4. Bugzilla Security </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> 4.2. Web server</td></tr></table></div></body></html>

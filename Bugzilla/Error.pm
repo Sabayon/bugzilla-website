@@ -1,25 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Bradley Baetz <bbaetz@acm.org>
-#                 Marc Schumann <wurblzap@gmail.com>
-#                 Frédéric Buclin <LpSolit@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::Error;
 
@@ -30,7 +14,7 @@ use base qw(Exporter);
 
 use Bugzilla::Constants;
 use Bugzilla::WebService::Constants;
-use Bugzilla::Util;
+use Bugzilla::Hook;
 
 use Carp;
 use Data::Dumper;
@@ -62,12 +46,13 @@ sub _throw_error {
     my $datadir = bz_locations()->{'datadir'};
     # If a writable $datadir/errorlog exists, log error details there.
     if (-w "$datadir/errorlog") {
+        require Bugzilla::Util;
         require Data::Dumper;
         my $mesg = "";
         for (1..75) { $mesg .= "-"; };
         $mesg .= "\n[$$] " . time2str("%D %H:%M:%S ", time());
         $mesg .= "$name $error ";
-        $mesg .= remote_ip();
+        $mesg .= Bugzilla::Util::remote_ip();
         $mesg .= Bugzilla->user->login;
         $mesg .= (' actually ' . Bugzilla->sudoer->login) if Bugzilla->sudoer;
         $mesg .= "\n";
@@ -103,7 +88,6 @@ sub _throw_error {
 
     # Let's call the hook first, so that extensions can override
     # or extend the default behavior, or add their own error codes.
-    require Bugzilla::Hook;
     Bugzilla::Hook::process('error_catch', { error => $error, vars => $vars,
                                              message => \$message });
 
@@ -191,6 +175,8 @@ sub ThrowTemplateError {
     # Try a template first; but if this one fails too, fall back
     # on plain old print statements.
     if (!$template->process("global/code-error.html.tmpl", $vars)) {
+        require Bugzilla::Util;
+        import Bugzilla::Util qw(html_quote);
         my $maintainer = Bugzilla->params->{'maintainer'};
         my $error = html_quote($vars->{'template_error_msg'});
         my $error2 = html_quote($template->error());

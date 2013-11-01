@@ -1,4 +1,17 @@
-<!-- <!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"> -->
+<?xml version="1.0"?>
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+     This Source Code Form is "Incompatible With Secondary Licenses", as
+     defined by the Mozilla Public License, v. 2.0.
+-->
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+                      "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd" [
+    <!ENTITY % myents SYSTEM "bugzilla.ent">
+    %myents;
+]>
+
 <chapter id="installing-bugzilla">
   <title>Installing Bugzilla</title>
 
@@ -169,16 +182,17 @@
       <para>Installed Version Test: view the default welcome page at
       http://&lt;your-machine&gt;/</para>
       
-      <para>You have freedom of choice here, pretty much any web server that
-      is capable of running <glossterm linkend="gloss-cgi">CGI</glossterm>
-      scripts will work.
-       However, we strongly recommend using the Apache web server
-       (either 1.3.x or 2.x), and 
-       the installation instructions usually assume you are
-        using it. If you have got Bugzilla working using another web server,
-        please share your experiences with us by filing a bug in &bzg-bugs;.
+      <para>
+        You have freedom of choice here, pretty much any web server that
+        is capable of running <glossterm linkend="gloss-cgi">CGI</glossterm>
+        scripts will work.
+        However, we strongly recommend using the Apache web server
+        (either 1.3.x or 2.x), and the installation instructions usually assume
+        you are using it. If you have got Bugzilla working using another web server,
+        please share your experiences with us by filing a bug in
+        <ulink url="&bzg-bugs;">Bugzilla Documentation</ulink>.
       </para>
-      
+
       <para>
       If you don't have Apache and your OS doesn't provide official packages, 
       visit <ulink url="http://httpd.apache.org/"/>.
@@ -481,13 +495,6 @@
 
         <listitem>
           <para>
-            Email::MIME::Attachment::Stripper
-            (&min-email-mime-attachment-stripper-ver;) for Inbound Email
-          </para>
-        </listitem>
-
-        <listitem>
-          <para>
             Email::Reply
             (&min-email-reply-ver;) for Inbound Email
           </para>
@@ -739,9 +746,9 @@ max_allowed_packet=4M
           This can be done by modifying the <filename>/etc/my.cnf</filename>
           according to the example below:</para>
 
-          <screen>  [mysqld]
-  # Allow small words in full-text indexes
-  ft_min_word_len=2</screen>
+          <screen>[mysqld]
+# Allow small words in full-text indexes
+ft_min_word_len=2</screen>
 
           <para>Rebuilding the indexes can be done based on documentation found at
           <ulink url="http://www.mysql.com/doc/en/Fulltext_Fine-tuning.html"/>.
@@ -777,11 +784,11 @@ max_allowed_packet=4M
           </para>
 
           <screen>
-    <prompt>mysql&gt;</prompt> GRANT SELECT, INSERT,
-           UPDATE, DELETE, INDEX, ALTER, CREATE, LOCK TABLES,
-           CREATE TEMPORARY TABLES, DROP, REFERENCES ON bugs.*
-           TO bugs@localhost IDENTIFIED BY '<replaceable>$db_pass</replaceable>';
-    <prompt>mysql&gt;</prompt> FLUSH PRIVILEGES;
+<prompt>mysql&gt;</prompt> GRANT SELECT, INSERT,
+       UPDATE, DELETE, INDEX, ALTER, CREATE, LOCK TABLES,
+       CREATE TEMPORARY TABLES, DROP, REFERENCES ON bugs.*
+       TO bugs@localhost IDENTIFIED BY '<replaceable>$db_pass</replaceable>';
+<prompt>mysql&gt;</prompt> FLUSH PRIVILEGES;
           </screen>
         </section>
 
@@ -803,8 +810,8 @@ max_allowed_packet=4M
           </para>
 
           <screen>
-    <prompt>mysql&gt;</prompt> use <replaceable>$bugs_db</replaceable>
-    <prompt>mysql&gt;</prompt> ALTER TABLE attachments
+<prompt>mysql&gt;</prompt> use <replaceable>$bugs_db</replaceable>
+<prompt>mysql&gt;</prompt> ALTER TABLE attachments
            AVG_ROW_LENGTH=1000000, MAX_ROWS=20000;
           </screen>
 
@@ -839,11 +846,11 @@ max_allowed_packet=4M
           <para>On most systems, to create the user in PostgreSQL, you will need to
           login as the root user, and then</para>
 
-          <screen> <prompt>bash#</prompt> su - postgres</screen>
+          <screen><prompt>bash#</prompt> su - postgres</screen>
 
           <para>As the postgres user, you then need to create a new user: </para>
             
-          <screen> <prompt>bash$</prompt> createuser -U postgres -dRSP bugs</screen>
+          <screen><prompt>bash$</prompt> createuser -U postgres -dRSP bugs</screen>
  
           <para>When asked for a password, provide the password which will be set as
           <replaceable>$db_pass</replaceable> in <filename>localconfig</filename>.
@@ -887,9 +894,9 @@ max_allowed_packet=4M
           </para>
 
           <programlisting>
-    CREATE TABLESPACE bugs
-    DATAFILE '<replaceable>$path_to_datafile</replaceable>' SIZE 500M
-    AUTOEXTEND ON NEXT 30M MAXSIZE UNLIMITED
+CREATE TABLESPACE bugs
+DATAFILE '<replaceable>$path_to_datafile</replaceable>' SIZE 500M
+AUTOEXTEND ON NEXT 30M MAXSIZE UNLIMITED
           </programlisting>
 
           <para>
@@ -914,17 +921,17 @@ max_allowed_packet=4M
           </para>
 
           <programlisting>
-    CREATE USER bugs
-    IDENTIFIED BY "<replaceable>$db_pass</replaceable>"
-    DEFAULT TABLESPACE bugs
-    TEMPORARY TABLESPACE TEMP
-    PROFILE DEFAULT;
-    -- GRANT/REVOKE ROLE PRIVILEGES
-    GRANT CONNECT TO bugs;
-    GRANT RESOURCE TO bugs;
-    -- GRANT/REVOKE SYSTEM PRIVILEGES
-    GRANT UNLIMITED TABLESPACE TO bugs;
-    GRANT EXECUTE ON CTXSYS.CTX_DDL TO bugs;
+CREATE USER bugs
+IDENTIFIED BY "<replaceable>$db_pass</replaceable>"
+DEFAULT TABLESPACE bugs
+TEMPORARY TABLESPACE TEMP
+PROFILE DEFAULT;
+-- GRANT/REVOKE ROLE PRIVILEGES
+GRANT CONNECT TO bugs;
+GRANT RESOURCE TO bugs;
+-- GRANT/REVOKE SYSTEM PRIVILEGES
+GRANT UNLIMITED TABLESPACE TO bugs;
+GRANT EXECUTE ON CTXSYS.CTX_DDL TO bugs;
           </programlisting>
         </section>
 
@@ -937,8 +944,8 @@ max_allowed_packet=4M
           </para>
 
           <programlisting>
-    SetEnv ORACLE_HOME /u01/app/oracle/product/10.2.0/
-    SetEnv LD_LIBRARY_PATH /u01/app/oracle/product/10.2.0/lib/
+SetEnv ORACLE_HOME /u01/app/oracle/product/10.2.0/
+SetEnv LD_LIBRARY_PATH /u01/app/oracle/product/10.2.0/lib/
           </programlisting>
 
           <para>
@@ -1047,21 +1054,22 @@ max_allowed_packet=4M
                 </para>
     
                 <programlisting>
-    &lt;Directory /var/www/html/bugzilla&gt;
-    AddHandler cgi-script .cgi
-    Options +Indexes +ExecCGI
-    DirectoryIndex index.cgi
-    AllowOverride Limit FileInfo Indexes
-    &lt;/Directory&gt;
+&lt;Directory /var/www/html/bugzilla&gt;
+AddHandler cgi-script .cgi
+Options +ExecCGI
+DirectoryIndex index.cgi index.html
+AllowOverride Limit FileInfo Indexes Options
+&lt;/Directory&gt;
                 </programlisting>
     
                 <para>
                 These instructions: allow apache to run .cgi files found
                 within the bugzilla directory; instructs the server to look
-                for a file called <filename>index.cgi</filename> if someone
+                for a file called <filename>index.cgi</filename> or, if not
+                found, <filename>index.html</filename> if someone
                 only types the directory name into the browser; and allows
                 Bugzilla's <filename>.htaccess</filename> files to override
-                global permissions.
+                some global permissions.
                 </para>
     
                 <note>
@@ -1108,9 +1116,7 @@ max_allowed_packet=4M
                 (the same one as in the step above):
                 </para>
     
-                <programlisting>
-    +FollowSymLinks
-                </programlisting>
+                <programlisting>+FollowSymLinks</programlisting>
     
                 <para>
                 Without this directive, Apache will not follow symbolic links
@@ -1149,10 +1155,10 @@ max_allowed_packet=4M
                 <para>You should also ensure that you have disabled <literal>KeepAlive</literal>
                 support in your Apache install when utilizing Bugzilla under mod_perl</para>
                 </warning> 
-                
+
                 <programlisting>
-    PerlSwitches -w -T
-    PerlConfigRequire /var/www/html/bugzilla/mod_perl.pl
+PerlSwitches -w -T
+PerlConfigRequire /var/www/html/bugzilla/mod_perl.pl
                 </programlisting>
             </step>
 			
@@ -1528,8 +1534,8 @@ AddType application/rdf+xml .rdf</screen>
     and the utilities available to make it easier.
     </para>
 
-    <para>If you have anything to add or notes for an operating system not
-    covered, please file a bug in &bzg-bugs;. 
+    <para>If you have anything to add or notes for an operating system not covered,
+    please file a bug in <ulink url="&bzg-bugs;">Bugzilla Documentation</ulink>.
     </para>
 
     <section id="os-win32">
@@ -1709,43 +1715,41 @@ C:\perl&gt; <command>ppm install &lt;module name&gt;</command>
         </para>
 
         <screen>
-# perl -MCPAN -e'look XML::Parser'        <co id="macosx-look"/>
+# perl -MCPAN -e'look XML::Parser'
 # perl Makefile.PL EXPATLIBPATH=/sw/lib EXPATINCPATH=/sw/include
-# make; make test; make install           <co id="macosx-make"/>
-# exit                                    <co id="macosx-exit"/>
+# make; make test; make install
+# exit
         </screen>
-        <calloutlist>
-          <callout arearefs="macosx-look macosx-exit">
-            <para>The look command will download the module and spawn a
-            new shell with the extracted files as the current working directory.
-            The exit command will return you to your original shell.
-            </para>
-          </callout>
-          <callout arearefs="macosx-make">
-            <para>You should watch the output from these make commands,
-            especially <quote>make test</quote> as errors may prevent 
-            XML::Parser from functioning correctly with Bugzilla.
-            </para>
-          </callout>
-        </calloutlist>
+        <para>
+          The <command>look</command> command will download the module and spawn
+          a new shell with the extracted files as the current working directory.
+        </para>
+        <para>
+          You should watch the output from these <command>make</command> commands,
+          especially <quote>make test</quote> as errors may prevent
+          XML::Parser from functioning correctly with Bugzilla.
+        </para>
+        <para>
+          The <command>exit</command> command will return you to your original shell.
+        </para>
       </section>
     </section>
 
     <section id="os-linux">
-      <title>Linux Distributions</title>
-            <para>Many Linux distributions include Bugzilla and its 
+      <title>Linux/BSD Distributions</title>
+            <para>Many Linux/BSD distributions include Bugzilla and its 
             dependencies in their native package management systems. 
-            Installing Bugzilla with root access on any Linux system 
+            Installing Bugzilla with root access on any Linux/BSD system 
             should be as simple as finding the Bugzilla package in the 
             package management application and installing it using the 
             normal command syntax. Several distributions also perform 
             the proper web server configuration automatically on installation.
             </para>
-            <para>Please consult the documentation of your Linux 
+            <para>Please consult the documentation of your Linux/BSD 
             distribution for instructions on how to install packages, 
             or for specific instructions on installing Bugzilla with 
             native package management tools. There is also a 
-            <ulink url="http://wiki.mozilla.org/Bugzilla:Linux_Distro_Installation">
+            <ulink url="https://wiki.mozilla.org/Bugzilla:Prerequisites">
             Bugzilla Wiki Page</ulink> for distro-specific installation
             notes.
             </para>
@@ -1835,13 +1839,11 @@ pid-file=/home/foo/mymysql/the.pid
             <para>After your mysqld program is built and any .my.cnf file is 
             in place, you must initialize the databases (ONCE).</para>
             <screen>
-              <prompt>bash$</prompt>
-              <command>mysql_install_db</command>
+<prompt>bash$</prompt> <command>mysql_install_db</command>
             </screen>
             <para>Then start the daemon with</para>
             <screen>
-              <prompt>bash$</prompt>
-              <command>safe_mysql &amp;</command>
+<prompt>bash$</prompt> <command>safe_mysql &amp;</command>
             </screen>
             <para>After you start mysqld the first time, you then connect to
             it as "root" and <command>GRANT</command> permissions to other
@@ -1863,7 +1865,6 @@ pid-file=/home/foo/mymysql/the.pid
             </warning>
           </section>
       </section>
-
     </section>
 
     <section>
@@ -1877,16 +1878,11 @@ pid-file=/home/foo/mymysql/the.pid
       </para>
 
       <screen>
-        <prompt>bash$</prompt>
-        <command>wget http://perl.org/CPAN/src/stable.tar.gz</command>
-        <prompt>bash$</prompt>
-        <command>tar zvxf stable.tar.gz</command>
-        <prompt>bash$</prompt>
-        <command>cd perl-5.8.1</command> (or whatever the version of Perl is called)
-        <prompt>bash$</prompt>
-        <command>sh Configure -de -Dprefix=/home/foo/perl</command>
-        <prompt>bash$</prompt>
-        <command>make &amp;&amp; make test &amp;&amp; make install</command>
+<prompt>bash$</prompt> <command>wget http://perl.org/CPAN/src/stable.tar.gz</command>
+<prompt>bash$</prompt> <command>tar zvxf stable.tar.gz</command>
+<prompt>bash$</prompt> <command>cd perl-&min-perl-ver;</command>
+<prompt>bash$</prompt> <command>sh Configure -de -Dprefix=/home/foo/perl</command>
+<prompt>bash$</prompt> <command>make &amp;&amp; make test &amp;&amp; make install</command>
       </screen>
 
       <para>
@@ -1903,7 +1899,7 @@ pid-file=/home/foo/mymysql/the.pid
       Installing the Perl modules as a non-root user is accomplished by
       running the <filename>install-module.pl</filename>
       script. For more details on this script, see 
-      <ulink url="api/install-module.html"><filename>install-module.pl</filename>
+      <ulink url="../html/api/install-module.html"><filename>install-module.pl</filename>
       documentation</ulink>
       </para>
     </section>
@@ -1980,10 +1976,12 @@ pid-file=/home/foo/mymysql/the.pid
         shell commands after running <command>./checksetup.pl</command>,
         every time you run it (or modify <filename>checksetup.pl</filename>
         to do them for you via the system() command).
-        <programlisting>        for i in docs graphs images js skins; do find $i -type d -exec chmod o+rx {} \; ; done
-        for i in jpg gif css js png html rdf xul; do find . -name \*.$i -exec chmod o+r {} \; ; done
-        find . -name .htaccess -exec chmod o+r {} \;
-        chmod o+x . data data/webdot</programlisting>
+        <programlisting>
+for i in docs graphs images js skins; do find $i -type d -exec chmod o+rx {} \; ; done
+for i in jpg gif css js png html rdf xul; do find . -name \*.$i -exec chmod o+r {} \; ; done
+find . -name .htaccess -exec chmod o+r {} \;
+chmod o+x . data data/webdot
+        </programlisting>
         Pay particular attention to the number of semicolons and dots.
         They are all important.  A future version of Bugzilla will
         hopefully be able to do this for you out of the box.</para>
@@ -2370,7 +2368,7 @@ bash$ <command>./checksetup.pl</command>
           <warning>
             <para>
               The period at the beginning of the command
-              <command>./checksetup.pl</command> is important and can not
+              <command>./checksetup.pl</command> is important and cannot
               be omitted.
             </para>
           </warning>

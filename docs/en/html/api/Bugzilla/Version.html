@@ -31,14 +31,16 @@ name="SYNOPSIS"
 
 <pre  class="code">    use Bugzilla::Version;
 
-    my $version = new Bugzilla::Version({ name =&#62; $name, product =&#62; $product });
+    my $version = new Bugzilla::Version({ name =&#62; $name, product =&#62; $product_obj });
+    my $version = Bugzilla::Version-&#62;check({ name =&#62; $name, product =&#62; $product_obj });
+    my $version = Bugzilla::Version-&#62;check({ id =&#62; $id });
 
     my $value = $version-&#62;name;
     my $product_id = $version-&#62;product_id;
     my $product = $version-&#62;product;
 
     my $version = Bugzilla::Version-&#62;create(
-        { value =&#62; $name, product =&#62; $product });
+        { value =&#62; $name, product =&#62; $product_obj });
 
     $version-&#62;set_name($new_name);
     $version-&#62;update();

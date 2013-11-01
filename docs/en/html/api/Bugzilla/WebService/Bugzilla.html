@@ -20,6 +20,8 @@ Bugzilla::WebService::Bugzilla</title>
     <li class='indexItem indexItem2'><a href='#extensions'>extensions</a>
     <li class='indexItem indexItem2'><a href='#timezone'>timezone</a>
     <li class='indexItem indexItem2'><a href='#time'>time</a>
+    <li class='indexItem indexItem2'><a href='#parameters'>parameters</a>
+    <li class='indexItem indexItem2'><a href='#last_audit_time'>last_audit_time</a>
   </ul>
 </ul>
 </div>
@@ -243,6 +245,95 @@ name="time"
 <dd>
 <dt><a 
 >As of Bugzilla <b>3.6</b>, this method returns all data as though the server were in the UTC timezone, instead of returning information in the server&#39;s local timezone.</a></dt>
+</dl>
+</dd>
+</dl>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="parameters"
+>parameters</a></h2>
+
+<p><b>UNSTABLE</b></p>
+
+<dl>
+<dt><a name="Description"
+><b>Description</b></a></dt>
+
+<dd>
+<p>Returns parameter values currently used in this Bugzilla.</p>
+
+<dt><a name="Params_(none)"
+><b>Params</b> (none)</a></dt>
+
+<dd>
+<dt><a name="Returns"
+><b>Returns</b></a></dt>
+
+<dd>
+<p>A hash with a single item <code  class="code">parameters</code> which contains a hash with the name of the parameters as keys and their value as values. All values are returned as strings. The list of parameters returned by this method depends on the user credentials:</p>
+
+<p>A logged-out user can only access the <code  class="code">maintainer</code> and <code  class="code">requirelogin</code> parameters.</p>
+
+<p>A logged-in user can access the following parameters (listed alphabetically): <code  class="code">allowemailchange</code>, <code  class="code">attachment_base</code>, <code  class="code">commentonchange_resolution</code>, <code  class="code">commentonduplicate</code>, <code  class="code">cookiepath</code>, <code  class="code">defaultopsys</code>, <code  class="code">defaultplatform</code>, <code  class="code">defaultpriority</code>, <code  class="code">defaultseverity</code>, <code  class="code">duplicate_or_move_bug_status</code>, <code  class="code">emailregexpdesc</code>, <code  class="code">emailsuffix</code>, <code  class="code">letsubmitterchoosemilestone</code>, <code  class="code">letsubmitterchoosepriority</code>, <code  class="code">mailfrom</code>, <code  class="code">maintainer</code>, <code  class="code">maxattachmentsize</code>, <code  class="code">maxlocalattachment</code>, <code  class="code">musthavemilestoneonaccept</code>, <code  class="code">noresolveonopenblockers</code>, <code  class="code">password_complexity</code>, <code  class="code">rememberlogin</code>, <code  class="code">requirelogin</code>, <code  class="code">search_allow_no_criteria</code>, <code  class="code">urlbase</code>, <code  class="code">use_see_also</code>, <code  class="code">useclassification</code>, <code  class="code">usemenuforusers</code>, <code  class="code">useqacontact</code>, <code  class="code">usestatuswhiteboard</code>, <code  class="code">usetargetmilestone</code>.</p>
+
+<p>A user in the tweakparams group can access all existing parameters. New parameters can appear or obsolete parameters can disappear depending on the version of Bugzilla and on extensions being installed. The list of parameters returned by this method is not stable and will never be stable.</p>
+
+<dt><a name="History"
+><b>History</b></a></dt>
+
+<dd>
+<dl>
+<dt><a name="Added_in_Bugzilla_4.4."
+>Added in Bugzilla <b>4.4</b>.</a></dt>
+</dl>
+</dd>
+</dl>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="last_audit_time"
+>last_audit_time</a></h2>
+
+<p><b>EXPERIMENTAL</b></p>
+
+<dl>
+<dt><a name="Description"
+><b>Description</b></a></dt>
+
+<dd>
+<p>Gets the latest time of the audit_log table.</p>
+
+<dt><a name="Params"
+><b>Params</b></a></dt>
+
+<dd>
+<p>You can pass the optional parameter <code  class="code">class</code> to get the maximum for only the listed classes.</p>
+
+<dl>
+<dt><a name="class_(array)_-_An_array_of_strings_representing_the_class_names."
+><code  class="code">class</code> (array) - An array of strings representing the class names.</a></dt>
+
+<dd>
+<p><b>Note:</b> The class names are defined as &#34;Bugzilla::&#60;class_name&#62;&#34;. For the product use Bugzilla:Product.</p>
+</dd>
+</dl>
+
+<dt><a name="Returns"
+><b>Returns</b></a></dt>
+
+<dd>
+<p>A hash with a single item, <code  class="code">last_audit_time</code>, that is the maximum of the at_time from the audit_log.</p>
+
+<dt><a name="Errors_(none)"
+><b>Errors</b> (none)</a></dt>
+
+<dd>
+<dt><a name="History"
+><b>History</b></a></dt>
+
+<dd>
+<dl>
+<dt><a name="Added_in_Bugzilla_4.4."
+>Added in Bugzilla <b>4.4</b>.</a></dt>
 </dl>
 </dd>
 </dl>

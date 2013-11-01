@@ -1,23 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Everything Solved, Inc.
-# Portions created by the Initial Developer are Copyright (C) 2010 the
-# Initial Developer. All Rights Reserved.
-#
-# Contributor(s):
-#   Max Kanat-Alexander <mkanat@bugzilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::Search::Recent;
 use strict;
@@ -65,12 +51,13 @@ sub create {
     my $user_id = $search->user_id;
 
     # Enforce there only being SAVE_NUM_SEARCHES per user.
-    my $min_id = $dbh->selectrow_array(
-        'SELECT id FROM profile_search WHERE user_id = ? ORDER BY id DESC '
-        . $dbh->sql_limit(1, SAVE_NUM_SEARCHES), undef, $user_id);
-    if ($min_id) {
-        $dbh->do('DELETE FROM profile_search WHERE user_id = ? AND id <= ?',
-                 undef, ($user_id, $min_id));
+    my @ids = @{ $dbh->selectcol_arrayref(
+        "SELECT id FROM profile_search WHERE user_id = ? ORDER BY id",
+        undef, $user_id) };
+    if (scalar(@ids) > SAVE_NUM_SEARCHES) {
+        splice(@ids, - SAVE_NUM_SEARCHES);
+        $dbh->do(
+            "DELETE FROM profile_search WHERE id IN (" . join(',', @ids) . ")");
     }
     $dbh->bz_commit_transaction();
     return $search;

@@ -1,35 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Terry Weissman <terry@mozilla.org>,
-#                 Bryce Nesbitt <bryce-mozilla@nextbus.com>
-#                 Dan Mosedale <dmose@mozilla.org>
-#                 Alan Raetz <al_raetz@yahoo.com>
-#                 Jacob Steenhagen <jake@actex.net>
-#                 Matthew Tuck <matty@chariot.net.au>
-#                 Bradley Baetz <bbaetz@student.usyd.edu.au>
-#                 J. Paul Reed <preed@sigkill.com>
-#                 Gervase Markham <gerv@gerv.net>
-#                 Byron Jones <bugzilla@glob.com.au>
-#                 Reed Loden <reed@reedloden.com>
-#                 Frédéric Buclin <LpSolit@gmail.com>
-#                 Guy Pyrzak <guy.pyrzak@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 use strict;
 
@@ -352,6 +326,14 @@ sub sendMail {
     push(@watchingrel, 'None') unless @watchingrel;
     push @watchingrel, map { user_id_to_login($_) } @$watchingRef;
 
+    my @changedfields = uniq map { $_->{field_name} } @display_diffs;
+    
+    # Add attachments.created to changedfields if one or more
+    # comments contain information about a new attachment
+    if (grep($_->type == CMT_ATTACHMENT_CREATED, @send_comments)) {
+        push(@changedfields, 'attachments.created');
+    }
+
     my $vars = {
         date => $date,
         to_user => $user,
@@ -362,7 +344,7 @@ sub sendMail {
         reasonswatchheader => join(" ", @watchingrel),
         changer => $changer,
         diffs => \@display_diffs,
-        changedfields => [uniq map { $_->{field_name} } @display_diffs],
+        changedfields => \@changedfields, 
         new_comments => \@send_comments,
         threadingmarker => build_thread_marker($bug->id, $user->id, !$bug->lastdiffed),
     };
@@ -407,6 +389,8 @@ sub _generate_bugmail {
         $email->content_type_set($parts[0]->content_type);
     } else {
         $email->content_type_set('multipart/alternative');
+        # Some mail clients need same encoding for each part, even empty ones.
+        $email->charset_set('UTF-8') if Bugzilla->params->{'utf8'};
     }
     $email->parts_set(\@parts);
     return $email;
@@ -434,7 +418,8 @@ sub _get_diffs {
                 ON fielddefs.id = bugs_activity.fieldid
              WHERE bugs_activity.bug_id = ?
                    $when_restriction
-          ORDER BY bugs_activity.bug_when", {Slice=>{}}, @args);
+          ORDER BY bugs_activity.bug_when, bugs_activity.id",
+        {Slice=>{}}, @args);
 
     foreach my $diff (@$diffs) {
         $user_cache->{$diff->{who}} ||= new Bugzilla::User($diff->{who}); 
@@ -451,17 +436,42 @@ sub _get_diffs {
          }
     }
 
-    return @$diffs;
+    my @changes = ();
+    foreach my $diff (@$diffs) {
+        # If this is the same field as the previous item, then concatenate
+        # the data into the same change.
+        if (scalar(@changes)
+            && $diff->{field_name}        eq $changes[-1]->{field_name}
+            && $diff->{bug_when}          eq $changes[-1]->{bug_when}
+            && $diff->{who}               eq $changes[-1]->{who}
+            && ($diff->{attach_id} || 0)  == ($changes[-1]->{attach_id} || 0)
+            && ($diff->{comment_id} || 0) == ($changes[-1]->{comment_id} || 0)
+        ) {
+            my $old_change = pop @changes;
+            $diff->{old} = join_activity_entries($diff->{field_name}, $old_change->{old}, $diff->{old});
+            $diff->{new} = join_activity_entries($diff->{field_name}, $old_change->{new}, $diff->{new});
+        }
+        push @changes, $diff;
+    }
+
+    return @changes;
 }
 
 sub _get_new_bugmail_fields {
     my $bug = shift;
     my @fields = @{ Bugzilla->fields({obsolete => 0, in_new_bugmail => 1}) };
     my @diffs;
+    my $params = Bugzilla->params;
 
     foreach my $field (@fields) {
         my $name = $field->name;
         my $value = $bug->$name;
+
+        next if !$field->is_visible_on_bug($bug)
+            || ($name eq 'classification' && !$params->{'useclassification'})
+            || ($name eq 'status_whiteboard' && !$params->{'usestatuswhiteboard'})
+            || ($name eq 'qa_contact' && !$params->{'useqacontact'})
+            || ($name eq 'target_milestone' && !$params->{'usetargetmilestone'});
 
         if (ref $value eq 'ARRAY') {
             $value = join(', ', @$value);

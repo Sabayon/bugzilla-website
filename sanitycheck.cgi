@@ -1,28 +1,10 @@
 #!/usr/bin/perl -wT
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Terry Weissman <terry@mozilla.org>
-#                 Matthew Tuck <matty@chariot.net.au>
-#                 Max Kanat-Alexander <mkanat@bugzilla.org>
-#                 Marc Schumann <wurblzap@gmail.com>
-#                 Frédéric Buclin <LpSolit@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 use strict;
 
@@ -60,7 +42,7 @@ sub Status {
     }
     else {
         my $start_tag = $alert ? '<p class="alert">' : '<p>';
-        print $start_tag . get_string($san_tag, $vars) . "</p>\n";
+        say $start_tag . get_string($san_tag, $vars) . "</p>";
     }
 }
 
@@ -225,7 +207,7 @@ if ($cgi->param('repair_bugs_fulltext')) {
                                             WHERE bugs_fulltext.bug_id IS NULL');
 
    foreach my $bugid (@$bug_ids) {
-       Bugzilla::Bug->new($bugid)->_sync_fulltext('new_bug');
+       Bugzilla::Bug->new($bugid)->_sync_fulltext( new_bug => 1 );
    }
 
    Status('bugs_fulltext_fixed', {bug_count => scalar(@$bug_ids)});
@@ -258,7 +240,7 @@ if ($cgi->param('rescanallBugMail')) {
     # and so choosing this user as being the last one having done a change
     # for the bug may be problematic. So the best we can do at this point
     # is to choose the currently logged in user for email notification.
-    $vars->{'changer'} = Bugzilla->user;
+    $vars->{'changer'} = $user;
 
     foreach my $bugid (@$list) {
         Bugzilla::BugMail::Send($bugid, $vars);
@@ -745,6 +727,26 @@ if (scalar(@invalid_flags)) {
         }
         Status('flag_fix');
     }
+}
+
+###########################################################################
+# Check for products with no component
+###########################################################################
+
+Status('product_check_start');
+
+my $products_missing_data = $dbh->selectcol_arrayref(
+      'SELECT DISTINCT products.name
+         FROM products
+    LEFT JOIN components
+           ON components.product_id = products.id
+    LEFT JOIN versions
+           ON versions.product_id = products.id
+        WHERE components.id IS NULL
+           OR versions.id IS NULL');
+
+if (scalar(@$products_missing_data)) {
+    Status('product_alert', { name => $_ }, 'alert') foreach @$products_missing_data;
 }
 
 ###########################################################################

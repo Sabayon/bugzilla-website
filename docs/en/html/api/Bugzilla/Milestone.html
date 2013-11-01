@@ -32,7 +32,9 @@ name="SYNOPSIS"
 
 <pre  class="code">    use Bugzilla::Milestone;
 
-    my $milestone = new Bugzilla::Milestone({ name =&#62; $name, product =&#62; $product });
+    my $milestone = new Bugzilla::Milestone({ name =&#62; $name, product =&#62; $product_obj });
+    my $milestone = Bugzilla::Milestone-&#62;check({ name =&#62; $name, product =&#62; $product_obj });
+    my $milestone = Bugzilla::Milestone-&#62;check({ id =&#62; $id });
 
     my $name       = $milestone-&#62;name;
     my $product_id = $milestone-&#62;product_id;
@@ -59,8 +61,8 @@ name="METHODS"
 >METHODS</a></h1>
 
 <dl>
-<dt><a name="new({name_=_$name,_product_=&#62;_$product})&#62;"
-><code  class="code">new({name =</code> $name, product =&#62; $product})&#62;</a></dt>
+<dt><a name="new({name_=&#62;_$name,_product_=&#62;_$product})"
+><code  class="code">new({name =&#62; $name, product =&#62; $product})</code></a></dt>
 
 <dd>
 <pre  class="code"> Description: The constructor is used to load an existing milestone
@@ -170,8 +172,8 @@ name="CLASS_METHODS"
 >CLASS METHODS</a></h1>
 
 <dl>
-<dt><a name="create({value_=_$value,_product_=&#62;_$product,_sortkey_=&#62;_$sortkey})&#62;"
-><code  class="code">create({value =</code> $value, product =&#62; $product, sortkey =&#62; $sortkey})&#62;</a></dt>
+<dt><a name="create({value_=&#62;_$value,_product_=&#62;_$product,_sortkey_=&#62;_$sortkey})"
+><code  class="code">create({value =&#62; $value, product =&#62; $product, sortkey =&#62; $sortkey})</code></a></dt>
 
 <dd>
 <pre  class="code"> Description: Create a new milestone for the given product.

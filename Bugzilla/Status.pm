@@ -1,22 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Frédéric Buclin.
-# Portions created by Frédéric Buclin are Copyright (C) 2007
-# Frédéric Buclin. All Rights Reserved.
-#
-# Contributor(s): Frédéric Buclin <LpSolit@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 use strict;
 
@@ -76,14 +63,7 @@ sub create {
 
 sub remove_from_db {
     my $self = shift;
-    my $dbh = Bugzilla->dbh;
-    my $id = $self->id;
-    $dbh->bz_start_transaction();
     $self->SUPER::remove_from_db();
-    $dbh->do('DELETE FROM status_workflow
-               WHERE old_status = ? OR new_status = ?',
-              undef, $id, $id);
-    $dbh->bz_commit_transaction();
     delete Bugzilla->request_cache->{status_bug_state_open};
 }
 
@@ -195,8 +175,8 @@ sub _status_condition {
     my ($self, $old_status) = @_;
     my @values;
     my $cond = 'old_status IS NULL';
-    # For newly-filed bugs
-    if ($old_status) {
+    # We may pass a fake status object to represent the initial unset state.
+    if ($old_status && $old_status->id)  {
         $cond = 'old_status = ?';
         push(@values, $old_status->id);
     }

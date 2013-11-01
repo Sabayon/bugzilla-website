@@ -1,24 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Mozilla Corporation.
-# Portions created by the Initial Developer are Copyright (C) 2008
-# Mozilla Corporation. All Rights Reserved.
-#
-# Contributor(s): 
-#   Mark Smith <mark@mozilla.com>
-#   Max Kanat-Alexander <mkanat@bugzilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::JobQueue;
 
@@ -27,7 +12,10 @@ use strict;
 use Bugzilla::Constants;
 use Bugzilla::Error;
 use Bugzilla::Install::Util qw(install_string);
+use File::Basename;
+use File::Slurp;
 use base qw(TheSchwartz);
+use fields qw(_worker_pidfile);
 
 # This maps job names for Bugzilla::JobQueue to the appropriate modules.
 # If you add new types of jobs, you should add a mapping here.
@@ -54,7 +42,7 @@ sub new {
     my $class = shift;
 
     if (!Bugzilla->feature('jobqueue')) {
-        ThrowCodeError('feature_disabled', { feature => 'jobqueue' });
+        ThrowUserError('feature_disabled', { feature => 'jobqueue' });
     }
 
     my $lc = Bugzilla->localconfig;
@@ -68,6 +56,7 @@ sub new {
             prefix => 'ts_',
         }],
         driver_cache_expiration => DRIVER_CACHE_TIME,
+        prioritize => 1,
     );
 
     return $self;
@@ -85,18 +74,83 @@ sub insert {
     my $self = shift;
     my $job = shift;
 
-    my $mapped_job = Bugzilla::JobQueue->job_map()->{$job};
-    ThrowCodeError('jobqueue_no_job_mapping', { job => $job })
-        if !$mapped_job;
-    unshift(@_, $mapped_job);
+    if (!ref($job)) {
+        my $mapped_job = Bugzilla::JobQueue->job_map()->{$job};
+        ThrowCodeError('jobqueue_no_job_mapping', { job => $job })
+            if !$mapped_job;
 
-    my $retval = $self->SUPER::insert(@_);
+        $job = new TheSchwartz::Job(
+            funcname => $mapped_job,
+            arg      => $_[0],
+            priority => $_[1] || 5
+        );
+    }
+    
+    my $retval = $self->SUPER::insert($job);
     # XXX Need to get an error message here if insert fails, but
     # I don't see any way to do that in TheSchwartz.
     ThrowCodeError('jobqueue_insert_failed', { job => $job, errmsg => $@ })
         if !$retval;
  
     return $retval;
+}
+
+# To avoid memory leaks/fragmentation which tends to happen for long running
+# perl processes; check for jobs, and spawn a new process to empty the queue.
+sub subprocess_worker {
+    my $self = shift;
+
+    my $command = "$0 -d -p '" . $self->{_worker_pidfile} . "' onepass";
+
+    while (1) {
+        my $time = (time);
+        my @jobs = $self->list_jobs({
+            funcname      => $self->{all_abilities},
+            run_after     => $time,
+            grabbed_until => $time,
+            limit         => 1,
+        });
+        if (@jobs) {
+            $self->debug("Spawning queue worker process");
+            # Run the worker as a daemon
+            system $command;
+            # And poll the PID to detect when the working has finished.
+            # We do this instead of system() to allow for the INT signal to
+            # interrup us and trigger kill_worker().
+            my $pid = read_file($self->{_worker_pidfile}, err_mode => 'quiet');
+            if ($pid) {
+                sleep(3) while(kill(0, $pid));
+            }
+            $self->debug("Queue worker process completed");
+        } else {
+            $self->debug("No jobs found");
+        }
+        sleep(5);
+    }
+}
+
+sub kill_worker {
+    my $self = Bugzilla->job_queue();
+    if ($self->{_worker_pidfile} && -e $self->{_worker_pidfile}) {
+        my $worker_pid = read_file($self->{_worker_pidfile});
+        if ($worker_pid && kill(0, $worker_pid)) {
+            $self->debug("Stopping worker process");
+            system "$0 -f -p '" . $self->{_worker_pidfile} . "' stop";
+        }
+    }
+}
+
+sub set_pidfile {
+    my ($self, $pidfile) = @_;
+    $self->{_worker_pidfile} = bz_locations->{'datadir'} .
+                               '/worker-' . basename($pidfile);
+}
+
+# Clear the request cache at the start of each run.
+sub work_once {
+    my $self = shift;
+    Bugzilla->clear_request_cache();
+    return $self->SUPER::work_once(@_);
 }
 
 1;

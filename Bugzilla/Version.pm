@@ -1,20 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# Contributor(s): Tiago R. Mello <timello@async.com.br>
-#                 Max Kanat-Alexander <mkanat@bugzilla.org>
-#                 Frédéric Buclin <LpSolit@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 use strict;
 
@@ -76,7 +65,7 @@ sub new {
     my $dbh = Bugzilla->dbh;
 
     my $product;
-    if (ref $param) {
+    if (ref $param and !defined $param->{id}) {
         $product = $param->{product};
         my $name = $param->{name};
         if (!defined $product) {
@@ -143,12 +132,21 @@ sub remove_from_db {
     my $self = shift;
     my $dbh = Bugzilla->dbh;
 
+    $dbh->bz_start_transaction();
+
+    # Products must have at least one version.
+    if (scalar(@{$self->product->versions}) == 1) {
+        ThrowUserError('version_is_last', { version => $self });
+    }
+
     # The version cannot be removed if there are bugs
     # associated with it.
     if ($self->bug_count) {
         ThrowUserError("version_has_bugs", { nb => $self->bug_count });
     }
     $self->SUPER::remove_from_db();
+
+    $dbh->bz_commit_transaction();
 }
 
 ###############################
@@ -209,14 +207,16 @@ Bugzilla::Version - Bugzilla product version class.
 
     use Bugzilla::Version;
 
-    my $version = new Bugzilla::Version({ name => $name, product => $product });
+    my $version = new Bugzilla::Version({ name => $name, product => $product_obj });
+    my $version = Bugzilla::Version->check({ name => $name, product => $product_obj });
+    my $version = Bugzilla::Version->check({ id => $id });
 
     my $value = $version->name;
     my $product_id = $version->product_id;
     my $product = $version->product;
 
     my $version = Bugzilla::Version->create(
-        { value => $name, product => $product });
+        { value => $name, product => $product_obj });
 
     $version->set_name($new_name);
     $version->update();

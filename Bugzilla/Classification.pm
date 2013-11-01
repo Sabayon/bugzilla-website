@@ -1,19 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# Contributor(s): Tiago R. Mello <timello@async.com.br>
-#                 Frédéric Buclin <LpSolit@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 use strict;
 
@@ -25,7 +15,8 @@ use Bugzilla::Util;
 use Bugzilla::Error;
 use Bugzilla::Product;
 
-use base qw(Bugzilla::Field::ChoiceInterface Bugzilla::Object);
+use base qw(Bugzilla::Field::ChoiceInterface Bugzilla::Object Exporter);
+@Bugzilla::Classification::EXPORT = qw(sort_products_by_classification);
 
 ###############################
 ####    Initialization     ####
@@ -162,6 +153,38 @@ sub products {
 sub description { return $_[0]->{'description'}; }
 sub sortkey     { return $_[0]->{'sortkey'};     }
 
+
+###############################
+####       Helpers         ####
+###############################
+
+# This function is a helper to sort products to be listed
+# in global/choose-product.html.tmpl.
+
+sub sort_products_by_classification {
+    my $products = shift;
+    my $list;
+
+    if (Bugzilla->params->{'useclassification'}) {
+        my $class = {};
+        # Get all classifications with at least one product.
+        foreach my $product (@$products) {
+            $class->{$product->classification_id}->{'object'} ||=
+                new Bugzilla::Classification($product->classification_id);
+            # Nice way to group products per classification, without querying
+            # the DB again.
+            push(@{$class->{$product->classification_id}->{'products'}}, $product);
+        }
+        $list = [sort {$a->{'object'}->sortkey <=> $b->{'object'}->sortkey
+                       || lc($a->{'object'}->name) cmp lc($b->{'object'}->name)}
+                      (values %$class)];
+    }
+    else {
+        $list = [{object => undef, products => $products}];
+    }
+    return $list;
+}
+
 1;
 
 __END__
@@ -215,6 +238,23 @@ A Classification is a higher-level grouping of Products.
  Params:      none.
 
  Returns:     A reference to an array of Bugzilla::Product objects.
+
+=back
+
+=head1 SUBROUTINES
+
+=over
+
+=item C<sort_products_by_classification>
+
+ Description: This is a helper which returns a list of products sorted
+              by classification in a form suitable to be passed to the
+              global/choose-product.html.tmpl template.
+
+ Params:      An arrayref of product objects.
+
+ Returns:     An arrayref of hashes suitable to be passed to
+              global/choose-product.html.tmpl.
 
 =back
 

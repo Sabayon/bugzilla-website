@@ -1,22 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Everything Solved.
-# Portions created by Everything Solved are Copyright (C) 2006
-# Everything Solved. All Rights Reserved.
-#
-# Contributor(s): Max Kanat-Alexander <mkanat@bugzilla.org>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::Install::Util;
 
@@ -29,11 +16,9 @@ use strict;
 use Bugzilla::Constants;
 
 use Encode;
-use ExtUtils::MM ();
 use File::Basename;
 use File::Spec;
 use POSIX qw(setlocale LC_CTYPE);
-use Safe;
 use Scalar::Util qw(tainted);
 use Term::ANSIColor qw(colored);
 use PerlIO;
@@ -58,6 +43,9 @@ our @EXPORT_OK = qw(
 
 sub bin_loc {
     my ($bin, $path) = @_;
+    # This module is not needed most of the time and is a bit slow,
+    # so we only load it when calling bin_loc().
+    require ExtUtils::MM;
 
     # If the binary is a full path...
     if ($bin =~ m{[/\\]}) {
@@ -382,7 +370,10 @@ sub include_languages {
 
     # Basically, the way this works is that we have a list of languages
     # that we *want*, and a list of languages that Bugzilla actually
-    # supports.
+    # supports. If there is only one language installed, we take it.
+    my $supported = supported_languages();
+    return @$supported if @$supported == 1;
+
     my $wanted;
     if ($params->{language}) {
         # We can pass several languages at once as an arrayref
@@ -393,7 +384,6 @@ sub include_languages {
     else {
         $wanted = _wanted_languages();
     }
-    my $supported = supported_languages();
     my $actual    = _wanted_to_actual_languages($wanted, $supported);
     return @$actual;
 }
@@ -541,11 +531,20 @@ sub no_checksetup_from_cgi {
 # Used by install_string
 sub _get_string_from_file {
     my ($string_id, $file) = @_;
-    
+    # If we already loaded the file, then use its copy from the cache.
+    if (my $strings = _cache()->{strings_from_file}->{$file}) {
+        return $strings->{$string_id};
+    }
+
+    # This module is only needed by checksetup.pl,
+    # so only load it when needed.
+    require Safe;
+
     return undef if !-e $file;
     my $safe = new Safe;
     $safe->rdo($file);
     my %strings = %{$safe->varglob('strings')};
+    _cache()->{strings_from_file}->{$file} = \%strings;
     return $strings{$string_id};
 }
 

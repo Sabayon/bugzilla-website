@@ -1,25 +1,10 @@
 #!/usr/bin/perl -wT
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Gervase Markham <gerv@gerv.net>
-#                 <rdean@cambianetworks.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 use strict;
 use lib qw(. lib);
@@ -30,6 +15,8 @@ use Bugzilla::Util;
 use Bugzilla::Error;
 use Bugzilla::Field;
 use Bugzilla::Search;
+use Bugzilla::Report;
+use Bugzilla::Token;
 
 use List::MoreUtils qw(uniq);
 
@@ -49,11 +36,58 @@ if (grep(/^cmd-/, $cgi->param())) {
 
 Bugzilla->login();
 my $action = $cgi->param('action') || 'menu';
+my $token  = $cgi->param('token');
 
 if ($action eq "menu") {
     # No need to do any searching in this case, so bail out early.
     print $cgi->header();
     $template->process("reports/menu.html.tmpl", $vars)
+      || ThrowTemplateError($template->error());
+    exit;
+
+}
+elsif ($action eq 'add') {
+    my $user = Bugzilla->login(LOGIN_REQUIRED);
+    check_hash_token($token, ['save_report']);
+
+    my $name = clean_text($cgi->param('name'));
+    my $query = $cgi->param('query');
+
+    if (my ($report) = grep{ lc($_->name) eq lc($name) } @{$user->reports}) {
+        $report->set_query($query);
+        $report->update;
+        $vars->{'message'} = "report_updated";
+    } else {
+        my $report = Bugzilla::Report->create({name => $name, query => $query});
+        $vars->{'message'} = "report_created";
+    }
+
+    $user->flush_reports_cache;
+
+    print $cgi->header();
+
+    $vars->{'reportname'} = $name;
+
+    $template->process("global/message.html.tmpl", $vars)
+      || ThrowTemplateError($template->error());
+    exit;
+}
+elsif ($action eq 'del') {
+    my $user = Bugzilla->login(LOGIN_REQUIRED);
+    my $report_id = $cgi->param('saved_report_id');
+    check_hash_token($token, ['delete_report', $report_id]);
+
+    my $report = Bugzilla::Report->check({id => $report_id});
+    $report->remove_from_db();
+
+    $user->flush_reports_cache;
+
+    print $cgi->header();
+
+    $vars->{'message'} = 'report_deleted';
+    $vars->{'reportname'} = $report->name;
+
+    $template->process("global/message.html.tmpl", $vars)
       || ThrowTemplateError($template->error());
     exit;
 }
@@ -69,20 +103,18 @@ if (!($col_field || $row_field || $tbl_field)) {
     ThrowUserError("no_axes_defined");
 }
 
-my $width = $cgi->param('width');
-my $height = $cgi->param('height');
+# There is no UI for these parameters anymore,
+# but they are still here just in case.
+my $width = $cgi->param('width') || 1024;
+my $height = $cgi->param('height') || 600;
 
-if (defined($width)) {
-   (detaint_natural($width) && $width > 0)
-     || ThrowCodeError("invalid_dimensions");
-   $width <= 2000 || ThrowUserError("chart_too_large");
-}
+(detaint_natural($width) && $width > 0)
+  || ThrowUserError("invalid_dimensions");
+$width <= 2000 || ThrowUserError("chart_too_large");
 
-if (defined($height)) {
-   (detaint_natural($height) && $height > 0)
-     || ThrowCodeError("invalid_dimensions");
-   $height <= 2000 || ThrowUserError("chart_too_large");
-}
+(detaint_natural($height) && $height > 0)
+  || ThrowUserError("invalid_dimensions");
+$height <= 2000 || ThrowUserError("chart_too_large");
 
 my $formatparam = $cgi->param('format') || '';
 
@@ -98,7 +130,7 @@ if ($formatparam eq "table") {
 }
 else {
     if (!Bugzilla->feature('graphical_reports')) {
-        ThrowCodeError('feature_disabled', { feature => 'graphical_reports' });
+        ThrowUserError('feature_disabled', { feature => 'graphical_reports' });
     }
 
     if ($row_field && !$col_field) {
@@ -114,13 +146,13 @@ my $valid_columns = Bugzilla::Search::REPORT_COLUMNS;
 # Validate the values in the axis fields or throw an error.
 !$row_field 
   || ($valid_columns->{$row_field} && trick_taint($row_field))
-  || ThrowCodeError("report_axis_invalid", {fld => "x", val => $row_field});
+  || ThrowUserError("report_axis_invalid", {fld => "x", val => $row_field});
 !$col_field 
   || ($valid_columns->{$col_field} && trick_taint($col_field))
-  || ThrowCodeError("report_axis_invalid", {fld => "y", val => $col_field});
+  || ThrowUserError("report_axis_invalid", {fld => "y", val => $col_field});
 !$tbl_field 
   || ($valid_columns->{$tbl_field} && trick_taint($tbl_field))
-  || ThrowCodeError("report_axis_invalid", {fld => "z", val => $tbl_field});
+  || ThrowUserError("report_axis_invalid", {fld => "z", val => $tbl_field});
 
 my @axis_fields = grep { $_ } ($row_field, $col_field, $tbl_field);
 
@@ -131,13 +163,12 @@ my $search = new Bugzilla::Search(
     params => scalar $params->Vars,
     allow_unlimited => 1,
 );
-my $query = $search->sql;
 
 $::SIG{TERM} = 'DEFAULT';
 $::SIG{PIPE} = 'DEFAULT';
 
-my $dbh = Bugzilla->switch_to_shadow_db();
-my $results = $dbh->selectall_arrayref($query);
+Bugzilla->switch_to_shadow_db();
+my ($results, $extra_data) = $search->data;
 
 # We have a hash of hashes for the data itself, and a hash to hold the 
 # row/col/table names.
@@ -212,7 +243,7 @@ $vars->{'row_names'} = \@row_names;
 $vars->{'tbl_names'} = \@tbl_names;
 
 # Below a certain width, we don't see any bars, so there needs to be a minimum.
-if ($width && $formatparam eq "bar") {
+if ($formatparam eq "bar") {
     my $min_width = (scalar(@col_names) || 1) * 20;
 
     if (!$cgi->param('cumulate')) {
@@ -222,10 +253,10 @@ if ($width && $formatparam eq "bar") {
     $vars->{'min_width'} = $min_width;
 }
 
-$vars->{'width'} = $width if $width;
-$vars->{'height'} = $height if $height;
-
-$vars->{'query'} = $query;
+$vars->{'width'} = $width;
+$vars->{'height'} = $height;
+$vars->{'queries'} = $extra_data;
+$vars->{'saved_report_id'} = $cgi->param('saved_report_id');
 
 if ($cgi->param('debug')
     && Bugzilla->params->{debug_group}
@@ -292,10 +323,10 @@ print $cgi->header(-type => $format->{'ctype'},
 # prints out both data structures.
 if ($cgi->param('debug')) {
     require Data::Dumper;
-    print "<pre>data hash:\n";
-    print html_quote(Data::Dumper::Dumper(%data)) . "\n\n";
-    print "data array:\n";
-    print html_quote(Data::Dumper::Dumper(@image_data)) . "\n\n</pre>";
+    say "<pre>data hash:";
+    say html_quote(Data::Dumper::Dumper(%data));
+    say "\ndata array:";
+    say html_quote(Data::Dumper::Dumper(@image_data)) . "\n\n</pre>";
 }
 
 # All formats point to the same section of the documentation.

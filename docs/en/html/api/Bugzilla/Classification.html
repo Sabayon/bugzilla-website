@@ -16,6 +16,7 @@ Bugzilla::Classification</title>
   <li class='indexItem indexItem1'><a href='#SYNOPSIS'>SYNOPSIS</a>
   <li class='indexItem indexItem1'><a href='#DESCRIPTION'>DESCRIPTION</a>
   <li class='indexItem indexItem1'><a href='#METHODS'>METHODS</a>
+  <li class='indexItem indexItem1'><a href='#SUBROUTINES'>SUBROUTINES</a>
 </ul>
 </div>
 
@@ -78,6 +79,26 @@ name="METHODS"
  Params:      none.
 
  Returns:     A reference to an array of Bugzilla::Product objects.</pre>
+</dd>
+</dl>
+
+<h1><a class='u' href='#___top' title='click to go to top of document'
+name="SUBROUTINES"
+>SUBROUTINES</a></h1>
+
+<dl>
+<dt><a name="sort_products_by_classification"
+><code  class="code">sort_products_by_classification</code></a></dt>
+
+<dd>
+<pre  class="code"> Description: This is a helper which returns a list of products sorted
+              by classification in a form suitable to be passed to the
+              global/choose-product.html.tmpl template.
+
+ Params:      An arrayref of product objects.
+
+ Returns:     An arrayref of hashes suitable to be passed to
+              global/choose-product.html.tmpl.</pre>
 </dd>
 </dl>
 <p class="backlinkbottom"><b><a name="___bottom" href="../index.html" title="All Documents">&lt;&lt;</a></b></p>

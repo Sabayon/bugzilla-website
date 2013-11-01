@@ -1,19 +1,9 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# Contributor(s): Max Kanat-Alexander <mkanat@bugzilla.org>
-#                 Marc Schumann <wurblzap@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::Install::Requirements;
 
@@ -29,7 +19,6 @@ use Bugzilla::Constants;
 use Bugzilla::Install::Util qw(vers_cmp install_string bin_loc 
                                extension_requirement_packages);
 use List::Util qw(max);
-use Safe;
 use Term::ANSIColor;
 
 # Return::Value 1.666002 pollutes the error log with warnings about this
@@ -110,10 +99,11 @@ sub REQUIRED_MODULES {
         module  => 'Digest::SHA',
         version => 0
     },
+    # 0.23 fixes incorrect handling of 1/2 & 3/4 timezones.
     {
         package => 'TimeDate',
         module  => 'Date::Format',
-        version => '2.21'
+        version => '2.23'
     },
     # 0.28 fixed some important bugs in DateTime.
     {
@@ -130,10 +120,11 @@ sub REQUIRED_MODULES {
         module  => 'DateTime::TimeZone',
         version => ON_WINDOWS ? '0.79' : '0.71'
     },
+    # 1.54 is required for Perl 5.10+. It also makes DBD::Oracle happy.
     {
         package => 'DBI',
         module  => 'DBI',
-        version => (vers_cmp($perl_ver, '5.13.3') > -1) ? '1.614' : '1.41'
+        version => (vers_cmp($perl_ver, '5.13.3') > -1) ? '1.614' : '1.54'
     },
     # 2.22 fixes various problems related to UTF8 strings in hash keys,
     # as well as line endings on Windows.
@@ -142,10 +133,11 @@ sub REQUIRED_MODULES {
         module  => 'Template',
         version => '2.22'
     },
+    # 2.04 implement the "Test" method (to write to data/mailer.testfile).
     {
         package => 'Email-Send',
         module  => 'Email::Send',
-        version => ON_WINDOWS ? '2.16' : '2.00',
+        version => ON_WINDOWS ? '2.16' : '2.04',
         blacklist => ['^2\.196$']
     },
     {
@@ -161,10 +153,11 @@ sub REQUIRED_MODULES {
         # in a URL query string.
         version => '1.37',
     },
+    # 0.32 fixes several memory leaks in the XS version of some functions.
     {
         package => 'List-MoreUtils',
         module  => 'List::MoreUtils',
-        version => 0.22,
+        version => 0.32,
     },
     {
         package => 'Math-Random-ISAAC',
@@ -268,16 +261,32 @@ sub OPTIONAL_MODULES {
         feature => ['smtp_auth'],
     },
     {
+        package => 'Net-SMTP-SSL',
+        module  => 'Net::SMTP::SSL',
+        version => 1.01,
+        feature => ['smtp_ssl'],
+    },
+    {
         package => 'RadiusPerl',
         module  => 'Authen::Radius',
         version => 0,
         feature => ['auth_radius'],
     },
+    # XXX - Once we require XMLRPC::Lite 0.717 or higher, we can
+    # remove SOAP::Lite from the list.
     {
         package => 'SOAP-Lite',
         module  => 'SOAP::Lite',
         # Fixes various bugs, including 542931 and 552353 + stops
         # throwing warnings with Perl 5.12.
+        version => '0.712',
+        feature => ['xmlrpc'],
+    },
+    # Since SOAP::Lite 1.0, XMLRPC::Lite is no longer included
+    # and so it must be checked separately.
+    {
+        package => 'XMLRPC-Lite',
+        module  => 'XMLRPC::Lite',
         version => '0.712',
         feature => ['xmlrpc'],
     },
@@ -329,15 +338,16 @@ sub OPTIONAL_MODULES {
 
     # Inbound Email
     {
-        package => 'Email-MIME-Attachment-Stripper',
-        module  => 'Email::MIME::Attachment::Stripper',
+        package => 'Email-Reply',
+        module  => 'Email::Reply',
         version => 0,
         feature => ['inbound_email'],
     },
     {
-        package => 'Email-Reply',
-        module  => 'Email::Reply',
-        version => 0,
+        package => 'HTML-FormatText-WithLinks',
+        module  => 'HTML::FormatText::WithLinks',
+        # We need 0.13 to set the "bold" marker to "*".
+        version => '0.13',
         feature => ['inbound_email'],
     },
 
@@ -345,7 +355,8 @@ sub OPTIONAL_MODULES {
     {
         package => 'TheSchwartz',
         module  => 'TheSchwartz',
-        version => 0,
+        # 1.07 supports the prioritization of jobs.
+        version => 1.07,
         feature => ['jobqueue'],
     },
     {
@@ -368,6 +379,20 @@ sub OPTIONAL_MODULES {
         # 0.96 properly determines process size on Linux.
         version => '0.96',
         feature => ['mod_perl'],
+    },
+
+    # typesniffer
+    {
+        package => 'File-MimeInfo',
+        module  => 'File::MimeInfo::Magic',
+        version => '0',
+        feature => ['typesniffer'],
+    },
+    {
+        package => 'IO-stringy',
+        module  => 'IO::Scalar',
+        version => '0',
+        feature => ['typesniffer'],
     },
     );
 
@@ -659,8 +684,15 @@ sub have_vers {
     Bugzilla::Install::Util::set_output_encoding();
 
     # VERSION is provided by UNIVERSAL::, and can be called even if
-    # the module isn't loaded.
-    my $vnum = $module->VERSION || -1;
+    # the module isn't loaded. We eval'uate ->VERSION because it can die
+    # when the version is not valid (yes, this happens from time to time).
+    # In that case, we use an uglier method to get the version.
+    my $vnum = eval { $module->VERSION };
+    if ($@) {
+        no strict 'refs';
+        $vnum = ${"${module}::VERSION"};
+    }
+    $vnum ||= -1;
 
     # CGI's versioning scheme went 2.75, 2.751, 2.752, 2.753, 2.76
     # That breaks the standard version tests, so we need to manually correct

@@ -18,6 +18,7 @@ bz_webservice_demo.pl</title>
   <li class='indexItem indexItem1'><a href='#DESCRIPTION'>DESCRIPTION</a>
   <ul   class='indexList indexList2'>
     <li class='indexItem indexItem2'><a href='#Initialization'>Initialization</a>
+    <li class='indexItem indexItem2'><a href='#Debugging'>Debugging</a>
     <li class='indexItem indexItem2'><a href='#Checking_Bugzilla%27s_version'>Checking Bugzilla&#39;s version</a>
     <li class='indexItem indexItem2'><a href='#Checking_Bugzilla%27s_timezone'>Checking Bugzilla&#39;s timezone</a>
     <li class='indexItem indexItem2'><a href='#Getting_Extension_Information'>Getting Extension Information</a>
@@ -156,6 +157,12 @@ You must also pass a <b>--login</b> and <b>--password</b> to log in to Bugzilla.
 <dd>
 <p>If specified on the command line,
 the script returns the information about the extensions that are installed.</p>
+
+<dt><a name="--debug"
+>--debug</a></dt>
+
+<dd>
+<p>Enable tracing at the debug level of XMLRPC requests and responses.</p>
 </dd>
 </dl>
 
@@ -172,6 +179,12 @@ you set up a proxy,
 as shown in this script.
 Bugzilla&#39;s XMLRPC URI ends in <code  class="code">xmlrpc.cgi</code>,
 so your URI looks along the lines of <code  class="code">http://your.bugzilla.installation/path/to/bugzilla/xmlrpc.cgi</code>.</p>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="Debugging"
+>Debugging</a></h2>
+
+<p>Enable tracing at the debug level of XMLRPC requests and responses if requested.</p>
 
 <h2><a class='u' href='#___top' title='click to go to top of document'
 name="Checking_Bugzilla&#39;s_version"

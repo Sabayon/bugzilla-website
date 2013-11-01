@@ -1,58 +1,35 @@
-# -*- Mode: perl; indent-tabs-mode: nil -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# The contents of this file are subject to the Mozilla Public
-# License Version 1.1 (the "License"); you may not use this file
-# except in compliance with the License. You may obtain a copy of
-# the License at http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-# The Original Code is the Bugzilla Bug Tracking System.
-#
-# The Initial Developer of the Original Code is Netscape Communications
-# Corporation. Portions created by Netscape are
-# Copyright (C) 1998 Netscape Communications Corporation. All
-# Rights Reserved.
-#
-# Contributor(s): Terry Weissman <terry@mozilla.org>
-#                 Dan Mosedale <dmose@mozilla.org>
-#                 Jacob Steenhagen <jake@bugzilla.org>
-#                 Bradley Baetz <bbaetz@student.usyd.edu.au>
-#                 Christopher Aillon <christopher@aillon.com>
-#                 Max Kanat-Alexander <mkanat@bugzilla.org>
-#                 Frédéric Buclin <LpSolit@gmail.com>
-#                 Marc Schumann <wurblzap@gmail.com>
+# This Source Code Form is "Incompatible With Secondary Licenses", as
+# defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::Util;
 
 use strict;
 
 use base qw(Exporter);
-@Bugzilla::Util::EXPORT = qw(trick_taint detaint_natural
-                             detaint_signed
+@Bugzilla::Util::EXPORT = qw(trick_taint detaint_natural detaint_signed
                              html_quote url_quote xml_quote
                              css_class_quote html_light_quote
                              i_am_cgi correct_urlbase remote_ip validate_ip
                              do_ssl_redirect_if_required use_attachbase
-                             diff_arrays on_main_db
+                             diff_arrays on_main_db say
                              trim wrap_hard wrap_comment find_wrap_point
                              format_time validate_date validate_time datetime_from
-                             file_mod_time is_7bit_clean
-                             bz_crypt generate_random_password
-                             validate_email_syntax clean_text
+                             is_7bit_clean bz_crypt generate_random_password
+                             validate_email_syntax check_email_syntax clean_text
                              get_text template_var disable_utf8
-                             detect_encoding);
+                             detect_encoding
+                             join_activity_entries);
 
 use Bugzilla::Constants;
 use Bugzilla::RNG qw(irand);
+use Bugzilla::Error;
 
 use Date::Parse;
 use Date::Format;
-use DateTime;
-use DateTime::TimeZone;
 use Digest;
 use Email::Address;
 use List::Util qw(first);
@@ -119,6 +96,9 @@ sub html_quote {
 
 sub html_light_quote {
     my ($text) = @_;
+    # admin/table.html.tmpl calls |FILTER html_light| many times.
+    # There is no need to recreate the HTML::Scrubber object again and again.
+    my $scrubber = Bugzilla->process_cache->{html_scrubber};
 
     # List of allowed HTML elements having no attributes.
     my @allow = qw(b strong em i u p br abbr acronym ins del cite code var
@@ -140,7 +120,7 @@ sub html_light_quote {
         $text =~ s#$chr($safe)$chr#<$1>#go;
         return $text;
     }
-    else {
+    elsif (!$scrubber) {
         # We can be less restrictive. We can accept elements with attributes.
         push(@allow, qw(a blockquote q span));
 
@@ -160,12 +140,13 @@ sub html_light_quote {
         # Specific rules for allowed elements. If no specific rule is set
         # for a given element, then the default is used.
         my @rules = (a => {
-                           href  => $protocol_regexp,
-                           title => 1,
-                           id    => 1,
-                           name  => 1,
-                           class => 1,
-                           '*'   => 0, # Reject all other attributes.
+                           href   => $protocol_regexp,
+                           target => qr{^(?:_blank|_parent|_self|_top)$}i,
+                           title  => 1,
+                           id     => 1,
+                           name   => 1,
+                           class  => 1,
+                           '*'    => 0, # Reject all other attributes.
                           },
                      blockquote => {
                                     cite => $protocol_regexp,
@@ -183,14 +164,14 @@ sub html_light_quote {
                           },
                     );
 
-        my $scrubber = HTML::Scrubber->new(default => \@default,
-                                           allow   => \@allow,
-                                           rules   => \@rules,
-                                           comment => 0,
-                                           process => 0);
-
-        return $scrubber->scrub($text);
+        Bugzilla->process_cache->{html_scrubber} = $scrubber =
+          HTML::Scrubber->new(default => \@default,
+                              allow   => \@allow,
+                              rules   => \@rules,
+                              comment => 0,
+                              process => 0);
     }
+    return $scrubber->scrub($text);
 }
 
 sub email_filter {
@@ -427,6 +408,13 @@ sub diff_arrays {
     return (\@removed, \@added);
 }
 
+# XXX - This is a temporary subroutine till we require Perl 5.10.1.
+# This will happen before Bugzilla 5.0rc1.
+sub say (@) {
+    print @_;
+    print "\n";
+}
+
 sub trim {
     my ($str) = @_;
     if ($str) {
@@ -471,11 +459,11 @@ sub find_wrap_point {
     if (!$string) { return 0 }
     if (length($string) < $maxpos) { return length($string) }
     my $wrappoint = rindex($string, ",", $maxpos); # look for comma
-    if ($wrappoint < 0) {  # can't find comma
+    if ($wrappoint <= 0) {  # can't find comma
         $wrappoint = rindex($string, " ", $maxpos); # look for space
-        if ($wrappoint < 0) {  # can't find space
+        if ($wrappoint <= 0) {  # can't find space
             $wrappoint = rindex($string, "-", $maxpos); # look for hyphen
-            if ($wrappoint < 0) {  # can't find hyphen
+            if ($wrappoint <= 0) {  # can't find hyphen
                 $wrappoint = $maxpos;  # just truncate it
             } else {
                 $wrappoint++; # leave hyphen on the left side
@@ -483,6 +471,35 @@ sub find_wrap_point {
         }
     }
     return $wrappoint;
+}
+
+sub join_activity_entries {
+    my ($field, $current_change, $new_change) = @_;
+    # We need to insert characters as these were removed by old
+    # LogActivityEntry code.
+
+    return $new_change if $current_change eq '';
+
+    # Buglists and see_also need the comma restored
+    if ($field eq 'dependson' || $field eq 'blocked' || $field eq 'see_also') {
+        if (substr($new_change, 0, 1) eq ',' || substr($new_change, 0, 1) eq ' ') {
+            return $current_change . $new_change;
+        } else {
+            return $current_change . ', ' . $new_change;
+        }
+    }
+
+    # Assume bug_file_loc contain a single url, don't insert a delimiter
+    if ($field eq 'bug_file_loc') {
+        return $current_change . $new_change;
+    }
+
+    # All other fields get a space
+    if (substr($new_change, 0, 1) eq ' ') {
+        return $current_change . $new_change;
+    } else {
+        return $current_change . ' ' . $new_change;
+    }
 }
 
 sub wrap_hard {
@@ -565,20 +582,15 @@ sub datetime_from {
         delete $args{$arg} if !defined $args{$arg};
     }
 
+    # This module takes time to load and is only used here, so we
+    # |require| it here rather than |use| it.
+    require DateTime;
     my $dt = new DateTime(\%args);
 
     # Now display the date using the given timezone,
     # or the user's timezone if none is given.
     $dt->set_time_zone($timezone || Bugzilla->user->timezone);
     return $dt;
-}
-
-sub file_mod_time {
-    my ($filename) = (@_);
-    my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
-        $atime,$mtime,$ctime,$blksize,$blocks)
-        = stat($filename);
-    return $mtime;
 }
 
 sub bz_crypt {
@@ -648,12 +660,27 @@ sub generate_random_password {
 sub validate_email_syntax {
     my ($addr) = @_;
     my $match = Bugzilla->params->{'emailregexp'};
-    my $ret = ($addr =~ /$match/ && $addr !~ /[\\\(\)<>&,;:"\[\] \t\r\n\P{ASCII}]/);
+    my $email = $addr . Bugzilla->params->{'emailsuffix'};
+    # This regexp follows RFC 2822 section 3.4.1.
+    my $addr_spec = $Email::Address::addr_spec;
+    # RFC 2822 section 2.1 specifies that email addresses must
+    # be made of US-ASCII characters only.
+    # Email::Address::addr_spec doesn't enforce this.
+    my $ret = ($addr =~ /$match/ && $email !~ /\P{ASCII}/ && $email =~ /^$addr_spec$/);
     if ($ret) {
         # We assume these checks to suffice to consider the address untainted.
         trick_taint($_[0]);
     }
     return $ret ? 1 : 0;
+}
+
+sub check_email_syntax {
+    my ($addr) = @_;
+
+    unless (validate_email_syntax(@_)) {
+        my $email = $addr . Bugzilla->params->{'emailsuffix'};
+        ThrowUserError('illegal_email_address', { addr => $email });
+    }
 }
 
 sub validate_date {
@@ -715,10 +742,9 @@ sub get_text {
     $vars ||= {};
     $vars->{'message'} = $name;
     my $message;
-    if (!$template->process('global/message.txt.tmpl', $vars, \$message)) {
-        require Bugzilla::Error;
-        Bugzilla::Error::ThrowTemplateError($template->error());
-    }
+    $template->process('global/message.txt.tmpl', $vars, \$message)
+      || ThrowTemplateError($template->error());
+
     # Remove the indenting that exists in messages.html.tmpl.
     $message =~ s/^    //gm;
     return $message;
@@ -733,13 +759,10 @@ sub template_var {
     my %vars;
     # Note: If we suddenly start needing a lot of template_var variables,
     # they should move into their own template, not field-descs.
-    my $result = $template->process('global/field-descs.none.tmpl', 
-                                    { vars => \%vars, in_template_var => 1 });
-    # Bugzilla::Error can't be "use"d in Bugzilla::Util.
-    if (!$result) {
-        require Bugzilla::Error;
-        Bugzilla::Error::ThrowTemplateError($template->error);
-    }
+    $template->process('global/field-descs.none.tmpl',
+                       { vars => \%vars, in_template_var => 1 })
+      || ThrowTemplateError($template->error());
+
     $cache->{$lang} = \%vars;
     return $vars{$name};
 }
@@ -764,11 +787,8 @@ use constant UTF8_ACCIDENTAL => qw(shiftjis big5-eten euc-kr euc-jp);
 sub detect_encoding {
     my $data = shift;
 
-    if (!Bugzilla->feature('detect_charset')) {
-        require Bugzilla::Error;
-        Bugzilla::Error::ThrowCodeError('feature_disabled',
-            { feature => 'detect_charset' });
-    }
+    Bugzilla->feature('detect_charset')
+      || ThrowUserError('feature_disabled', { feature => 'detect_charset' });
 
     require Encode::Detect::Detector;
     import Encode::Detect::Detector 'detect';
@@ -789,12 +809,12 @@ sub detect_encoding {
     }
 
     # Encode::Detect sometimes mis-detects various ISO encodings as iso-8859-8,
-    # but Encode::Guess can usually tell which one it is.
-    if ($encoding && $encoding eq 'iso-8859-8') {
+    # or cp1255, but Encode::Guess can usually tell which one it is.
+    if ($encoding && ($encoding eq 'iso-8859-8' || $encoding eq 'cp1255')) {
         my $decoded_as = _guess_iso($data, 'iso-8859-8', 
             # These are ordered this way because it gives the most 
             # accurate results.
-            qw(iso-8859-7 iso-8859-2));
+            qw(cp1252 iso-8859-7 iso-8859-2));
         $encoding = $decoded_as if $decoded_as;
     }
 
@@ -854,15 +874,13 @@ Bugzilla::Util - Generic utility functions for bugzilla
   format_time($time);
   datetime_from($time, $timezone);
 
-  # Functions for dealing with files
-  $time = file_mod_time($filename);
-
   # Cryptographic Functions
   $crypted_password = bz_crypt($password);
   $new_password = generate_random_password($password_length);
 
   # Validation Functions
   validate_email_syntax($email);
+  check_email_syntax($email);
   validate_date($date);
 
   # DB-related functions
@@ -1041,6 +1059,12 @@ Search for a comma, a whitespace or a hyphen to split $string, within the first
 $maxpos characters. If none of them is found, just split $string at $maxpos.
 The search starts at $maxpos and goes back to the beginning of the string.
 
+=item C<join_activity_entries($field, $current_change, $new_change)>
+
+Joins two strings together so they appear as one. The field name is specified
+as the method of joining the two strings depends on this. Returns the
+combined string.
+
 =item C<is_7bit_clean($str)>
 
 Returns true is the string contains only 7-bit characters (ASCII 32 through 126,
@@ -1123,18 +1147,6 @@ the Bugzilla server's local timezone if there isn't a logged-in user.
 
 =back
 
-
-=head2 Files
-
-=over 4
-
-=item C<file_mod_time($filename)>
-
-Takes a filename and returns the modification time. It returns it in the format
-of the "mtime" parameter of the perl "stat" function.
-
-=back
-
 =head2 Cryptography
 
 =over 4
@@ -1174,6 +1186,12 @@ and tokens.
 
 Do a syntax checking for a legal email address and returns 1 if
 the check is successful, else returns 0.
+Untaints C<$email> if successful.
+
+=item C<check_email_syntax($email)>
+
+Do a syntax checking for a legal email address and throws an error
+if the check fails.
 Untaints C<$email> if successful.
 
 =item C<validate_date($date)>
