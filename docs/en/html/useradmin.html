@@ -1,13 +1,13 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>3.2. User Administration</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.1 Release"><link rel="up" href="administration.html" title="Chapter 3. Administering Bugzilla"><link rel="prev" href="parameters.html" title="3.1. Bugzilla Configuration"><link rel="next" href="classifications.html" title="3.3. Classifications"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">3.2. User Administration</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="parameters.html">Prev</a> </td><th width="60%" align="center">Chapter 3. Administering Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="classifications.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="useradmin"></a>3.2. User Administration</h2></div></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="defaultuser"></a>3.2.1. Creating the Default User</h3></div></div></div><p>When you first run checksetup.pl after installing Bugzilla, it
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>3.2. User Administration</title><link rel="stylesheet" href="../../style.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.75.2"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.2 Release"><link rel="up" href="administration.html" title="Chapter 3. Administering Bugzilla"><link rel="prev" href="parameters.html" title="3.1. Bugzilla Configuration"><link rel="next" href="classifications.html" title="3.3. Classifications"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">3.2. User Administration</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="parameters.html">Prev</a> </td><th width="60%" align="center">Chapter 3. Administering Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="classifications.html">Next</a></td></tr></table><hr></div><div class="section" title="3.2. User Administration"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="useradmin"></a>3.2. User Administration</h2></div></div></div><div class="section" title="3.2.1. Creating the Default User"><div class="titlepage"><div><div><h3 class="title"><a name="defaultuser"></a>3.2.1. Creating the Default User</h3></div></div></div><p>When you first run checksetup.pl after installing Bugzilla, it
       will prompt you for the administrative username (email address) and
       password for this "super user". If for some reason you delete
       the "super user" account, re-running checksetup.pl will again prompt
-      you for this username and password.</p><div class="tip" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Tip"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../images/tip.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>If you wish to add more administrative users, add them to 
+      you for this username and password.</p><div class="tip" title="Tip" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Tip"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../images/tip.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>If you wish to add more administrative users, add them to 
         the "admin" group and, optionally, edit the tweakparams, editusers,
         creategroups, editcomponents, and editkeywords groups to add the
         entire admin group to those groups (which is the case by default).
-        </p></td></tr></table></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="manageusers"></a>3.2.2. Managing Other Users</h3></div></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="user-account-search"></a>3.2.2.1. Searching for existing users</h4></div></div></div><p>
+        </p></td></tr></table></div></div><div class="section" title="3.2.2. Managing Other Users"><div class="titlepage"><div><div><h3 class="title"><a name="manageusers"></a>3.2.2. Managing Other Users</h3></div></div></div><div class="section" title="3.2.2.1. Searching for existing users"><div class="titlepage"><div><div><h4 class="title"><a name="user-account-search"></a>3.2.2.1. Searching for existing users</h4></div></div></div><p>
           If you have <span class="quote">“<span class="quote">editusers</span>”</span> privileges or if you are allowed
           to grant privileges for some groups, the <span class="quote">“<span class="quote">Users</span>”</span> link
           will appear in the Administration page.
@@ -33,7 +33,7 @@
           the change and the user who made the change. For example, the Account
           History page will display details of when a user was added or removed
           from a group.
-        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="createnewusers"></a>3.2.2.2. Creating new users</h4></div></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="self-registration"></a>3.2.2.2.1. Self-registration</h5></div></div></div><p>
+        </p></div><div class="section" title="3.2.2.2. Creating new users"><div class="titlepage"><div><div><h4 class="title"><a name="createnewusers"></a>3.2.2.2. Creating new users</h4></div></div></div><div class="section" title="3.2.2.2.1. Self-registration"><div class="titlepage"><div><div><h5 class="title"><a name="self-registration"></a>3.2.2.2.1. Self-registration</h5></div></div></div><p>
             By default, users can create their own user accounts by clicking the
             <span class="quote">“<span class="quote">New Account</span>”</span> link at the bottom of each page (assuming
             they aren't logged in as someone else already). If you want to disable
@@ -41,12 +41,12 @@
             own user account, you have to edit the <span class="quote">“<span class="quote">createemailregexp</span>”</span>
             parameter in the <span class="quote">“<span class="quote">Configuration</span>”</span> page, see
             <a class="xref" href="parameters.html" title="3.1. Bugzilla Configuration">Section 3.1, “Bugzilla Configuration”</a>.
-          </p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="user-account-creation"></a>3.2.2.2.2. Accounts created by an administrator</h5></div></div></div><p>
+          </p></div><div class="section" title="3.2.2.2.2. Accounts created by an administrator"><div class="titlepage"><div><div><h5 class="title"><a name="user-account-creation"></a>3.2.2.2.2. Accounts created by an administrator</h5></div></div></div><p>
             Users with <span class="quote">“<span class="quote">editusers</span>”</span> privileges, such as administrators,
             can create user accounts for other users:
           </p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>After logging in, click the "Users" link at the footer of
               the query page, and then click "Add a new user".</p></li><li class="listitem"><p>Fill out the form presented. This page is self-explanatory.
-              When done, click "Submit".</p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>Adding a user this way will <span class="emphasis"><em>not</em></span>
+              When done, click "Submit".</p><div class="note" title="Note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>Adding a user this way will <span class="emphasis"><em>not</em></span>
                 send an email informing them of their username and password.
                 While useful for creating dummy accounts (watchers which
                 shuttle mail to another system, for instance, or email
@@ -54,8 +54,8 @@
                 preferable to log out and use the <span class="quote">“<span class="quote">New Account</span>”</span>
                 button to create users, as it will pre-populate all the
                 required fields and also notify the user of her account name
-                and password.</p></td></tr></table></div></li></ol></div></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="modifyusers"></a>3.2.2.3. Modifying Users</h4></div></div></div><p>Once you have found your user, you can change the following
-        fields:</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
+                and password.</p></td></tr></table></div></li></ol></div></div></div><div class="section" title="3.2.2.3. Modifying Users"><div class="titlepage"><div><div><h4 class="title"><a name="modifyusers"></a>3.2.2.3. Modifying Users</h4></div></div></div><p>Once you have found your user, you can change the following
+        fields:</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>
             <span class="emphasis"><em>Login Name</em></span>: 
             This is generally the user's full email address. However, if you
             are using the <span class="quote">“<span class="quote">emailsuffix</span>”</span> parameter, this may
@@ -88,12 +88,12 @@
               stop it. If you want an account (disabled or active) to
               stop receiving mail, simply check the
               <span class="quote">“<span class="quote">Bugmail Disabled</span>”</span> checkbox above.
-            </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+            </p><div class="note" title="Note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
                 Even users whose accounts have been disabled can still
                 submit bugs via the e-mail gateway, if one exists.
                 The e-mail gateway should <span class="emphasis"><em>not</em></span> be
                 enabled for secure installations of Bugzilla.
-              </p></td></tr></table></div><div class="warning" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+              </p></td></tr></table></div><div class="warning" title="Warning" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
                 Don't disable all the administrator accounts!
               </p></td></tr></table></div></li><li class="listitem"><p>
             <span class="emphasis"><em>&lt;groupname&gt;</em></span>: 
@@ -148,7 +148,7 @@
             product itself. Note that for products that already exist when
             the parameter is turned on, the corresponding group will not be
             created. The user must still have the <span class="quote">“<span class="quote">editbugs</span>”</span> 
-            privilege to edit bugs in these products.</p></li></ul></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="user-account-deletion"></a>3.2.2.4. Deleting Users</h4></div></div></div><p>
+            privilege to edit bugs in these products.</p></li></ul></div></div><div class="section" title="3.2.2.4. Deleting Users"><div class="titlepage"><div><div><h4 class="title"><a name="user-account-deletion"></a>3.2.2.4. Deleting Users</h4></div></div></div><p>
           If the <span class="quote">“<span class="quote">allowuserdeletion</span>”</span> parameter is turned on, see
           <a class="xref" href="parameters.html" title="3.1. Bugzilla Configuration">Section 3.1, “Bugzilla Configuration”</a>, then you can also delete user accounts.
           Note that this is most of the time not the best thing to do. If only
@@ -158,11 +158,11 @@
           problems in your database, which can lead to unexpected behavior,
           such as bugs not appearing in bug lists anymore, or data displaying
           incorrectly. You have been warned!
-        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="impersonatingusers"></a>3.2.2.5. Impersonating Users</h4></div></div></div><p>
+        </p></div><div class="section" title="3.2.2.5. Impersonating Users"><div class="titlepage"><div><div><h4 class="title"><a name="impersonatingusers"></a>3.2.2.5. Impersonating Users</h4></div></div></div><p>
         There may be times when an administrator would like to do something as
         another user.  The <span class="command"><strong>sudo</strong></span> feature may be used to do 
         this.
-        </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+        </p><div class="note" title="Note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
           To use the sudo feature, you must be in the
           <span class="emphasis"><em>bz_sudoers</em></span> group.  By default, all
           administrators are in this group.</p></td></tr></table></div><p>
@@ -176,7 +176,7 @@
         a short message explaining why you are doing this, and press the 
         button.</p><p>
         As long as you are using this feature, everything you do will be done 
-        as if you were logged in as the user you are impersonating.</p><div class="warning" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+        as if you were logged in as the user you are impersonating.</p><div class="warning" title="Warning" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
           The user you are impersonating will not be told about what you are 
           doing.  If you do anything that results in mail being sent, that 
           mail will appear to be from the user you are impersonating.  You 

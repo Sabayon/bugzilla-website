@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>5.8. Hints and Tips</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.1 Release"><link rel="up" href="using.html" title="Chapter 5. Using Bugzilla"><link rel="prev" href="attachments.html" title="5.7. Attachments"><link rel="next" href="timetracking.html" title="5.9. Time Tracking Information"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">5.8. Hints and Tips</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="attachments.html">Prev</a> </td><th width="60%" align="center">Chapter 5. Using Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="timetracking.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="hintsandtips"></a>5.8. Hints and Tips</h2></div></div></div><p>This section distills some Bugzilla tips and best practices
-    that have been developed.</p><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="idm140266147180096"></a>5.8.1. Autolinkification</h3></div></div></div><p>Bugzilla comments are plain text - so typing &lt;U&gt; will
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>5.8. Hints and Tips</title><link rel="stylesheet" href="../../style.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.75.2"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.2 Release"><link rel="up" href="using.html" title="Chapter 5. Using Bugzilla"><link rel="prev" href="attachments.html" title="5.7. Attachments"><link rel="next" href="timetracking.html" title="5.9. Time Tracking Information"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">5.8. Hints and Tips</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="attachments.html">Prev</a> </td><th width="60%" align="center">Chapter 5. Using Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="timetracking.html">Next</a></td></tr></table><hr></div><div class="section" title="5.8. Hints and Tips"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="hintsandtips"></a>5.8. Hints and Tips</h2></div></div></div><p>This section distills some Bugzilla tips and best practices
+    that have been developed.</p><div class="section" title="5.8.1. Autolinkification"><div class="titlepage"><div><div><h3 class="title"><a name="idp10363296"></a>5.8.1. Autolinkification</h3></div></div></div><p>Bugzilla comments are plain text - so typing &lt;U&gt; will
       produce less-than, U, greater-than rather than underlined text.
       However, Bugzilla will automatically make hyperlinks out of certain
       sorts of text in comments. For example, the text 
@@ -11,7 +11,7 @@
       </p><p>A corollary here is that if you type a bug number in a comment,
       you should put the word "bug" before it, so it gets autolinkified
       for the convenience of others.
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="commenting"></a>5.8.2. Comments</h3></div></div></div><p>If you are changing the fields on a bug, only comment if
+      </p></div><div class="section" title="5.8.2. Comments"><div class="titlepage"><div><div><h3 class="title"><a name="commenting"></a>5.8.2. Comments</h3></div></div></div><p>If you are changing the fields on a bug, only comment if
       either you have something pertinent to say, or Bugzilla requires it.
       Otherwise, you may spam people unnecessarily with bug mail.
       To take an example: a user can set up their account to filter out messages
@@ -23,11 +23,11 @@
       Don't use sigs in comments. Signing your name ("Bill") is acceptable,
       if you do it out of habit, but full mail/news-style
       four line ASCII art creations are not.
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="comment-wrapping"></a>5.8.3. Server-Side Comment Wrapping</h3></div></div></div><p>
+      </p></div><div class="section" title="5.8.3. Server-Side Comment Wrapping"><div class="titlepage"><div><div><h3 class="title"><a name="comment-wrapping"></a>5.8.3. Server-Side Comment Wrapping</h3></div></div></div><p>
       Bugzilla stores comments unwrapped and wraps them at display time. This
       ensures proper wrapping in all browsers. Lines beginning with the "&gt;" 
       character are assumed to be quotes, and are not wrapped.
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="dependencytree"></a>5.8.4. Dependency Tree</h3></div></div></div><p>
+      </p></div><div class="section" title="5.8.4. Dependency Tree"><div class="titlepage"><div><div><h3 class="title"><a name="dependencytree"></a>5.8.4. Dependency Tree</h3></div></div></div><p>
         On the <span class="quote">“<span class="quote">Dependency tree</span>”</span> page linked from each bug
         page, you can see the dependency relationship from the bug as a
         tree structure.

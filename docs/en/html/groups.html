@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>3.15. Groups and Group Security</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.1 Release"><link rel="up" href="administration.html" title="Chapter 3. Administering Bugzilla"><link rel="prev" href="quips.html" title="3.14. Quips"><link rel="next" href="sanitycheck.html" title="3.16. Checking and Maintaining Database Integrity"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">3.15. Groups and Group Security</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="quips.html">Prev</a> </td><th width="60%" align="center">Chapter 3. Administering Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="sanitycheck.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="groups"></a>3.15. Groups and Group Security</h2></div></div></div><p>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>3.15. Groups and Group Security</title><link rel="stylesheet" href="../../style.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.75.2"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.2 Release"><link rel="up" href="administration.html" title="Chapter 3. Administering Bugzilla"><link rel="prev" href="quips.html" title="3.14. Quips"><link rel="next" href="sanitycheck.html" title="3.16. Checking and Maintaining Database Integrity"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">3.15. Groups and Group Security</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="quips.html">Prev</a> </td><th width="60%" align="center">Chapter 3. Administering Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="sanitycheck.html">Next</a></td></tr></table><hr></div><div class="section" title="3.15. Groups and Group Security"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="groups"></a>3.15. Groups and Group Security</h2></div></div></div><p>
     Groups allow for separating bugs into logical divisions.
     Groups are typically used
     to isolate bugs that should only be seen by certain people. For
@@ -35,14 +35,14 @@
       members of <span class="emphasis"><em>all</em></span> the groups that the bug is in can see
       the bug. For information on granting read-only access to certain people and
       full edit access to others, see <a class="xref" href="products.html#product-group-controls" title="3.4.4. Assigning Group Controls to Products">Section 3.4.4, “Assigning Group Controls to Products”</a>.
-     </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+     </p><div class="note" title="Note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
         By default, bugs can also be seen by the Assignee, the Reporter, and 
         by everyone on the CC List, regardless of whether or not the bug would 
         typically be viewable by them. Visibility to the Reporter and CC List can 
         be overridden (on a per-bug basis) by bringing up the bug, finding the 
         section that starts with <span class="quote">“<span class="quote">Users in the roles selected below...</span>”</span>
         and un-checking the box next to either 'Reporter' or 'CC List' (or both).
-      </p></td></tr></table></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="create-groups"></a>3.15.1. Creating Groups</h3></div></div></div><p>
+      </p></td></tr></table></div><div class="section" title="3.15.1. Creating Groups"><div class="titlepage"><div><div><h3 class="title"><a name="create-groups"></a>3.15.1. Creating Groups</h3></div></div></div><p>
         To create a new group, follow the steps below:
       </p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>
             Select the <span class="quote">“<span class="quote">Administration</span>”</span> link in the page footer, 
@@ -62,7 +62,7 @@
             expression can be useful, for example, to automatically put all users
             from the same company into one group (if the group is for a specific
             customer or partner). 
-          </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+          </p><div class="note" title="Note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
                If <span class="quote">“<span class="quote">User RegExp</span>”</span> is filled out, users whose email 
                addresses match the regular expression will automatically be 
                members of the group as long as their email addresses continue 
@@ -70,7 +70,7 @@
                and no longer matches the regular expression, they will be removed
                from the group. Versions 2.16 and older of Bugzilla did not automatically
                remove users who's email addresses no longer matched the RegExp.
-             </p></td></tr></table></div><div class="warning" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+             </p></td></tr></table></div><div class="warning" title="Warning" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
                If specifying a domain in the regular expression, end
                the regexp with a "$". Otherwise, when granting access to 
                "@mycompany\.com", access will also be granted to 
@@ -81,7 +81,7 @@
           The "Edit Group" page allows for specifying other groups that should be included
           in this group and which groups should be permitted to add and delete
           users from this group. For more details, see <a class="xref" href="groups.html#edit-groups" title="3.15.2. Editing Groups and Assigning Group Permissions">Section 3.15.2, “Editing Groups and Assigning Group Permissions”</a>.
-          </p></li></ol></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="edit-groups"></a>3.15.2. Editing Groups and Assigning Group Permissions</h3></div></div></div><p>
+          </p></li></ol></div></div><div class="section" title="3.15.2. Editing Groups and Assigning Group Permissions"><div class="titlepage"><div><div><h3 class="title"><a name="edit-groups"></a>3.15.2. Editing Groups and Assigning Group Permissions</h3></div></div></div><p>
         To access the "Edit Groups" page, select the 
         <span class="quote">“<span class="quote">Administration</span>”</span> link in the page footer, 
         and then select the <span class="quote">“<span class="quote">Groups</span>”</span> link from the Administration page.
@@ -104,7 +104,7 @@
        be empty for new groups). The way these controls allow groups to relate
        to one another is called <span class="emphasis"><em>inheritance</em></span>. 
        Each of the six permissions is described below.
-      </p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+      </p><div class="variablelist"><dl><dt><span class="term">
             <span class="emphasis"><em>Groups That Are a Member of This Group</em></span>
           </span></dt><dd><p> 
               Members of any groups selected here will automatically have 
@@ -144,7 +144,7 @@
              This setting is only visible if the 'usevisibilitygroups' parameter
              is enabled on the the Bugzilla Configuration page. See
              <a class="xref" href="parameters.html" title="3.1. Bugzilla Configuration">Section 3.1, “Bugzilla Configuration”</a> for information on configuring Bugzilla.               
-           </p></dd></dl></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="users-and-groups"></a>3.15.3. Assigning Users to Groups</h3></div></div></div><p>
+           </p></dd></dl></div></div><div class="section" title="3.15.3. Assigning Users to Groups"><div class="titlepage"><div><div><h3 class="title"><a name="users-and-groups"></a>3.15.3. Assigning Users to Groups</h3></div></div></div><p>
         A User can become a member of a group in several ways:
       </p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>
             The user can be explicitly placed in the group by editing
@@ -168,7 +168,7 @@
             group name in the user's profile.
             See <a class="xref" href="groups.html#create-groups" title="3.15.1. Creating Groups">Section 3.15.1, “Creating Groups”</a> for details on 
             the regular expression option when creating groups.
-           </p></li></ol></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="idm140266150132352"></a>3.15.4. Assigning Group Controls to Products</h3></div></div></div><p>
+           </p></li></ol></div></div><div class="section" title="3.15.4. Assigning Group Controls to Products"><div class="titlepage"><div><div><h3 class="title"><a name="idp10289664"></a>3.15.4. Assigning Group Controls to Products</h3></div></div></div><p>
      The primary functionality of groups is derived from the relationship of 
      groups to products. The concepts around segregating access to bugs with
      product group controls can be confusing. For details and examples on this
