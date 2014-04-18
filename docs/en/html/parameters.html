@@ -1,17 +1,17 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>3.1. Bugzilla Configuration</title><link rel="stylesheet" href="../../style.css" type="text/css"><meta name="generator" content="DocBook XSL Stylesheets V1.75.2"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.2 Release"><link rel="up" href="administration.html" title="Chapter 3. Administering Bugzilla"><link rel="prev" href="administration.html" title="Chapter 3. Administering Bugzilla"><link rel="next" href="useradmin.html" title="3.2. User Administration"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">3.1. Bugzilla Configuration</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="administration.html">Prev</a> </td><th width="60%" align="center">Chapter 3. Administering Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="useradmin.html">Next</a></td></tr></table><hr></div><div class="section" title="3.1. Bugzilla Configuration"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="parameters"></a>3.1. Bugzilla Configuration</h2></div></div></div><p>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>3.1. Bugzilla Configuration</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.3 Release"><link rel="up" href="administration.html" title="Chapter 3. Administering Bugzilla"><link rel="prev" href="administration.html" title="Chapter 3. Administering Bugzilla"><link rel="next" href="useradmin.html" title="3.2. User Administration"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">3.1. Bugzilla Configuration</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="administration.html">Prev</a> </td><th width="60%" align="center">Chapter 3. Administering Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="useradmin.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="parameters"></a>3.1. Bugzilla Configuration</h2></div></div></div><p>
       Bugzilla is configured by changing various parameters, accessed
       from the "Parameters" link in the Administration page (the 
       Administration page can be found by clicking the "Administration"
       link in the footer). The parameters are divided into several categories,
       accessed via the menu on the left. Following is a description of the 
       different categories and important parameters within those categories. 
-    </p><div class="section" title="3.1.1. Required Settings"><div class="titlepage"><div><div><h3 class="title"><a name="param-requiredsettings"></a>3.1.1. Required Settings</h3></div></div></div><p>
+    </p><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-requiredsettings"></a>3.1.1. Required Settings</h3></div></div></div><p>
           The core required parameters for any Bugzilla installation are set
           here. These parameters must be set before a new Bugzilla installation
           can be used. Administrators should review this list before 
           deploying a new Bugzilla installation.
-        </p><div class="variablelist"><dl><dt><span class="term">
+        </p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
               maintainer
             </span></dt><dd><p> 
               Email address of the person 
@@ -83,7 +83,7 @@
                after the data has been converted from existing legacy character 
                encoding to UTF-8, using the 
                <code class="filename">contrib/recode.pl</code> script.
-              </p><div class="note" title="Note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+              </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
                   If you turn this parameter from "off" to "on", you must re-run 
                   <code class="filename">checksetup.pl</code> immediately afterward.
                 </p></td></tr></table></div></dd><dt><span class="term">
@@ -93,7 +93,7 @@
                 be completely disabled and this text will appear instead of all
                 Bugzilla pages for all users, including Admins. Used in the event 
                 of site maintenance or outage situations. 
-              </p><div class="note" title="Note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+              </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
                   Although regular log-in capability is disabled while 
                   <span class="command"><strong>shutdownhtml</strong></span>
                   is enabled, safeguards are in place to protect the unfortunate 
@@ -132,11 +132,11 @@
                 recent release available on the most recent stable branch; 
                 "stable_branch_release" the most recent release on the branch 
                 this installation is based on.
-              </p></dd></dl></div></div><div class="section" title="3.1.2. Administrative Policies"><div class="titlepage"><div><div><h3 class="title"><a name="param-admin-policies"></a>3.1.2. Administrative Policies</h3></div></div></div><p>
+              </p></dd></dl></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-admin-policies"></a>3.1.2. Administrative Policies</h3></div></div></div><p>
             This page contains parameters for basic administrative functions.
             Options include whether to allow the deletion of bugs and users,
             and whether to allow users to change their email address.
-          </p></div><div class="section" title="3.1.3. User Authentication"><div class="titlepage"><div><div><h3 class="title"><a name="param-user-authentication"></a>3.1.3. User Authentication</h3></div></div></div><p>
+          </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-user-authentication"></a>3.1.3. User Authentication</h3></div></div></div><p>
             This page contains the settings that control how this Bugzilla
             installation will do its authentication. Choose what authentication
             mechanism to use (the Bugzilla database, or an external source such
@@ -144,7 +144,7 @@
             whether to require users to login to browse bugs, the management
             of authentication cookies, and the regular expression used to
             validate email addresses. Some parameters are highlighted below.
-          </p><div class="variablelist"><dl><dt><span class="term">
+          </p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
               emailregexp
             </span></dt><dd><p>
                 Defines the regular expression used to validate email addresses
@@ -163,17 +163,17 @@
                 local usernames,
                 then this parameter would contain the email domain for all users
                 (i.e. '@example.com').   
-              </p></dd></dl></div></div><div class="section" title="3.1.4. Attachments"><div class="titlepage"><div><div><h3 class="title"><a name="param-attachments"></a>3.1.4. Attachments</h3></div></div></div><p>
+              </p></dd></dl></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-attachments"></a>3.1.4. Attachments</h3></div></div></div><p>
             This page allows for setting restrictions and other parameters
             regarding attachments to bugs. For example, control size limitations
             and whether to allow pointing to external files via a URI.
-          </p></div><div class="section" title="3.1.5. Bug Change Policies"><div class="titlepage"><div><div><h3 class="title"><a name="param-bug-change-policies"></a>3.1.5. Bug Change Policies</h3></div></div></div><p>
+          </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-bug-change-policies"></a>3.1.5. Bug Change Policies</h3></div></div></div><p>
             Set policy on default behavior for bug change events. For example,
             choose which status to set a bug to when it is marked as a duplicate,
             and choose whether to allow bug reporters to set the priority or
             target milestone. Also allows for configuration of what changes
             should require the user to make a comment, described below.    
-          </p><div class="variablelist"><dl><dt><span class="term">
+          </p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
               commenton*
             </span></dt><dd><p>
                 All these fields allow you to dictate what changes can pass
@@ -187,7 +187,7 @@
                 Set the "commenton" options according to your site policy. It
                 is a wise idea to require comments when users resolve, reassign, or
                 reopen bugs at the very least. 
-              </p><div class="note" title="Note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+              </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
                   It is generally far better to require a developer comment
                   when resolving bugs than not. Few things are more annoying to bug
                   database users than having a developer mark a bug "fixed" without
@@ -201,12 +201,12 @@
                 is affected. Users will be still able to resolve bugs to
                 resolutions other than FIXED if they have unresolved dependent
                 bugs.
-              </p></dd></dl></div></div><div class="section" title="3.1.6. Bug Fields"><div class="titlepage"><div><div><h3 class="title"><a name="param-bugfields"></a>3.1.6. Bug Fields</h3></div></div></div><p>
+              </p></dd></dl></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-bugfields"></a>3.1.6. Bug Fields</h3></div></div></div><p>
             The parameters in this section determine the default settings of
             several Bugzilla fields for new bugs, and also control whether
             certain fields are used. For example, choose whether to use the
             "target milestone" field or the "status whiteboard" field.
-          </p><div class="variablelist"><dl><dt><span class="term">
+          </p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
               useqacontact
             </span></dt><dd><p>
                 This allows you to define an email address for each component, 
@@ -220,7 +220,7 @@
                 that it can be deleted or modified with ease, and provides an
                 easily-searchable field for indexing some bugs that have some trait
                 in common.         
-              </p></dd></dl></div></div><div class="section" title="3.1.7. Bug Moving"><div class="titlepage"><div><div><h3 class="title"><a name="param-bugmoving"></a>3.1.7. Bug Moving</h3></div></div></div><p>
+              </p></dd></dl></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-bugmoving"></a>3.1.7. Bug Moving</h3></div></div></div><p>
             This page controls whether this Bugzilla installation allows certain
             users to move bugs to an external database. If bug moving is enabled,
             there are a number of parameters that control bug moving behaviors. 
@@ -228,14 +228,14 @@
             of the external database, and the default product and component that
             bugs moved <span class="emphasis"><em>from</em></span> other bug databases to this 
             Bugzilla installation are assigned to. 
-          </p></div><div class="section" title="3.1.8. Dependency Graphs"><div class="titlepage"><div><div><h3 class="title"><a name="param-dependency-graphs"></a>3.1.8. Dependency Graphs</h3></div></div></div><p>
+          </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-dependency-graphs"></a>3.1.8. Dependency Graphs</h3></div></div></div><p>
             This page has one parameter that sets the location of a Web Dot
             server, or of the Web Dot binary on the local system, that is used
             to generate dependency graphs. Web Dot is a CGI program that creates
             images from <code class="filename">.dot</code> graphic description files. If
             no Web Dot server or binary is specified, then dependency graphs will
             be disabled.
-          </p></div><div class="section" title="3.1.9. Group Security"><div class="titlepage"><div><div><h3 class="title"><a name="param-group-security"></a>3.1.9. Group Security</h3></div></div></div><p>
+          </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-group-security"></a>3.1.9. Group Security</h3></div></div></div><p>
               Bugzilla allows for the creation of different groups, with the
               ability to restrict the visibility of bugs in a group to a set of 
               specific users. Specific products can also be associated with
@@ -246,7 +246,7 @@
               The options on this page control global default behavior. 
               For more information on Groups and Group Security, see
               <a class="xref" href="groups.html" title="3.15. Groups and Group Security">Section 3.15, “Groups and Group Security”</a> 
-            </p><div class="variablelist"><dl><dt><span class="term">
+            </p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
               makeproductgroups
             </span></dt><dd><p>
                 Determines whether or not to automatically create groups
@@ -267,7 +267,7 @@
                 The name of the group of users who are allowed to share saved
                 searches with one another. For more information on using 
                 saved searches, see <a class="xref" href="userpreferences.html#savedsearches" title="5.10.3. Saved Searches">Saved Searches</a>.
-              </p></dd></dl></div></div><div class="section" title="3.1.10. LDAP Authentication"><div class="titlepage"><div><div><h3 class="title"><a name="bzldap"></a>3.1.10. LDAP Authentication</h3></div></div></div><p>LDAP authentication is a module for Bugzilla's plugin 
+              </p></dd></dl></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="bzldap"></a>3.1.10. LDAP Authentication</h3></div></div></div><p>LDAP authentication is a module for Bugzilla's plugin 
           authentication architecture. This page contains all the parameters
           necessary to configure Bugzilla for use with LDAP authentication.
           </p><p>
@@ -289,7 +289,7 @@
           authentication, all other user-related tasks are still handled by email
           address, not LDAP username. For example, bugs are still assigned by
           email address and users are still queried by email address.
-          </p><div class="caution" title="Caution" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Caution"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../images/caution.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>Because the Bugzilla account is not created until the first time
+          </p><div class="caution" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Caution"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../images/caution.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>Because the Bugzilla account is not created until the first time
             a user logs in, a user who has not yet logged is unknown to Bugzilla.
             This means they cannot be used as an assignee or QA contact (default or
             otherwise), added to any CC list, or any other such operation. One
@@ -300,7 +300,7 @@
             directory. Another possible solution is fixing
             <a class="ulink" href="https://bugzilla.mozilla.org/show_bug.cgi?id=201069" target="_top">bug
             201069</a>.
-            </p></td></tr></table></div><p>Parameters required to use LDAP Authentication:</p><div class="variablelist"><dl><dt><a name="param-user_verify_class_for_ldap"></a><span class="term">user_verify_class</span></dt><dd><p>If you want to list <span class="quote">“<span class="quote">LDAP</span>”</span> here,
+            </p></td></tr></table></div><p>Parameters required to use LDAP Authentication:</p><div class="variablelist"><dl class="variablelist"><dt><a name="param-user_verify_class_for_ldap"></a><span class="term">user_verify_class</span></dt><dd><p>If you want to list <span class="quote">“<span class="quote">LDAP</span>”</span> here,
                 make sure to have set up the other parameters listed below.
                 Unless you have other (working) authentication methods listed as
                 well, you may otherwise not be able to log back in to Bugzilla once
@@ -317,7 +317,7 @@
                 protocols, such as LDAPS or LDAPI. If port was not specified in
                 the URI, the default is either 389 or 636 for 'LDAP' and 'LDAPS'
                 schemes respectively.
-                </p><div class="tip" title="Tip" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Tip"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../images/tip.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+                </p><div class="tip" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Tip"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../images/tip.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
                     In order to use SSL with LDAP, specify a URI with "ldaps://".
                     This will force the use of SSL over port 636.
                   </p></td></tr></table></div><p>For example, normal LDAP: 
@@ -338,14 +338,14 @@
                  </p><p>Ex. <span class="quote">“<span class="quote">uid</span>”</span></p></dd><dt><a name="param-LDAPmailattribute"></a><span class="term">LDAPmailattribute</span></dt><dd><p>The LDAPmailattribute parameter should be the name of the
                  attribute which contains the email address your users will enter
                  into the Bugzilla login boxes.
-                 </p><p>Ex. <span class="quote">“<span class="quote">mail</span>”</span></p></dd></dl></div></div><div class="section" title="3.1.11. RADIUS Authentication"><div class="titlepage"><div><div><h3 class="title"><a name="bzradius"></a>3.1.11. RADIUS Authentication</h3></div></div></div><p>
+                 </p><p>Ex. <span class="quote">“<span class="quote">mail</span>”</span></p></dd></dl></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="bzradius"></a>3.1.11. RADIUS Authentication</h3></div></div></div><p>
           RADIUS authentication is a module for Bugzilla's plugin 
           authentication architecture. This page contains all the parameters
           necessary for configuring Bugzilla to use RADIUS authentication.
-          </p><div class="note" title="Note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+          </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
               Most caveats that apply to LDAP authentication apply to RADIUS
               authentication as well. See <a class="xref" href="parameters.html#bzldap" title="3.1.10. LDAP Authentication">Section 3.1.10, “LDAP Authentication”</a> for details.
-            </p></td></tr></table></div><p>Parameters required to use RADIUS Authentication:</p><div class="variablelist"><dl><dt><a name="param-user_verify_class_for_radius"></a><span class="term">user_verify_class</span></dt><dd><p>If you want to list <span class="quote">“<span class="quote">RADIUS</span>”</span> here,
+            </p></td></tr></table></div><p>Parameters required to use RADIUS Authentication:</p><div class="variablelist"><dl class="variablelist"><dt><a name="param-user_verify_class_for_radius"></a><span class="term">user_verify_class</span></dt><dd><p>If you want to list <span class="quote">“<span class="quote">RADIUS</span>”</span> here,
                 make sure to have set up the other parameters listed below.
                 Unless you have other (working) authentication methods listed as
                 well, you may otherwise not be able to log back in to Bugzilla once
@@ -367,11 +367,11 @@
                 probably need to modify
                 <code class="filename">Bugzilla/Auth/Verify/RADIUS.pm</code> to match your
                 requirements.
-                </p></dd></dl></div></div><div class="section" title="3.1.12. Email"><div class="titlepage"><div><div><h3 class="title"><a name="param-email"></a>3.1.12. Email</h3></div></div></div><p>
+                </p></dd></dl></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-email"></a>3.1.12. Email</h3></div></div></div><p>
             This page contains all of the parameters for configuring how
             Bugzilla deals with the email notifications it sends. See below
             for a summary of important options. 
-          </p><div class="variablelist"><dl><dt><span class="term">
+          </p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
               mail_delivery_method
             </span></dt><dd><p>
                 This is used to specify how email is sent, or if it is sent at 
@@ -430,19 +430,19 @@
                 an existing bug changes, according to the normal groupset
                 permissions. It may be useful for sending notifications to a
                 mailing-list, for instance.
-              </p></dd></dl></div></div><div class="section" title="3.1.13. Patch Viewer"><div class="titlepage"><div><div><h3 class="title"><a name="param-patchviewer"></a>3.1.13. Patch Viewer</h3></div></div></div><p>
+              </p></dd></dl></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-patchviewer"></a>3.1.13. Patch Viewer</h3></div></div></div><p>
             This page contains configuration parameters for the CVS server, 
             Bonsai server and LXR server that Bugzilla will use to enable the
             features of the Patch Viewer. Bonsai is a tool that enables queries 
             to a CVS tree. LXR is a tool that can cross reference and index source
             code.
-          </p></div><div class="section" title="3.1.14. Query Defaults"><div class="titlepage"><div><div><h3 class="title"><a name="param-querydefaults"></a>3.1.14. Query Defaults</h3></div></div></div><p>
+          </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-querydefaults"></a>3.1.14. Query Defaults</h3></div></div></div><p>
             This page controls the default behavior of Bugzilla in regards to 
             several aspects of querying bugs. Options include what the default
             query options are, what the "My Bugs" page returns, whether users
             can freely add bugs to the quip list, and how many duplicate bugs are 
             needed to add a bug to the "most frequently reported" list.
-          </p></div><div class="section" title="3.1.15. Shadow Database"><div class="titlepage"><div><div><h3 class="title"><a name="param-shadowdatabase"></a>3.1.15. Shadow Database</h3></div></div></div><p>
+          </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="param-shadowdatabase"></a>3.1.15. Shadow Database</h3></div></div></div><p>
             This page controls whether a shadow database is used, and all the
             parameters associated with the shadow database. Versions of Bugzilla
             prior to 3.2 used the MyISAM table type, which supports
@@ -454,12 +454,12 @@
             this limitation. While only a single user is allowed to write to
             a table at a time, reads can continue unimpeded on a read-only
             shadow copy of the database.
-          </p><div class="note" title="Note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+          </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
               As of version 3.2, Bugzilla no longer uses the MyISAM table type.
               Instead, InnoDB is used, which can do transaction-based locking.
               Therefore, the limitations the Shadow Database feature was designed
               to workaround no longer exist.
-            </p></td></tr></table></div></div><div class="section" title="3.1.16. User Matching"><div class="titlepage"><div><div><h3 class="title"><a name="admin-usermatching"></a>3.1.16. User Matching</h3></div></div></div><p>
+            </p></td></tr></table></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="admin-usermatching"></a>3.1.16. User Matching</h3></div></div></div><p>
             The settings on this page control how users are selected and queried
             when adding a user to a bug. For example, users need to be selected
             when choosing who the bug is assigned to, adding to the CC list or 

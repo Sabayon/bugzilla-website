@@ -168,7 +168,7 @@ name="LOGGING_IN"
 
 <dd>
 <p>You can use <a href="../Bugzilla/WebService/User.html#login" class="podlinkpod"
->&#34;login&#34; in Bugzilla::WebService::User</a> to log in as a Bugzilla user. This issues standard HTTP cookies that you must then use in future calls, so your client must be capable of receiving and transmitting cookies.</p>
+>&#34;login&#34; in Bugzilla::WebService::User</a> to log in as a Bugzilla user. This issues a token that you must then use in future calls.</p>
 
 <dt><a name="Bugzilla_login_and_Bugzilla_password"
 ><code  class="code">Bugzilla_login</code> and <code  class="code">Bugzilla_password</code></a></dt>
@@ -189,15 +189,19 @@ name="LOGGING_IN"
 <dd>
 <dt><a name="Bugzilla_restrictlogin_(boolean)_-_Optional._If_true,_then_your_login_will_only_be_valid_for_your_IP_address."
 ><code  class="code">Bugzilla_restrictlogin</code> (boolean) - Optional. If true, then your login will only be valid for your IP address.</a></dt>
-
-<dd>
-<dt><a 
-><code  class="code">Bugzilla_rememberlogin</code> (boolean) - Optional. If true, then the cookie sent back to you with the method response will not expire.</a></dt>
 </dl>
 
-<p>The <code  class="code">Bugzilla_restrictlogin</code> and <code  class="code">Bugzilla_rememberlogin</code> options are only used when you have also specified <code  class="code">Bugzilla_login</code> and <code  class="code">Bugzilla_password</code>.</p>
+<p>The <code  class="code">Bugzilla_restrictlogin</code> option is only used when you have also specified <code  class="code">Bugzilla_login</code> and <code  class="code">Bugzilla_password</code>.</p>
 
-<p>Note that Bugzilla will return HTTP cookies along with the method response when you use these arguments (just like the <code  class="code">User.login</code> method above).</p>
+<dt><a name="Bugzilla_token"
+><code  class="code">Bugzilla_token</code></a></dt>
+
+<dd>
+<p><b>Added in Bugzilla 5.0 and backported to 4.4.3</b></p>
+
+<p>You can specify <code  class="code">Bugzilla_token</code> as argument to any WebService method, and you will be logged in as that user if the token is correct. This is the token returned when calling <code  class="code">User.login</code> mentioned above.</p>
+
+<p>Support for using login cookies for authentication has been dropped for security reasons.</p>
 </dd>
 </dl>
 

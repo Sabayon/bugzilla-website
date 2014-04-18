@@ -15,8 +15,12 @@ use Bugzilla::Constants;
 use Bugzilla::Error;
 use Bugzilla::Group;
 use Bugzilla::User;
-use Bugzilla::Util qw(trim);
+use Bugzilla::Util qw(trim detaint_natural);
 use Bugzilla::WebService::Util qw(filter validate translate params_to_objects);
+
+use List::Util qw(min);
+
+use List::Util qw(first);
 
 # Don't need auth to login
 use constant LOGIN_EXEMPT => {
@@ -48,7 +52,6 @@ use constant MAPPED_RETURNS => {
 
 sub login {
     my ($self, $params) = @_;
-    my $remember = $params->{remember};
 
     # Username and password params are required 
     foreach my $param ("login", "password") {
@@ -56,30 +59,26 @@ sub login {
             || ThrowCodeError('param_required', { param => $param });
     }
 
-    # Convert $remember from a boolean 0/1 value to a CGI-compatible one.
-    if (defined($remember)) {
-        $remember = $remember? 'on': '';
-    }
-    else {
-        # Use Bugzilla's default if $remember is not supplied.
-        $remember =
-            Bugzilla->params->{'rememberlogin'} eq 'defaulton'? 'on': '';
-    }
-
     # Make sure the CGI user info class works if necessary.
     my $input_params = Bugzilla->input_params;
     $input_params->{'Bugzilla_login'} =  $params->{login};
     $input_params->{'Bugzilla_password'} = $params->{password};
-    $input_params->{'Bugzilla_remember'} = $remember;
+    $input_params->{'Bugzilla_restrictlogin'} = $params->{restrict_login};
 
-    Bugzilla->login();
-    return { id => $self->type('int', Bugzilla->user->id) };
+    my $user = Bugzilla->login();
+
+    my $result = { id => $self->type('int', $user->id) };
+
+    if ($user->{_login_token}) {
+        $result->{'token'} = $user->id . "-" . $user->{_login_token};
+    }
+
+    return $result;
 }
 
 sub logout {
     my $self = shift;
     Bugzilla->logout;
-    return undef;
 }
 
 #################
@@ -184,12 +183,17 @@ sub get {
                                             userid => $obj->id});
         }
     }
-    
+
     # User Matching
-    my $limit;
-    if ($params->{'maxusermatches'}) {
-        $limit = $params->{'maxusermatches'} + 1;
+    my $limit = Bugzilla->params->{maxusermatches};
+    if ($params->{limit}) {
+        detaint_natural($params->{limit})
+            || ThrowCodeError('param_must_be_numeric',
+                              { function => 'Bugzilla::WebService::User::match',
+                                param    => 'limit' });
+        $limit = $limit ? min($params->{limit}, $limit) : $params->{limit};
     }
+
     my $exclude_disabled = $params->{'include_disabled'} ? 0 : 1;
     foreach my $match_string (@{ $params->{'match'} || [] }) {
         my $matched = Bugzilla::User::match($match_string, $limit, $exclude_disabled);
@@ -200,7 +204,7 @@ sub get {
             }
         }
     }
-   
+
     my $in_group = $self->_filter_users_by_group(
         \@user_objects, $params);
 
@@ -420,22 +424,19 @@ etc. This method logs in an user.
 
 =item C<password> (string) - The user's password.
 
-=item C<remember> (bool) B<Optional> - if the cookies returned by the
-call to login should expire with the session or not.  In order for
-this option to have effect the Bugzilla server must be configured to
-allow the user to set this option - the Bugzilla parameter
-I<rememberlogin> must be set to "defaulton" or
-"defaultoff". Addionally, the client application must implement
-management of cookies across sessions.
+=item C<restrict_login> (bool) B<Optional> - If set to a true value,
+the token returned by this method will only be valid from the IP address
+which called this method.
 
 =back
 
 =item B<Returns>
 
-On success, a hash containing one item, C<id>, the numeric id of the
-user that was logged in.  A set of http cookies is also sent with the
-response.  These cookies must be sent along with any future requests
-to the webservice, for the duration of the session.
+On success, a hash containing two items, C<id>, the numeric id of the
+user that was logged in, and a C<token> which can be passed in the parameters
+as authentication in other calls. The token can be sent along with any future
+requests to the webservice, for the duration of the session, i.e. till
+L<User.logout|/logout> is called.
 
 =item B<Errors>
 
@@ -458,6 +459,19 @@ his password.
 =item 50 (Param Required)
 
 A login or password parameter was not provided.
+
+=back
+
+=item B<History>
+
+=over
+
+=item C<remember> was removed in Bugzilla B<4.4> as this method no longer
+creates a login cookie.
+
+=item C<restrict_login> was added in Bugzilla B<4.4>.
+
+=item C<token> was added in Bugzilla B<4.4>.
 
 =back
 
@@ -729,9 +743,6 @@ Bugzilla itself. Users will be returned whose real name or login name
 contains any one of the specified strings. Users that you cannot see will
 not be included in the returned list.
 
-Some Bugzilla installations have user-matching turned off, in which
-case you will only be returned exact matches.
-
 Most installations have a limit on how many matches are returned for
 each string, which defaults to 1000 but can be changed by the Bugzilla
 administrator.
@@ -740,6 +751,13 @@ Logged-out users cannot use this argument, and an error will be thrown
 if they try. (This is to make it harder for spammers to harvest email
 addresses from Bugzilla, and also to enforce the user visibility
 restrictions that are implemented on some Bugzillas.)
+
+=item C<limit> (int)
+
+Limit the number of users matched by the C<match> parameter. If value
+is greater than the system limit, the system limit will be used. This
+parameter is only used when user matching using the C<match> parameter
+is being performed.
 
 =item C<group_ids> (array)
 
@@ -884,6 +902,10 @@ querying your own account, even if you are in the editusers group.
 
 You passed an invalid login name in the "names" array or a bad
 group ID in the C<group_ids> argument.
+
+=item 52 (Invalid Parameter)
+
+The value used must be an integer greater then zero.
 
 =item 304 (Authorization Required)
 

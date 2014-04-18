@@ -262,6 +262,13 @@ Params: None Returns: <code  class="code">true</code> if users are allowed to cr
 <p>Description: Whether or not the current login system allows users to change their own email address.
 Params: None Returns: <code  class="code">true</code> if users can change their own email address,
 <code  class="code">false</code> otherwise.</p>
+
+<dt><a name="login_token"
+><code  class="code">login_token</code></a></dt>
+
+<dd>
+<p>Description: If a login token was used instead of a cookie then this will return the current login token data such as user id and the token itself.
+Params: None Returns: A hash containing <code  class="code">login_token</code> and <code  class="code">user_id</code>.</p>
 </dd>
 </dl>
 

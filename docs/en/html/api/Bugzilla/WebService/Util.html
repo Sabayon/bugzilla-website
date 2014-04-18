@@ -22,6 +22,7 @@ Bugzilla::WebService::Util</title>
     <li class='indexItem indexItem2'><a href='#validate'>validate</a>
     <li class='indexItem indexItem2'><a href='#translate'>translate</a>
     <li class='indexItem indexItem2'><a href='#params_to_objects'>params_to_objects</a>
+    <li class='indexItem indexItem2'><a href='#fix_credentials'>fix_credentials</a>
   </ul>
 </ul>
 </div>
@@ -88,6 +89,12 @@ name="params_to_objects"
 >params_to_objects</a></h2>
 
 <p>Creates objects of the type passed in as the second parameter, using the parameters passed to a WebService method (the first parameter to this function). Helps make life simpler for WebService methods that internally create objects via both &#34;ids&#34; and &#34;names&#34; fields. Also de-duplicates objects that were loaded by both &#34;ids&#34; and &#34;names&#34;. Returns an arrayref of objects.</p>
+
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="fix_credentials"
+>fix_credentials</a></h2>
+
+<p>Allows for certain parameters related to authentication such as Bugzilla_login, Bugzilla_password, and Bugzilla_token to have shorter named equivalents passed in. This function converts the shorter versions to their respective internal names.</p>
 <p class="backlinkbottom"><b><a name="___bottom" href="../../index.html" title="All Documents">&lt;&lt;</a></b></p>
 
 <!-- end doc -->

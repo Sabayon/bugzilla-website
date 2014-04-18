@@ -51,6 +51,19 @@ elsif ($action eq 'prepare-sudo') {
     # Keep a temporary record of the user visiting this page
     $vars->{'token'} = issue_session_token('sudo_prepared');
 
+    if ($user->authorizer->can_login) {
+        my $value = generate_random_password();
+        my %args;
+        $args{'-secure'} = 1 if Bugzilla->params->{ssl_redirect};
+
+        $cgi->send_cookie(-name => 'Bugzilla_login_request_cookie',
+                          -value => $value,
+                          -httponly => 1,
+                          %args);
+
+        $vars->{'login_request_token'} = issue_hash_token(['login_request', $value]);
+    }
+
     # Show the sudo page
     $vars->{'target_login_default'} = $cgi->param('target_login');
     $vars->{'reason_default'} = $cgi->param('reason');
@@ -136,11 +149,18 @@ elsif ($action eq 'begin-sudo') {
 
     # For future sessions, store the unique ID of the target user
     my $token = Bugzilla::Token::_create_token($user->id, 'sudo', $target_user->id);
+
+    my %args;
+    if (Bugzilla->params->{ssl_redirect}) {
+        $args{'-secure'} = 1;
+    }
+
     $cgi->send_cookie('-name'    => 'sudo',
                       '-expires' => $time_string,
-                      '-value'   => $token
-    );
-    
+                      '-value'   => $token,
+                      '-httponly' => 1,
+                      %args);
+
     # For the present, change the values of Bugzilla::user & Bugzilla::sudoer
     Bugzilla->sudo_request($target_user, $user);
     

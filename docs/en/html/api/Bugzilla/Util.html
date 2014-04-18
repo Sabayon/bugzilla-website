@@ -55,6 +55,7 @@ name="SYNOPSIS"
 
   # Functions that tell you about your environment
   my $is_cgi   = i_am_cgi();
+  my $is_webservice = i_am_webservice();
   my $urlbase  = correct_urlbase();
 
   # Data manipulation
@@ -184,6 +185,12 @@ name="Environment_and_Location"
 
 <dd>
 <p>Tells you whether or not you are being run as a CGI script in a web server. For example, it would return false if the caller is running in a command-line script.</p>
+
+<dt><a name="i_am_webservice()"
+><code  class="code">i_am_webservice()</code></a></dt>
+
+<dd>
+<p>Tells you whether or not the current usage mode is WebServices related such as JSONRPC or XMLRPC.</p>
 
 <dt><a name="correct_urlbase()"
 ><code  class="code">correct_urlbase()</code></a></dt>

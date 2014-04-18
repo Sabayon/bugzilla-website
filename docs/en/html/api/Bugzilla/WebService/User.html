@@ -92,10 +92,8 @@ This method logs in an user.</p>
 
 <dd>
 <dt><a 
-><code  class="code">remember</code> (bool) <b>Optional</b> - if the cookies returned by the call to login should expire with the session or not.
-In order for this option to have effect the Bugzilla server must be configured to allow the user to set this option - the Bugzilla parameter <i>rememberlogin</i> must be set to &#34;defaulton&#34; or &#34;defaultoff&#34;.
-Addionally,
-the client application must implement management of cookies across sessions.</a></dt>
+><code  class="code">restrict_login</code> (bool) <b>Optional</b> - If set to a true value,
+the token returned by this method will only be valid from the IP address which called this method.</a></dt>
 </dl>
 
 <dt><a name="Returns"
@@ -103,12 +101,15 @@ the client application must implement management of cookies across sessions.</a>
 
 <dd>
 <p>On success,
-a hash containing one item,
+a hash containing two items,
 <code  class="code">id</code>,
-the numeric id of the user that was logged in.
-A set of http cookies is also sent with the response.
-These cookies must be sent along with any future requests to the webservice,
-for the duration of the session.</p>
+the numeric id of the user that was logged in,
+and a <code  class="code">token</code> which can be passed in the parameters as authentication in other calls.
+The token can be sent along with any future requests to the webservice,
+for the duration of the session,
+i.e.
+till <a href="#logout" class="podlinkpod"
+>User.logout</a> is called.</p>
 
 <dt><a name="Errors"
 ><b>Errors</b></a></dt>
@@ -142,6 +143,23 @@ but the user is asked to change his password.</p>
 <dd>
 <p>A login or password parameter was not provided.</p>
 </dd>
+</dl>
+
+<dt><a name="History"
+><b>History</b></a></dt>
+
+<dd>
+<dl>
+<dt><a name="remember_was_removed_in_Bugzilla_4.4_as_this_method_no_longer_creates_a_login_cookie."
+><code  class="code">remember</code> was removed in Bugzilla <b>4.4</b> as this method no longer creates a login cookie.</a></dt>
+
+<dd>
+<dt><a name="restrict_login_was_added_in_Bugzilla_4.4."
+><code  class="code">restrict_login</code> was added in Bugzilla <b>4.4</b>.</a></dt>
+
+<dd>
+<dt><a name="token_was_added_in_Bugzilla_4.4."
+><code  class="code">token</code> was added in Bugzilla <b>4.4</b>.</a></dt>
 </dl>
 </dd>
 </dl>
@@ -502,9 +520,6 @@ This works just like &#34;user matching&#34; in Bugzilla itself.
 Users will be returned whose real name or login name contains any one of the specified strings.
 Users that you cannot see will not be included in the returned list.</p>
 
-<p>Some Bugzilla installations have user-matching turned off,
-in which case you will only be returned exact matches.</p>
-
 <p>Most installations have a limit on how many matches are returned for each string,
 which defaults to 1000 but can be changed by the Bugzilla administrator.</p>
 
@@ -512,6 +527,15 @@ which defaults to 1000 but can be changed by the Bugzilla administrator.</p>
 and an error will be thrown if they try.
 (This is to make it harder for spammers to harvest email addresses from Bugzilla,
 and also to enforce the user visibility restrictions that are implemented on some Bugzillas.)</p>
+
+<dt><a name="limit_(int)"
+><code  class="code">limit</code> (int)</a></dt>
+
+<dd>
+<p>Limit the number of users matched by the <code  class="code">match</code> parameter.
+If value is greater than the system limit,
+the system limit will be used.
+This parameter is only used when user matching using the <code  class="code">match</code> parameter is being performed.</p>
 
 <dt><a name="group_ids_(array)"
 ><code  class="code">group_ids</code> (array)</a></dt>
@@ -711,6 +735,12 @@ even if you are in the editusers group.</p>
 
 <dd>
 <p>You passed an invalid login name in the &#34;names&#34; array or a bad group ID in the <code  class="code">group_ids</code> argument.</p>
+
+<dt><a name="52_(Invalid_Parameter)"
+>52 (Invalid Parameter)</a></dt>
+
+<dd>
+<p>The value used must be an integer greater then zero.</p>
 
 <dt><a name="304_(Authorization_Required)"
 >304 (Authorization Required)</a></dt>
