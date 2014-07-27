@@ -21,12 +21,12 @@ bz_webservice_demo.pl</title>
     <li class='indexItem indexItem2'><a href='#Debugging'>Debugging</a>
     <li class='indexItem indexItem2'><a href='#Checking_Bugzilla%27s_version'>Checking Bugzilla&#39;s version</a>
     <li class='indexItem indexItem2'><a href='#Checking_Bugzilla%27s_timezone'>Checking Bugzilla&#39;s timezone</a>
-    <li class='indexItem indexItem2'><a href='#Getting_Extension_Information'>Getting Extension Information</a>
     <li class='indexItem indexItem2'><a href='#Logging_In_and_Out'>Logging In and Out</a>
     <ul   class='indexList indexList3'>
       <li class='indexItem indexItem3'><a href='#Using_Bugzilla%27s_Environment_Authentication'>Using Bugzilla&#39;s Environment Authentication</a>
       <li class='indexItem indexItem3'><a href='#Using_Bugzilla%27s_CGI_Variable_Authentication'>Using Bugzilla&#39;s CGI Variable Authentication</a>
     </ul>
+    <li class='indexItem indexItem2'><a href='#Getting_Extension_Information'>Getting Extension Information</a>
     <li class='indexItem indexItem2'><a href='#Retrieving_Bug_Information'>Retrieving Bug Information</a>
     <li class='indexItem indexItem2'><a href='#Retrieving_Product_Information'>Retrieving Product Information</a>
     <li class='indexItem indexItem2'><a href='#Creating_A_Bug'>Creating A Bug</a>
@@ -92,15 +92,14 @@ Specify this together with <b>--password</b> in order to log in.</p>
 <p>Bugzilla password.
 Specify this together with <b>--login</b> in order to log in.</p>
 
-<dt><a name="--rememberlogin"
->--rememberlogin</a></dt>
+<dt><a name="--restrictlogin"
+>--restrictlogin</a></dt>
 
 <dd>
-<p>Gives access to Bugzilla&#39;s &#34;Bugzilla_remember&#34; option.
-Specify this option while logging in to do the same thing as ticking the <code  class="code">Bugzilla_remember</code> box on Bugilla&#39;s log in form.
-Don&#39;t specify this option to do the same thing as unchecking the box.</p>
+<p>Gives access to Bugzilla&#39;s &#34;Bugzilla_restrictlogin&#34; option.
+Specify this option while logging in to restrict the login token to be only valid from the IP address which called Don&#39;t specify this option to do the same thing as unchecking the box.</p>
 
-<p>See Bugzilla&#39;s rememberlogin parameter for details.</p>
+<p>See Bugzilla&#39;s restrictlogin parameter for details.</p>
 
 <dt><a name="--bug_id"
 >--bug_id</a></dt>
@@ -201,12 +200,6 @@ name="Checking_Bugzilla&#39;s_timezone"
 you may want to call <code  class="code">Bugzilla.timezone</code>.</p>
 
 <h2><a class='u' href='#___top' title='click to go to top of document'
-name="Getting_Extension_Information"
->Getting Extension Information</a></h2>
-
-<p>Returns all the information any extensions have decided to provide to the webservice.</p>
-
-<h2><a class='u' href='#___top' title='click to go to top of document'
 name="Logging_In_and_Out"
 >Logging In and Out</a></h2>
 
@@ -224,11 +217,15 @@ name="Using_Bugzilla&#39;s_CGI_Variable_Authentication"
 <p>Use the <code  class="code">User.login</code> and <code  class="code">User.logout</code> calls to log in and out,
 as shown in this script.</p>
 
-<p>The <code  class="code">Bugzilla_remember</code> parameter is optional.
+<p>The <code  class="code">Bugzilla_restrictlogin</code> parameter is optional.
 If omitted,
-Bugzilla&#39;s defaults apply (as specified by its <code  class="code">rememberlogin</code> parameter).</p>
+Bugzilla&#39;s defaults apply (as specified by its <code  class="code">restrictlogin</code> parameter).</p>
 
-<p>Bugzilla hands back cookies you&#39;ll need to pass along during your work calls.</p>
+<h2><a class='u' href='#___top' title='click to go to top of document'
+name="Getting_Extension_Information"
+>Getting Extension Information</a></h2>
+
+<p>Returns all the information any extensions have decided to provide to the webservice.</p>
 
 <h2><a class='u' href='#___top' title='click to go to top of document'
 name="Retrieving_Bug_Information"

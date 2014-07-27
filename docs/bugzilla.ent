@@ -1,6 +1,7 @@
-<!ENTITY bz-ver "4.4.3">
-<!ENTITY bz-date "2014-04-17">
+<!ENTITY bz-ver "4.4.5">
+<!ENTITY bz-date "2014-07-24">
 <!ENTITY current-year "2014">
+
 
 <!ENTITY min-perl-ver "5.8.1">
 <!ENTITY landfillbase "http://landfill.bugzilla.org/bugzilla-4.4-branch/">
@@ -45,6 +46,7 @@
 <!ENTITY min-html-formattext-withlinks-ver "0.13">
 <!ENTITY min-theschwartz-ver "1.07">
 <!ENTITY min-daemon-generic-ver "any">
+<!ENTITY min-file-slurp-ver "9999.13">
 <!ENTITY min-mod_perl2-ver "1.999022">
 <!ENTITY min-apache2-sizelimit-ver "0.96">
 <!ENTITY min-file-mimeinfo-magic-ver "any">
