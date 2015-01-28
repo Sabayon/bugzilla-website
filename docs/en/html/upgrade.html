@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>2.7. Upgrading to New Releases</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.6 Release"><link rel="up" href="installing-bugzilla.html" title="Chapter 2. Installing Bugzilla"><link rel="prev" href="nonroot.html" title="2.6. UNIX (non-root) Installation Notes"><link rel="next" href="administration.html" title="Chapter 3. Administering Bugzilla"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">2.7. Upgrading to New Releases</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="nonroot.html">Prev</a> </td><th width="60%" align="center">Chapter 2. Installing Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="administration.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="upgrade"></a>2.7. Upgrading to New Releases</h2></div></div></div><p>Upgrading to new Bugzilla releases is very simple. There is
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ANSI_X3.4-1968"><title>2.7.&#160;Upgrading to New Releases</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.8 Release"><link rel="up" href="installing-bugzilla.html" title="Chapter&#160;2.&#160;Installing Bugzilla"><link rel="prev" href="nonroot.html" title="2.6.&#160;UNIX (non-root) Installation Notes"><link rel="next" href="administration.html" title="Chapter&#160;3.&#160;Administering Bugzilla"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">2.7.&#160;Upgrading to New Releases</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="nonroot.html">Prev</a>&#160;</td><th width="60%" align="center">Chapter&#160;2.&#160;Installing Bugzilla</th><td width="20%" align="right">&#160;<a accesskey="n" href="administration.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="upgrade"></a>2.7.&#160;Upgrading to New Releases</h2></div></div></div><p>Upgrading to new Bugzilla releases is very simple. There is
       a script named <code class="filename">checksetup.pl</code> included with
       Bugzilla that will automatically do all of the database migration
       for you.</p><p>The following sections explain how to upgrade from one
@@ -14,20 +14,20 @@
         <code class="filename">/var/www/html/bugzilla</code>. If that is not the
         same as the location of your Bugzilla installation, simply
         substitute the proper paths where appropriate.
-      </p></td></tr></table></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="upgrade-before"></a>2.7.1. Before You Upgrade</h3></div></div></div><p>Before you start your upgrade, there are a few important
+      </p></td></tr></table></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="upgrade-before"></a>2.7.1.&#160;Before You Upgrade</h3></div></div></div><p>Before you start your upgrade, there are a few important
         steps to take:</p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>
             Read the <a class="ulink" href="http://www.bugzilla.org/releases/" target="_top">Release
             Notes</a> of the version you're upgrading to,
             particularly the "Notes for Upgraders" section.
           </p></li><li class="listitem"><p>
-            View the Sanity Check (<a class="xref" href="sanitycheck.html" title="3.16. Checking and Maintaining Database Integrity">Section 3.16, “Checking and Maintaining Database Integrity”</a>) page
+            View the Sanity Check (<a class="xref" href="sanitycheck.html" title="3.16.&#160;Checking and Maintaining Database Integrity">Section&#160;3.16, &#8220;Checking and Maintaining Database Integrity&#8221;</a>) page
             on your installation before upgrading. Attempt to fix all warnings
             that the page produces before you go any further, or you may
             experience problems  during your upgrade.
           </p></li><li class="listitem"><p>
             Shut down your Bugzilla installation by putting some HTML or
             text in the shutdownhtml parameter
-            (see <a class="xref" href="parameters.html" title="3.1. Bugzilla Configuration">Section 3.1, “Bugzilla Configuration”</a>).
+            (see <a class="xref" href="parameters.html" title="3.1.&#160;Bugzilla Configuration">Section&#160;3.1, &#8220;Bugzilla Configuration&#8221;</a>).
           </p></li><li class="listitem"><p>
             Make a backup of the Bugzilla database.
             <span class="emphasis"><em>THIS IS VERY IMPORTANT</em></span>. If
@@ -46,30 +46,30 @@
                 </p></dd><dt><span class="term">PostgreSQL:</span></dt><dd><p>
                   <span class="command"><strong>pg_dump --no-privileges --no-owner -h localhost -U bugs
                     &gt; bugs.sql</strong></span>
-                </p></dd></dl></div></li></ol></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="upgrade-files"></a>2.7.2. Getting The New Bugzilla</h3></div></div></div><p>There are three ways to get the new version of Bugzilla.
+                </p></dd></dl></div></li></ol></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="upgrade-files"></a>2.7.2.&#160;Getting The New Bugzilla</h3></div></div></div><p>There are three ways to get the new version of Bugzilla.
         We'll list them here briefly and then explain them
-        more later.</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">Bzr (<a class="xref" href="upgrade.html#upgrade-bzr" title="2.7.2.2. Upgrading using Bzr">Section 2.7.2.2, “Upgrading using Bzr”</a>)</span></dt><dd><p>
+        more later.</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">Bzr (<a class="xref" href="upgrade.html#upgrade-bzr" title="2.7.2.2.&#160;Upgrading using Bzr">Section&#160;2.7.2.2, &#8220;Upgrading using Bzr&#8221;</a>)</span></dt><dd><p>
               If you have <span class="command"><strong>bzr</strong></span> installed on your machine
               and you have Internet access, this is the easiest way to
               upgrade, particularly if you have made modifications
               to the code or templates of Bugzilla.
-            </p></dd><dt><span class="term">Download the tarball (<a class="xref" href="upgrade.html#upgrade-tarball" title="2.7.2.3. Upgrading using the tarball">Section 2.7.2.3, “Upgrading using the tarball”</a>)</span></dt><dd><p>
+            </p></dd><dt><span class="term">Download the tarball (<a class="xref" href="upgrade.html#upgrade-tarball" title="2.7.2.3.&#160;Upgrading using the tarball">Section&#160;2.7.2.3, &#8220;Upgrading using the tarball&#8221;</a>)</span></dt><dd><p>
               This is a very simple way to upgrade, and good if you
               haven't made many (or any) modifications to the code or
               templates of your Bugzilla.
-            </p></dd><dt><span class="term">Patches (<a class="xref" href="upgrade.html#upgrade-patches" title="2.7.2.4. Upgrading using patches">Section 2.7.2.4, “Upgrading using patches”</a>)</span></dt><dd><p>
+            </p></dd><dt><span class="term">Patches (<a class="xref" href="upgrade.html#upgrade-patches" title="2.7.2.4.&#160;Upgrading using patches">Section&#160;2.7.2.4, &#8220;Upgrading using patches&#8221;</a>)</span></dt><dd><p>
               If you have made modifications to your Bugzilla, and
               you don't have Internet access or you don't want to use
               bzr, then this is the best way to upgrade.
             </p><p>
               You can only do minor upgrades (such as 4.2 to 4.2.1 or
               4.2.1 to 4.2.2) with patches.
-            </p></dd></dl></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="upgrade-modified"></a>2.7.2.1. If you have modified your Bugzilla</h4></div></div></div><p>
+            </p></dd></dl></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="upgrade-modified"></a>2.7.2.1.&#160;If you have modified your Bugzilla</h4></div></div></div><p>
           If you have modified the code or templates of your Bugzilla,
           then upgrading requires a bit more thought and effort.
           A discussion of the various methods of updating compared with
           degree and methods of local customization can be found in
-          <a class="xref" href="cust-templates.html#template-method" title="6.3.2. Choosing a Customization Method">Section 6.3.2, “Choosing a Customization Method”</a>.
+          <a class="xref" href="cust-templates.html#template-method" title="6.3.2.&#160;Choosing a Customization Method">Section&#160;6.3.2, &#8220;Choosing a Customization Method&#8221;</a>.
         </p><p>
           The larger the jump you are trying to make, the more difficult it
           is going to be to upgrade if you have made local customizations.
@@ -80,7 +80,7 @@
           changes at all, however, then upgrading should be approximately
           the same amount of work regardless of how long it has been since
           your version was released.
-        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="upgrade-bzr"></a>2.7.2.2. Upgrading using Bzr</h4></div></div></div><p>
+        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="upgrade-bzr"></a>2.7.2.2.&#160;Upgrading using Bzr</h4></div></div></div><p>
           This requires that you have bzr installed (most Unix machines do),
           and requires that you are able to access
           <a class="ulink" href="http://bzr.mozilla.org/bugzilla/" target="_top">bzr.mozilla.org</a>,
@@ -113,7 +113,7 @@ All changes applied successfully.
             Bzr was unable to properly merge. You need to resolve these
             conflicts manually before Bugzilla (or at least the portion using
             that file) will be usable.
-          </p></td></tr></table></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="upgrade-tarball"></a>2.7.2.3. Upgrading using the tarball</h4></div></div></div><p>
+          </p></td></tr></table></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="upgrade-tarball"></a>2.7.2.3.&#160;Upgrading using the tarball</h4></div></div></div><p>
           If you are unable (or unwilling) to use Bzr, another option that's
           always available is to obtain the latest tarball from the <a class="ulink" href="http://www.bugzilla.org/download/" target="_top">Download Page</a> and 
           create a new Bugzilla installation from that.
@@ -152,13 +152,13 @@ bash$ <span class="command"><strong>mv bugzilla-4.2.1 bugzilla</strong></span>
           That's fine if you don't have any local customizations that you
           want to maintain. If you do have customizations, then you will 
           need to reapply them by hand to the appropriate files.
-        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="upgrade-patches"></a>2.7.2.4. Upgrading using patches</h4></div></div></div><p>
+        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="upgrade-patches"></a>2.7.2.4.&#160;Upgrading using patches</h4></div></div></div><p>
           A patch is a collection of all the bug fixes that have been made
           since the last bug-fix release.
         </p><p>
-          If you are doing a bug-fix upgrade—that is, one where only the 
+          If you are doing a bug-fix upgrade&#8212;that is, one where only the 
           last number of the revision changes, such as from 4.2 to
-          4.2.1—then you have the option of obtaining and applying a
+          4.2.1&#8212;then you have the option of obtaining and applying a
           patch file from the <a class="ulink" href="http://www.bugzilla.org/download/" target="_top">Download Page</a>.
         </p><p>
           As above, this example starts with obtaining the file via the 
@@ -177,8 +177,8 @@ patching file enter_bug.cgi
             Be aware that upgrading from a patch file does not change the
             entries in your <code class="filename">.bzr</code> directory.
             This could make it more difficult to upgrade using Bzr
-            (<a class="xref" href="upgrade.html#upgrade-bzr" title="2.7.2.2. Upgrading using Bzr">Section 2.7.2.2, “Upgrading using Bzr”</a>) in the future.
-          </p></td></tr></table></div></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="upgrade-completion"></a>2.7.3. Completing Your Upgrade</h3></div></div></div><p>
+            (<a class="xref" href="upgrade.html#upgrade-bzr" title="2.7.2.2.&#160;Upgrading using Bzr">Section&#160;2.7.2.2, &#8220;Upgrading using Bzr&#8221;</a>) in the future.
+          </p></td></tr></table></div></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="upgrade-completion"></a>2.7.3.&#160;Completing Your Upgrade</h3></div></div></div><p>
         Now that you have the new Bugzilla code, there are a few final
         steps to complete your upgrade.
       </p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>
@@ -191,7 +191,7 @@ patching file enter_bug.cgi
             above, this has already happened.)
           </p></li><li class="listitem"><p>
             If this is a major update, check that the configuration
-            (<a class="xref" href="configuration.html" title="2.2. Configuration">Section 2.2, “Configuration”</a>) for your new Bugzilla is
+            (<a class="xref" href="configuration.html" title="2.2.&#160;Configuration">Section&#160;2.2, &#8220;Configuration&#8221;</a>) for your new Bugzilla is
             up-to-date. Sometimes the configuration requirements change
             between major versions.
           </p></li><li class="listitem"><p>
@@ -215,7 +215,7 @@ bash$ <span class="command"><strong>./checksetup.pl</strong></span>
             Clear any HTML or text that you put into the shutdownhtml
             parameter, to re-activate Bugzilla.
           </p></li><li class="listitem"><p>
-            View the Sanity Check (<a class="xref" href="sanitycheck.html" title="3.16. Checking and Maintaining Database Integrity">Section 3.16, “Checking and Maintaining Database Integrity”</a>) page in your
+            View the Sanity Check (<a class="xref" href="sanitycheck.html" title="3.16.&#160;Checking and Maintaining Database Integrity">Section&#160;3.16, &#8220;Checking and Maintaining Database Integrity&#8221;</a>) page in your
             upgraded Bugzilla.
           </p><p>
             It is recommended that, if possible, you fix any problems
@@ -226,16 +226,16 @@ bash$ <span class="command"><strong>./checksetup.pl</strong></span>
             before, as additional tests are added to the sanity check over
             time, and it is possible that those errors weren't being
             checked for in the old version.
-          </p></li></ol></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="upgrade-notifications"></a>2.7.4. Automatic Notifications of New Releases</h3></div></div></div><p>
+          </p></li></ol></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="upgrade-notifications"></a>2.7.4.&#160;Automatic Notifications of New Releases</h3></div></div></div><p>
         Bugzilla 3.0 introduced the ability to automatically notify
         administrators when new releases are available, based on the
         <code class="literal">upgrade_notification</code> parameter, see
-        <a class="xref" href="parameters.html" title="3.1. Bugzilla Configuration">Section 3.1, “Bugzilla Configuration”</a>. Administrators will see these
+        <a class="xref" href="parameters.html" title="3.1.&#160;Bugzilla Configuration">Section&#160;3.1, &#8220;Bugzilla Configuration&#8221;</a>. Administrators will see these
         notifications when they access the <code class="filename">index.cgi</code>
         page, i.e. generally when logging in. Bugzilla will check once per
         day for new releases, unless the parameter is set to
-        <span class="quote">“<span class="quote">disabled</span>”</span>. If you are behind a proxy, you may have to set
+        <span class="quote">&#8220;<span class="quote">disabled</span>&#8221;</span>. If you are behind a proxy, you may have to set
         the <code class="literal">proxy_url</code> parameter accordingly. If the proxy
         requires authentication, use the
         <code class="literal">http://user:pass@proxy_url/</code> syntax.
-      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="nonroot.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="installing-bugzilla.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="administration.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">2.6. UNIX (non-root) Installation Notes </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Chapter 3. Administering Bugzilla</td></tr></table></div></body></html>
+      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="nonroot.html">Prev</a>&#160;</td><td width="20%" align="center"><a accesskey="u" href="installing-bugzilla.html">Up</a></td><td width="40%" align="right">&#160;<a accesskey="n" href="administration.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">2.6.&#160;UNIX (non-root) Installation Notes&#160;</td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top">&#160;Chapter&#160;3.&#160;Administering Bugzilla</td></tr></table></div></body></html>

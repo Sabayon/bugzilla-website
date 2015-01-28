@@ -146,7 +146,9 @@ name="SUBROUTINES"
 <dd>
 <dl>
 <dt><a name="$name_-_The_name_of_the_hook_to_invoke."
-><code  class="code">$name</code> - The name of the hook to invoke.
+><code  class="code">$name</code> - The name of the hook to invoke.</a></dt>
+
+<dd>
 <dt><a 
 ><code  class="code">$args</code> - A hashref. The named args to pass to the hook. They will be passed as arguments to the hook method in the extension.</a></dt>
 </dl>
@@ -202,7 +204,9 @@ name="attachment_process_data"
 
 <dl>
 <dt><a 
-><code  class="code">data</code> - A reference pointing either to the content of the file being uploaded or pointing to the filehandle associated with the file.
+><code  class="code">data</code> - A reference pointing either to the content of the file being uploaded or pointing to the filehandle associated with the file.</a></dt>
+
+<dd>
 <dt><a 
 ><code  class="code">attributes</code> - A hashref whose keys are the same as the input to <a href="../Bugzilla/Attachment.html#create" class="podlinkpod"
 >&#34;create&#34; in Bugzilla::Attachment</a>. The data in this hashref hasn&#39;t been validated yet.</a></dt>
@@ -272,7 +276,9 @@ name="bug_end_of_create"
 
 <dl>
 <dt><a name="bug_-_The_created_bug_object."
-><code  class="code">bug</code> - The created bug object.
+><code  class="code">bug</code> - The created bug object.</a></dt>
+
+<dd>
 <dt><a name="timestamp_-_The_timestamp_used_for_all_updates_in_this_transaction,_as_a_SQL_date_string."
 ><code  class="code">timestamp</code> - The timestamp used for all updates in this transaction, as a SQL date string.</a></dt>
 </dl>
@@ -551,7 +557,9 @@ name="buglist_columns"
 <dd>
 <dl>
 <dt><a name="name_-_The_name_of_the_column_in_the_database."
-><code  class="code">name</code> - The name of the column in the database.
+><code  class="code">name</code> - The name of the column in the database.</a></dt>
+
+<dd>
 <dt><a name="title_-_The_title_of_the_column_as_displayed_to_users."
 ><code  class="code">title</code> - The title of the column as displayed to users.</a></dt>
 </dl>
@@ -578,13 +586,21 @@ name="buglist_column_joins"
 <dd>
 <dl>
 <dt><a name="table_-_The_name_of_the_additional_table_to_join."
-><code  class="code">table</code> - The name of the additional table to join.
+><code  class="code">table</code> - The name of the additional table to join.</a></dt>
+
+<dd>
 <dt><a 
-><code  class="code">as</code> - (optional) The alias used for the additional table. This alias must not conflict with an existing alias already used in the query.
+><code  class="code">as</code> - (optional) The alias used for the additional table. This alias must not conflict with an existing alias already used in the query.</a></dt>
+
+<dd>
 <dt><a 
-><code  class="code">from</code> - (optional) The name of the column in the <code  class="code">bugs</code> table which the additional table should be linked to. If omitted, <code  class="code">bug_id</code> will be used.
+><code  class="code">from</code> - (optional) The name of the column in the <code  class="code">bugs</code> table which the additional table should be linked to. If omitted, <code  class="code">bug_id</code> will be used.</a></dt>
+
+<dd>
 <dt><a 
-><code  class="code">to</code> - (optional) The name of the column in the additional table which should be linked to the column in the <code  class="code">bugs</code> table, see <code  class="code">from</code> above. If omitted, <code  class="code">bug_id</code> will be used.
+><code  class="code">to</code> - (optional) The name of the column in the additional table which should be linked to the column in the <code  class="code">bugs</code> table, see <code  class="code">from</code> above. If omitted, <code  class="code">bug_id</code> will be used.</a></dt>
+
+<dd>
 <dt><a 
 ><code  class="code">join</code> - (optional) Either INNER or LEFT. Determine how the additional table should be joined with the <code  class="code">bugs</code> table. If omitted, LEFT is used.</a></dt>
 </dl>
@@ -608,7 +624,9 @@ name="search_operator_field_override"
 <dl>
 <dt><a name="operators_-_See_&#34;OPERATOR_FIELD_OVERRIDE&#34;_in_Bugzilla::Search_to_get_an_idea_of_the_structure."
 ><code  class="code">operators</code> - See <a href="../Bugzilla/Search.html#OPERATOR_FIELD_OVERRIDE" class="podlinkpod"
->&#34;OPERATOR_FIELD_OVERRIDE&#34; in Bugzilla::Search</a> to get an idea of the structure.
+>&#34;OPERATOR_FIELD_OVERRIDE&#34; in Bugzilla::Search</a> to get an idea of the structure.</a></dt>
+
+<dd>
 <dt><a name="search_-_The_Bugzilla::Search_object."
 ><code  class="code">search</code> - The <a href="../Bugzilla/Search.html" class="podlinkpod"
 >Bugzilla::Search</a> object.</a></dt>
@@ -732,7 +750,9 @@ name="email_in_before_parse"
 
 <dl>
 <dt><a name="mail_-_An_Email::MIME_object._The_decoded_incoming_email."
-><code  class="code">mail</code> - An Email::MIME object. The decoded incoming email.
+><code  class="code">mail</code> - An Email::MIME object. The decoded incoming email.</a></dt>
+
+<dd>
 <dt><a name="fields_-_A_hashref._The_hash_which_will_contain_extracted_data."
 ><code  class="code">fields</code> - A hashref. The hash which will contain extracted data.</a></dt>
 </dl>
@@ -807,11 +827,17 @@ name="flag_end_of_update"
 
 <dl>
 <dt><a name="object_-_The_changed_bug_or_attachment_object."
-><code  class="code">object</code> - The changed bug or attachment object.
+><code  class="code">object</code> - The changed bug or attachment object.</a></dt>
+
+<dd>
 <dt><a name="timestamp_-_The_timestamp_used_for_all_updates_in_this_transaction,_as_a_SQL_date_string."
-><code  class="code">timestamp</code> - The timestamp used for all updates in this transaction, as a SQL date string.
+><code  class="code">timestamp</code> - The timestamp used for all updates in this transaction, as a SQL date string.</a></dt>
+
+<dd>
 <dt><a name="old_flags_-_The_snapshot_of_flag_summaries_from_before_the_change."
-><code  class="code">old_flags</code> - The snapshot of flag summaries from before the change.
+><code  class="code">old_flags</code> - The snapshot of flag summaries from before the change.</a></dt>
+
+<dd>
 <dt><a 
 ><code  class="code">new_flags</code> - The snapshot of flag summaries after the change. Call <code  class="code">my ($removed, $added) = diff_arrays(old_flags, new_flags)</code> to get the list of changed flags, and search for a specific condition like <code  class="code">added eq &#39;review-&#39;</code>.</a></dt>
 </dl>
@@ -862,7 +888,9 @@ name="group_end_of_update"
 <dl>
 <dt><a name="group_-_The_changed_Bugzilla::Group_object,_with_all_fields_set_to_their_updated_values."
 ><code  class="code">group</code> - The changed <a href="../Bugzilla/Group.html" class="podlinkpod"
->Bugzilla::Group</a> object, with all fields set to their updated values.
+>Bugzilla::Group</a> object, with all fields set to their updated values.</a></dt>
+
+<dd>
 <dt><a name="changes_-_The_hash_of_changed_fields._$changes-&#62;{$field}_=_[$old,_$new]"
 ><code  class="code">changes</code> - The hash of changed fields. <code  class="code">$changes-&#62;{$field} = [$old, $new]</code></a></dt>
 </dl>
@@ -930,7 +958,9 @@ name="install_filesystem"
 
 <dl>
 <dt><a name="files_-_Permissions_to_be_set_on_any_files_beneath_the_directory."
-><code  class="code">files</code> - Permissions to be set on any files beneath the directory.
+><code  class="code">files</code> - Permissions to be set on any files beneath the directory.</a></dt>
+
+<dd>
 <dt><a name="dirs_-_Permissions_to_be_set_on_the_directory_itself_and_any_directories_beneath_it."
 ><code  class="code">dirs</code> - Permissions to be set on the directory itself and any directories beneath it.</a></dt>
 </dl>
@@ -945,7 +975,9 @@ name="install_filesystem"
 
 <dl>
 <dt><a name="perms_-_The_permissions_to_be_set_on_the_file_itself."
-><code  class="code">perms</code> - The permissions to be set on the file itself.
+><code  class="code">perms</code> - The permissions to be set on the file itself.</a></dt>
+
+<dd>
 <dt><a name="contents_-_The_contents_to_be_added_to_the_file_or_leave_blank_for_an_empty_file."
 ><code  class="code">contents</code> - The contents to be added to the file or leave blank for an empty file.</a></dt>
 </dl>
@@ -960,7 +992,9 @@ name="install_filesystem"
 
 <dl>
 <dt><a name="perms_-_Permissions_to_be_set_on_the_htaccess_file."
-><code  class="code">perms</code> - Permissions to be set on the htaccess file.
+><code  class="code">perms</code> - Permissions to be set on the htaccess file.</a></dt>
+
+<dd>
 <dt><a 
 ><code  class="code">contents</code> - Contents of the htaccess file. It can be set manually or use <a href="../HT_DEFAULT_DENY.html" class="podlinkpod"
 >HT_DEFAULT_DENY</a> defined in <a href="../Bugzilla/Install/Filesystem.html" class="podlinkpod"
@@ -1027,7 +1061,9 @@ name="mailer_before_send"
 
 <dl>
 <dt><a name="email_-_The_Email::MIME_object_that&#39;s_about_to_be_sent."
-><code  class="code">email</code> - The <code  class="code">Email::MIME</code> object that&#39;s about to be sent.
+><code  class="code">email</code> - The <code  class="code">Email::MIME</code> object that&#39;s about to be sent.</a></dt>
+
+<dd>
 <dt><a name="mailer_args_-_An_arrayref_that&#39;s_passed_as_mailer_args_to_&#34;new&#34;_in_Email::Send."
 ><code  class="code">mailer_args</code> - An arrayref that&#39;s passed as <code  class="code">mailer_args</code> to <a href="../Email/Send.html#new" class="podlinkpod"
 >&#34;new&#34; in Email::Send</a>.</a></dt>

@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>3.10. Custom Fields</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.6 Release"><link rel="up" href="administration.html" title="Chapter 3. Administering Bugzilla"><link rel="prev" href="keywords.html" title="3.9. Keywords"><link rel="next" href="edit-values.html" title="3.11. Legal Values"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">3.10. Custom Fields</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="keywords.html">Prev</a> </td><th width="60%" align="center">Chapter 3. Administering Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="edit-values.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="custom-fields"></a>3.10. Custom Fields</h2></div></div></div><p>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ANSI_X3.4-1968"><title>3.10.&#160;Custom Fields</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.8 Release"><link rel="up" href="administration.html" title="Chapter&#160;3.&#160;Administering Bugzilla"><link rel="prev" href="keywords.html" title="3.9.&#160;Keywords"><link rel="next" href="edit-values.html" title="3.11.&#160;Legal Values"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">3.10.&#160;Custom Fields</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="keywords.html">Prev</a>&#160;</td><th width="60%" align="center">Chapter&#160;3.&#160;Administering Bugzilla</th><td width="20%" align="right">&#160;<a accesskey="n" href="edit-values.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="custom-fields"></a>3.10.&#160;Custom Fields</h2></div></div></div><p>
       The release of Bugzilla 3.0 added the ability to create Custom Fields. 
       Custom Fields are treated like any other field - they can be set in bugs
       and used for search queries. Administrators should keep in mind that
@@ -13,10 +13,10 @@
         certain options that already exist is sufficient. 
       </p></td></tr></table></div><p>
       Administrators can manage Custom Fields using the
-      <span class="quote">“<span class="quote">Custom Fields</span>”</span> link on the Administration page. The Custom
+      <span class="quote">&#8220;<span class="quote">Custom Fields</span>&#8221;</span> link on the Administration page. The Custom
       Fields administration page displays a list of Custom Fields, if any exist,
       and a link to "Add a new custom field". 
-    </p><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="add-custom-fields"></a>3.10.1. Adding Custom Fields</h3></div></div></div><p>
+    </p><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="add-custom-fields"></a>3.10.1.&#160;Adding Custom Fields</h3></div></div></div><p>
         To add a new Custom Field, click the "Add a new custom field" link. This
         page displays several options for the new field, described below.
       </p><p>
@@ -24,7 +24,7 @@
         </p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
               <span class="emphasis"><em>Name:</em></span>
               The name of the field in the database, used internally. This name 
-              MUST begin with <span class="quote">“<span class="quote">cf_</span>”</span> to prevent confusion with 
+              MUST begin with <span class="quote">&#8220;<span class="quote">cf_</span>&#8221;</span> to prevent confusion with 
               standard fields. If this string is omitted, it will
               be automatically added to the name entered. 
             </p></li><li class="listitem"><p>
@@ -48,13 +48,13 @@
                       A list box where multiple options
                       can be selected. After creating this field, it must be edited
                       to add the selection options. See
-                      <a class="xref" href="edit-values.html#edit-values-list" title="3.11.1. Viewing/Editing legal values">Section 3.11.1, “Viewing/Editing legal values”</a> for information about
+                      <a class="xref" href="edit-values.html#edit-values-list" title="3.11.1.&#160;Viewing/Editing legal values">Section&#160;3.11.1, &#8220;Viewing/Editing legal values&#8221;</a> for information about
                       editing legal values.
                     </p></dd><dt><span class="term">Drop Down:</span></dt><dd><p>
                       A list box where only one option can be selected.
                       After creating this field, it must be edited to add the
                       selection options. See
-                      <a class="xref" href="edit-values.html#edit-values-list" title="3.11.1. Viewing/Editing legal values">Section 3.11.1, “Viewing/Editing legal values”</a> for information about
+                      <a class="xref" href="edit-values.html#edit-values-list" title="3.11.1.&#160;Viewing/Editing legal values">Section&#160;3.11.1, &#8220;Viewing/Editing legal values&#8221;</a> for information about
                       editing legal values.
                     </p></dd><dt><span class="term">Date/Time:</span></dt><dd><p>
                       A date field. This field appears with a
@@ -67,7 +67,7 @@
               Fields with lower values are displayed first.
             </p></li><li class="listitem"><p>
               <span class="emphasis"><em>Reverse Relationship Description:</em></span>
-              When the custom field is of type <span class="quote">“<span class="quote">Bug ID</span>”</span>, you can
+              When the custom field is of type <span class="quote">&#8220;<span class="quote">Bug ID</span>&#8221;</span>, you can
               enter text here which will be used as label in the referenced
               bug to list bugs which point to it. This gives you the ability
               to have a mutual relationship between two bugs.
@@ -75,7 +75,7 @@
               <span class="emphasis"><em>Can be set on bug creation:</em></span>
               Boolean that determines whether this field can be set on
               bug creation. If not selected, then a bug must be created 
-              before this field can be set. See <a class="xref" href="bugreports.html" title="5.6. Filing Bugs">Section 5.6, “Filing Bugs”</a> 
+              before this field can be set. See <a class="xref" href="bugreports.html" title="5.6.&#160;Filing Bugs">Section&#160;5.6, &#8220;Filing Bugs&#8221;</a> 
               for information about filing bugs.
             </p></li><li class="listitem"><p>
               <span class="emphasis"><em>Displayed in bugmail for new bugs:</em></span>
@@ -100,31 +100,31 @@
               the custom field will always be visible, in all bugs.
             </p></li><li class="listitem"><p>
               <span class="emphasis"><em>Field that controls the values that appear in this field:</em></span>
-              When the custom field is of type <span class="quote">“<span class="quote">Drop Down</span>”</span> or
-              <span class="quote">“<span class="quote">Multiple-Selection Box</span>”</span>, you can restrict the
+              When the custom field is of type <span class="quote">&#8220;<span class="quote">Drop Down</span>&#8221;</span> or
+              <span class="quote">&#8220;<span class="quote">Multiple-Selection Box</span>&#8221;</span>, you can restrict the
               availability of the values of the custom field based on the
               value of another field. This criteria is independent of the
-              criteria used in the <span class="quote">“<span class="quote">Field only appears when</span>”</span>
+              criteria used in the <span class="quote">&#8220;<span class="quote">Field only appears when</span>&#8221;</span>
               setting. For instance, you may decide that some given value
-              <span class="quote">“<span class="quote">valueY</span>”</span> is only available when the bug status
-              is RESOLVED while the value <span class="quote">“<span class="quote">valueX</span>”</span> should
+              <span class="quote">&#8220;<span class="quote">valueY</span>&#8221;</span> is only available when the bug status
+              is RESOLVED while the value <span class="quote">&#8220;<span class="quote">valueX</span>&#8221;</span> should
               always be listed.
               Once you have selected the field which should control the
               availability of the values of this custom field, you can
               edit values of this custom field to set the criteria, see
-              <a class="xref" href="edit-values.html#edit-values-list" title="3.11.1. Viewing/Editing legal values">Section 3.11.1, “Viewing/Editing legal values”</a>.
+              <a class="xref" href="edit-values.html#edit-values-list" title="3.11.1.&#160;Viewing/Editing legal values">Section&#160;3.11.1, &#8220;Viewing/Editing legal values&#8221;</a>.
             </p></li></ul></div><p>
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="edit-custom-fields"></a>3.10.2. Editing Custom Fields</h3></div></div></div><p>
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="edit-custom-fields"></a>3.10.2.&#160;Editing Custom Fields</h3></div></div></div><p>
         As soon as a Custom Field is created, its name and type cannot be
         changed. If this field is a drop down menu, its legal values can
-        be set as described in <a class="xref" href="edit-values.html#edit-values-list" title="3.11.1. Viewing/Editing legal values">Section 3.11.1, “Viewing/Editing legal values”</a>. All
+        be set as described in <a class="xref" href="edit-values.html#edit-values-list" title="3.11.1.&#160;Viewing/Editing legal values">Section&#160;3.11.1, &#8220;Viewing/Editing legal values&#8221;</a>. All
         other attributes can be edited as described above.
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="delete-custom-fields"></a>3.10.3. Deleting Custom Fields</h3></div></div></div><p>
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="delete-custom-fields"></a>3.10.3.&#160;Deleting Custom Fields</h3></div></div></div><p>
         Only custom fields which are marked as obsolete, and which never
         have been used, can be deleted completely (else the integrity
         of the bug history would be compromised). For custom fields marked
-        as obsolete, a "Delete" link will appear in the <span class="quote">“<span class="quote">Action</span>”</span>
+        as obsolete, a "Delete" link will appear in the <span class="quote">&#8220;<span class="quote">Action</span>&#8221;</span>
         column. If the custom field has been used in the past, the deletion
         will be rejected. But marking the field as obsolete is sufficient
         to hide it from the user interface entirely.
-      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="keywords.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="administration.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="edit-values.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">3.9. Keywords </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> 3.11. Legal Values</td></tr></table></div></body></html>
+      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="keywords.html">Prev</a>&#160;</td><td width="20%" align="center"><a accesskey="u" href="administration.html">Up</a></td><td width="40%" align="right">&#160;<a accesskey="n" href="edit-values.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">3.9.&#160;Keywords&#160;</td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top">&#160;3.11.&#160;Legal Values</td></tr></table></div></body></html>

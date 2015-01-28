@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>5.5. Searching for Bugs</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.6 Release"><link rel="up" href="using.html" title="Chapter 5. Using Bugzilla"><link rel="prev" href="lifecycle.html" title="5.4. Life Cycle of a Bug"><link rel="next" href="bugreports.html" title="5.6. Filing Bugs"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">5.5. Searching for Bugs</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="lifecycle.html">Prev</a> </td><th width="60%" align="center">Chapter 5. Using Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="bugreports.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="query"></a>5.5. Searching for Bugs</h2></div></div></div><p>The Bugzilla Search page is the interface where you can find
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ANSI_X3.4-1968"><title>5.5.&#160;Searching for Bugs</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.8 Release"><link rel="up" href="using.html" title="Chapter&#160;5.&#160;Using Bugzilla"><link rel="prev" href="lifecycle.html" title="5.4.&#160;Life Cycle of a Bug"><link rel="next" href="bugreports.html" title="5.6.&#160;Filing Bugs"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">5.5.&#160;Searching for Bugs</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="lifecycle.html">Prev</a>&#160;</td><th width="60%" align="center">Chapter&#160;5.&#160;Using Bugzilla</th><td width="20%" align="right">&#160;<a accesskey="n" href="bugreports.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="query"></a>5.5.&#160;Searching for Bugs</h2></div></div></div><p>The Bugzilla Search page is the interface where you can find
     any bug report, comment, or patch currently in the Bugzilla system. You
     can play with it here: 
     <a class="ulink" href="http://landfill.bugzilla.org/bugzilla-4.4-branch/query.cgi" target="_top">http://landfill.bugzilla.org/bugzilla-4.4-branch/query.cgi</a>.</p><p>The Search page has controls for selecting different possible
@@ -10,8 +10,8 @@
       After a search is run, you can save it as a Saved Search, which
       will appear in the page footer. If you are in the group defined 
       by the "querysharegroup" parameter, you may share your queries 
-      with other users, see <a class="xref" href="userpreferences.html#savedsearches" title="5.10.3. Saved Searches">Saved Searches</a> for more details.
-    </p><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="boolean"></a>5.5.1. Boolean Charts</h3></div></div></div><p>
+      with other users, see <a class="xref" href="userpreferences.html#savedsearches" title="5.10.3.&#160;Saved Searches">Saved Searches</a> for more details.
+    </p><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="boolean"></a>5.5.1.&#160;Boolean Charts</h3></div></div></div><p>
         Highly advanced querying is done using Boolean Charts.
       </p><p>
         The boolean charts further restrict the set of results
@@ -37,7 +37,7 @@
           </p></li><li class="listitem"><p>
             <span class="emphasis"><em>Value:</em></span>
             the value to which the field is being compared
-          </p></li></ul></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="pronouns"></a>5.5.1.1. Pronoun Substitution</h4></div></div></div><p>
+          </p></li></ul></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="pronouns"></a>5.5.1.1.&#160;Pronoun Substitution</h4></div></div></div><p>
           Sometimes, a query needs to compare a user-related field
           (such as ReportedBy) with a role-specific user (such as the
           user running the query or the user to whom each bug is assigned).
@@ -56,7 +56,7 @@
           must be entered following the "%group.foo%" syntax, where "foo" is
           the group name. So if you are looking for bugs reported by any user
           being in the "editbugs" group, then you can type "%group.editbugs%".
-        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="negation"></a>5.5.1.2. Negation</h4></div></div></div><p>
+        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="negation"></a>5.5.1.2.&#160;Negation</h4></div></div></div><p>
           At first glance, negation seems redundant. Rather than
           searching for
           </p><div class="blockquote"><blockquote class="blockquote"><p>
@@ -91,7 +91,7 @@
             </p></blockquote></div><p>
           to find non-documentation
           bugs on which the assignee has never commented.
-        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="multiplecharts"></a>5.5.1.3. Multiple Charts</h4></div></div></div><p>
+        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="multiplecharts"></a>5.5.1.3.&#160;Multiple Charts</h4></div></div></div><p>
           The terms within a single row of a boolean chart are all
           constraints on a single piece of data. If you are looking for
           a bug that has two different people cc'd on it, then you need 
@@ -110,7 +110,7 @@
               Second chart: ("cc" "contains the string" "@mozilla.org")
             </p></blockquote></div><p>
           The bugs listed will be only the bugs where ALL the charts are true.
-        </p></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="quicksearch"></a>5.5.2. Quicksearch</h3></div></div></div><p>
+        </p></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="quicksearch"></a>5.5.2.&#160;Quicksearch</h3></div></div></div><p>
         Quicksearch is a single-text-box query tool which uses
         metacharacters to indicate what is to be searched. For example, typing
         "<code class="literal">foo|bar</code>"
@@ -124,12 +124,12 @@
         On Bugzilla's front page, there is an additional
         <a class="ulink" href="../../page.cgi?id=quicksearch.html" target="_top">Help</a>
         link which details how to use it.
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="casesensitivity"></a>5.5.3. Case Sensitivity in Searches</h3></div></div></div><p>
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="casesensitivity"></a>5.5.3.&#160;Case Sensitivity in Searches</h3></div></div></div><p>
       Bugzilla queries are case-insensitive and accent-insensitive, when
       used with either MySQL or Oracle databases. When using Bugzilla with
       PostgreSQL, however, some queries are case-sensitive. This is due to
       the way PostgreSQL handles case and accent sensitivity. 
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="list"></a>5.5.4. Bug Lists</h3></div></div></div><p>If you run a search, a list of matching bugs will be returned.
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="list"></a>5.5.4.&#160;Bug Lists</h3></div></div></div><p>If you run a search, a list of matching bugs will be returned.
       </p><p>The format of the list is configurable. For example, it can be
       sorted by clicking the column headings. Other useful features can be
       accessed using the links at the bottom of the list:
@@ -169,7 +169,7 @@
                 You can give a search a name and remember it; a link will appear
                 in your page footer giving you quick access to run it again later.
               </p></dd></dl></div><p>
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="individual-buglists"></a>5.5.5. Adding/removing tags to/from bugs</h3></div></div></div><p>
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="individual-buglists"></a>5.5.5.&#160;Adding/removing tags to/from bugs</h3></div></div></div><p>
         You can add and remove tags from individual bugs, which let you find and
         manage bugs more easily. Tags are per-user and so are only visible and editable
         by the user who created them. You can then run queries using tags as a criteria,
@@ -180,7 +180,7 @@
         This feature is useful when you want to keep track of several bugs, but
         for different reasons. Instead of adding yourself to the CC list of all
         these bugs and mixing all these reasons, you can now store these bugs in
-        separate lists, e.g. <span class="quote">“<span class="quote">Keep in mind</span>”</span>, <span class="quote">“<span class="quote">Interesting bugs</span>”</span>,
-        or <span class="quote">“<span class="quote">Triage</span>”</span>. One big advantage of this way to manage bugs
+        separate lists, e.g. <span class="quote">&#8220;<span class="quote">Keep in mind</span>&#8221;</span>, <span class="quote">&#8220;<span class="quote">Interesting bugs</span>&#8221;</span>,
+        or <span class="quote">&#8220;<span class="quote">Triage</span>&#8221;</span>. One big advantage of this way to manage bugs
         is that you can easily add or remove tags from bugs one by one.
-      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="lifecycle.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="using.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="bugreports.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">5.4. Life Cycle of a Bug </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> 5.6. Filing Bugs</td></tr></table></div></body></html>
+      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="lifecycle.html">Prev</a>&#160;</td><td width="20%" align="center"><a accesskey="u" href="using.html">Up</a></td><td width="40%" align="right">&#160;<a accesskey="n" href="bugreports.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">5.4.&#160;Life Cycle of a Bug&#160;</td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top">&#160;5.6.&#160;Filing Bugs</td></tr></table></div></body></html>

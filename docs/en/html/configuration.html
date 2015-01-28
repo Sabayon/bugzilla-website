@@ -1,11 +1,11 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>2.2. Configuration</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.6 Release"><link rel="up" href="installing-bugzilla.html" title="Chapter 2. Installing Bugzilla"><link rel="prev" href="installation.html" title="2.1. Installation"><link rel="next" href="extraconfig.html" title="2.3. Optional Additional Configuration"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">2.2. Configuration</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="installation.html">Prev</a> </td><th width="60%" align="center">Chapter 2. Installing Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="extraconfig.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="configuration"></a>2.2. Configuration</h2></div></div></div><div class="warning" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ANSI_X3.4-1968"><title>2.2.&#160;Configuration</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.8 Release"><link rel="up" href="installing-bugzilla.html" title="Chapter&#160;2.&#160;Installing Bugzilla"><link rel="prev" href="installation.html" title="2.1.&#160;Installation"><link rel="next" href="extraconfig.html" title="2.3.&#160;Optional Additional Configuration"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">2.2.&#160;Configuration</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="installation.html">Prev</a>&#160;</td><th width="60%" align="center">Chapter&#160;2.&#160;Installing Bugzilla</th><td width="20%" align="right">&#160;<a accesskey="n" href="extraconfig.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="configuration"></a>2.2.&#160;Configuration</h2></div></div></div><div class="warning" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
         Poorly-configured MySQL and Bugzilla installations have
         given attackers full access to systems in the past. Please take the
         security parts of these guidelines seriously, even for Bugzilla 
         machines hidden away behind your firewall. Be certain to read
-        <a class="xref" href="security.html" title="Chapter 4. Bugzilla Security">Chapter 4, <i>Bugzilla Security</i></a> for some important security tips.
-      </p></td></tr></table></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="localconfig"></a>2.2.1. localconfig</h3></div></div></div><p>
+        <a class="xref" href="security.html" title="Chapter&#160;4.&#160;Bugzilla Security">Chapter&#160;4, <i>Bugzilla Security</i></a> for some important security tips.
+      </p></td></tr></table></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="localconfig"></a>2.2.1.&#160;localconfig</h3></div></div></div><p>
         You should now run <code class="filename">checksetup.pl</code> again, this time
         without the <code class="literal">--check-modules</code> switch.
       </p><pre class="screen"><code class="prompt">bash#</code> ./checksetup.pl</pre><p>
@@ -38,25 +38,25 @@
           If you are using suexec, you should use your own primary group
           for <span class="emphasis"><em>webservergroup</em></span> rather than leaving it
           empty, and see the additional directions in the suexec section
-          <a class="xref" href="nonroot.html#suexec" title="2.6.6.1. suexec or shared hosting">Section 2.6.6.1, “suexec or shared hosting”</a>.
+          <a class="xref" href="nonroot.html#suexec" title="2.6.6.1.&#160;suexec or shared hosting">Section&#160;2.6.6.1, &#8220;suexec or shared hosting&#8221;</a>.
         </p></td></tr></table></div><p>
         The other options in the <code class="filename">localconfig</code> file
         are documented by their accompanying comments. If you have a slightly
         non-standard database setup, you may wish to change one or more of
         the other "$db_*" parameters.
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="database-engine"></a>2.2.2. Database Server</h3></div></div></div><p>
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="database-engine"></a>2.2.2.&#160;Database Server</h3></div></div></div><p>
         This section deals with configuring your database server for use
-        with Bugzilla. Currently, MySQL (<a class="xref" href="configuration.html#mysql" title="2.2.2.2. MySQL">Section 2.2.2.2, “MySQL”</a>),
-        PostgreSQL (<a class="xref" href="configuration.html#postgresql" title="2.2.2.3. PostgreSQL">Section 2.2.2.3, “PostgreSQL”</a>), Oracle (<a class="xref" href="configuration.html#oracle" title="2.2.2.4. Oracle">Section 2.2.2.4, “Oracle”</a>)
-        and SQLite (<a class="xref" href="configuration.html#sqlite" title="2.2.2.5. SQLite">Section 2.2.2.5, “SQLite”</a>) are available.
-      </p><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="database-schema"></a>2.2.2.1. Bugzilla Database Schema</h4></div></div></div><p>
+        with Bugzilla. Currently, MySQL (<a class="xref" href="configuration.html#mysql" title="2.2.2.2.&#160;MySQL">Section&#160;2.2.2.2, &#8220;MySQL&#8221;</a>),
+        PostgreSQL (<a class="xref" href="configuration.html#postgresql" title="2.2.2.3.&#160;PostgreSQL">Section&#160;2.2.2.3, &#8220;PostgreSQL&#8221;</a>), Oracle (<a class="xref" href="configuration.html#oracle" title="2.2.2.4.&#160;Oracle">Section&#160;2.2.2.4, &#8220;Oracle&#8221;</a>)
+        and SQLite (<a class="xref" href="configuration.html#sqlite" title="2.2.2.5.&#160;SQLite">Section&#160;2.2.2.5, &#8220;SQLite&#8221;</a>) are available.
+      </p><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="database-schema"></a>2.2.2.1.&#160;Bugzilla Database Schema</h4></div></div></div><p>
           The Bugzilla database schema is available at
           <a class="ulink" href="http://www.ravenbrook.com/project/p4dti/tool/cgi/bugzilla-schema/" target="_top">Ravenbrook</a>.
           This very valuable tool can generate a written description of
           the Bugzilla database schema for any version of Bugzilla. It
           can also generate a diff between two versions to help someone
           see what has changed.
-        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="mysql"></a>2.2.2.2. MySQL</h4></div></div></div><div class="caution" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Caution"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../images/caution.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="mysql"></a>2.2.2.2.&#160;MySQL</h4></div></div></div><div class="caution" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Caution"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../images/caution.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
             MySQL's default configuration is insecure.
             We highly recommend to run <code class="filename">mysql_secure_installation</code>
             on Linux or the MySQL installer on Windows, and follow the instructions.
@@ -64,7 +64,7 @@
             </p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>Be sure that the root account has a secure password set.</p></li><li class="listitem"><p>Do not create an anonymous account, and if it exists, say "yes"
                 to remove it.</p></li><li class="listitem"><p>If your web server and MySQL server are on the same machine,
                 you should disable the network access.</p></li></ol></div><p>
-          </p></td></tr></table></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="mysql-max-allowed-packet"></a>2.2.2.2.1. Allow large attachments and many comments</h5></div></div></div><p>By default, MySQL will only allow you to insert things
+          </p></td></tr></table></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="mysql-max-allowed-packet"></a>2.2.2.2.1.&#160;Allow large attachments and many comments</h5></div></div></div><p>By default, MySQL will only allow you to insert things
           into the database that are smaller than 1MB. Attachments
           may be larger than this. Also, Bugzilla combines all comments
           on a single bug into one field for full-text searching, and the
@@ -76,7 +76,7 @@
           configuration in the "[mysqld]" section, like this:</p><pre class="screen">[mysqld]
 # Allow packets up to 4MB
 max_allowed_packet=4M
-          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140356575142192"></a>2.2.2.2.2. Allow small words in full-text indexes</h5></div></div></div><p>By default, words must be at least four characters in length
+          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172780096"></a>2.2.2.2.2.&#160;Allow small words in full-text indexes</h5></div></div></div><p>By default, words must be at least four characters in length
           in order to be indexed by MySQL's full-text indexes. This causes
           a lot of Bugzilla specific words to be missed, including "cc",
           "ftp" and "uri".</p><p>MySQL can be configured to index those words by setting the
@@ -86,7 +86,7 @@ max_allowed_packet=4M
 # Allow small words in full-text indexes
 ft_min_word_len=2</pre><p>Rebuilding the indexes can be done based on documentation found at
           <a class="ulink" href="http://www.mysql.com/doc/en/Fulltext_Fine-tuning.html" target="_top">http://www.mysql.com/doc/en/Fulltext_Fine-tuning.html</a>.
-          </p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="install-setupdatabase-adduser"></a>2.2.2.2.3. Add a user to MySQL</h5></div></div></div><p>
+          </p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="install-setupdatabase-adduser"></a>2.2.2.2.3.&#160;Add a user to MySQL</h5></div></div></div><p>
             You need to add a new MySQL user for Bugzilla to use.
             (It's not safe to have Bugzilla use the MySQL root account.)
             The following instructions assume the defaults in
@@ -94,13 +94,13 @@ ft_min_word_len=2</pre><p>Rebuilding the indexes can be done based on documentat
             you need to modify the SQL command appropriately. You will
             need the <em class="replaceable"><code>$db_pass</code></em> password you
             set in <code class="filename">localconfig</code> in 
-            <a class="xref" href="configuration.html#localconfig" title="2.2.1. localconfig">Section 2.2.1, “localconfig”</a>.
+            <a class="xref" href="configuration.html#localconfig" title="2.2.1.&#160;localconfig">Section&#160;2.2.1, &#8220;localconfig&#8221;</a>.
           </p><p>
             We use an SQL <span class="command"><strong>GRANT</strong></span> command to create
-            a <span class="quote">“<span class="quote">bugs</span>”</span> user. This also restricts the 
-            <span class="quote">“<span class="quote">bugs</span>”</span>user to operations within a database
-            called <span class="quote">“<span class="quote">bugs</span>”</span>, and only allows the account
-            to connect from <span class="quote">“<span class="quote">localhost</span>”</span>. Modify it to
+            a <span class="quote">&#8220;<span class="quote">bugs</span>&#8221;</span> user. This also restricts the 
+            <span class="quote">&#8220;<span class="quote">bugs</span>&#8221;</span>user to operations within a database
+            called <span class="quote">&#8220;<span class="quote">bugs</span>&#8221;</span>, and only allows the account
+            to connect from <span class="quote">&#8220;<span class="quote">localhost</span>&#8221;</span>. Modify it to
             reflect your setup if you will be connecting from another
             machine or as a different user.
           </p><p>
@@ -111,7 +111,7 @@ ft_min_word_len=2</pre><p>Rebuilding the indexes can be done based on documentat
        CREATE TEMPORARY TABLES, DROP, REFERENCES ON bugs.*
        TO bugs@localhost IDENTIFIED BY '<em class="replaceable"><code>$db_pass</code></em>';
 <code class="prompt">mysql&gt;</code> FLUSH PRIVILEGES;
-          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140356575126016"></a>2.2.2.2.4. Permit attachments table to grow beyond 4GB</h5></div></div></div><p>
+          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172763920"></a>2.2.2.2.4.&#160;Permit attachments table to grow beyond 4GB</h5></div></div></div><p>
             By default, MySQL will limit the size of a table to 4GB.
             This limit is present even if the underlying filesystem
             has no such limit.  To set a higher limit, follow these
@@ -132,17 +132,17 @@ ft_min_word_len=2</pre><p>Rebuilding the indexes can be done based on documentat
           </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
               This does not affect Big Files, attachments that are stored directly
               on disk instead of in the database.
-            </p></td></tr></table></div></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="postgresql"></a>2.2.2.3. PostgreSQL</h4></div></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140356575116416"></a>2.2.2.3.1. Add a User to PostgreSQL</h5></div></div></div><p>You need to add a new user to PostgreSQL for the Bugzilla
+            </p></td></tr></table></div></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="postgresql"></a>2.2.2.3.&#160;PostgreSQL</h4></div></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172754320"></a>2.2.2.3.1.&#160;Add a User to PostgreSQL</h5></div></div></div><p>You need to add a new user to PostgreSQL for the Bugzilla
           application to use when accessing the database. The following instructions
           assume the defaults in <code class="filename">localconfig</code>; if you
           changed those, you need to modify the commands appropriately. You will
           need the <em class="replaceable"><code>$db_pass</code></em> password you
           set in <code class="filename">localconfig</code> in 
-          <a class="xref" href="configuration.html#localconfig" title="2.2.1. localconfig">Section 2.2.1, “localconfig”</a>.</p><p>On most systems, to create the user in PostgreSQL, you will need to
+          <a class="xref" href="configuration.html#localconfig" title="2.2.1.&#160;localconfig">Section&#160;2.2.1, &#8220;localconfig&#8221;</a>.</p><p>On most systems, to create the user in PostgreSQL, you will need to
           login as the root user, and then</p><pre class="screen"><code class="prompt">bash#</code> su - postgres</pre><p>As the postgres user, you then need to create a new user: </p><pre class="screen"><code class="prompt">bash$</code> createuser -U postgres -dRSP bugs</pre><p>When asked for a password, provide the password which will be set as
           <em class="replaceable"><code>$db_pass</code></em> in <code class="filename">localconfig</code>.
           The created user will not be a superuser (-S) and will not be able to create
-          new users (-R). He will only have the ability to create databases (-d).</p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140356575106864"></a>2.2.2.3.2. Configure PostgreSQL</h5></div></div></div><p>Now, you will need to edit <code class="filename">pg_hba.conf</code> which is
+          new users (-R). He will only have the ability to create databases (-d).</p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172744768"></a>2.2.2.3.2.&#160;Configure PostgreSQL</h5></div></div></div><p>Now, you will need to edit <code class="filename">pg_hba.conf</code> which is
           usually located in <code class="filename">/var/lib/pgsql/data/</code>. In this file,
           you will need to add a new line to it as follows:</p><p>
             <code class="computeroutput">host   all    bugs   127.0.0.1    255.255.255.255  md5</code>
@@ -154,7 +154,7 @@ ft_min_word_len=2</pre><p>Rebuilding the indexes can be done based on documentat
           restarted, you will need to edit <code class="filename">localconfig</code>, finding
           the <code class="literal">$db_driver</code> variable and setting it to
           <code class="literal">Pg</code> and changing the password in <code class="literal">$db_pass</code>
-          to the one you picked previously, while setting up the account.</p></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="oracle"></a>2.2.2.4. Oracle</h4></div></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140356575096640"></a>2.2.2.4.1. Create a New Tablespace</h5></div></div></div><p>
+          to the one you picked previously, while setting up the account.</p></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="oracle"></a>2.2.2.4.&#160;Oracle</h4></div></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172734544"></a>2.2.2.4.1.&#160;Create a New Tablespace</h5></div></div></div><p>
             You can use the existing tablespace or create a new one for Bugzilla.
             To create a new tablespace, run the following command:
           </p><pre class="programlisting">
@@ -168,7 +168,7 @@ AUTOEXTEND ON NEXT 30M MAXSIZE UNLIMITED
             <code class="filename">/u01/oradata/bugzilla.dbf</code>.
             The initial size of the database file is set in this example to 500 Mb,
             with an increment of 30 Mb everytime we reach the size limit of the file.
-          </p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140356575091968"></a>2.2.2.4.2. Add a User to Oracle</h5></div></div></div><p>
+          </p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172729872"></a>2.2.2.4.2.&#160;Add a User to Oracle</h5></div></div></div><p>
             The user name and password must match what you set in
             <code class="filename">localconfig</code> (<code class="literal">$db_user</code>
             and <code class="literal">$db_pass</code>, respectively). Here, we assume that
@@ -186,7 +186,7 @@ GRANT RESOURCE TO bugs;
 -- GRANT/REVOKE SYSTEM PRIVILEGES
 GRANT UNLIMITED TABLESPACE TO bugs;
 GRANT EXECUTE ON CTXSYS.CTX_DDL TO bugs;
-          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140356575086832"></a>2.2.2.4.3. Configure the Web Server</h5></div></div></div><p>
+          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172724736"></a>2.2.2.4.3.&#160;Configure the Web Server</h5></div></div></div><p>
             If you use Apache, append these lines to <code class="filename">httpd.conf</code>
             to set ORACLE_HOME and LD_LIBRARY_PATH. For instance:
           </p><pre class="programlisting">
@@ -194,7 +194,7 @@ SetEnv ORACLE_HOME /u01/app/oracle/product/10.2.0/
 SetEnv LD_LIBRARY_PATH /u01/app/oracle/product/10.2.0/lib/
           </pre><p>
             When this is done, restart your web server.
-          </p></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="sqlite"></a>2.2.2.5. SQLite</h4></div></div></div><div class="caution" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Caution"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../images/caution.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+          </p></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="sqlite"></a>2.2.2.5.&#160;SQLite</h4></div></div></div><div class="caution" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Caution"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../images/caution.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
             Due to SQLite's <a class="ulink" href="http://sqlite.org/faq.html#q5" target="_top">concurrency
             limitations</a> we recommend SQLite only for small and development
             Bugzilla installations.
@@ -203,7 +203,7 @@ SetEnv LD_LIBRARY_PATH /u01/app/oracle/product/10.2.0/lib/
           The database will be stored in <code class="filename">data/db/$db_name</code>,
           where <code class="literal">$db_name</code> is the database name defined
           in <code class="filename">localconfig</code>.
-        </p></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="idm140356575077456"></a>2.2.3. checksetup.pl</h3></div></div></div><p>
+        </p></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="idm140532172715360"></a>2.2.3.&#160;checksetup.pl</h3></div></div></div><p>
         Next, rerun <code class="filename">checksetup.pl</code>. It reconfirms
         that all the modules are present, and notices the altered 
         localconfig file, which it assumes you have edited to your
@@ -220,7 +220,7 @@ SetEnv LD_LIBRARY_PATH /u01/app/oracle/product/10.2.0/lib/
       </p><p>
         <code class="filename">checksetup.pl</code> will then finish. You may rerun
         <code class="filename">checksetup.pl</code> at any time if you wish.
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="http"></a>2.2.4. Web server</h3></div></div></div><p>
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="http"></a>2.2.4.&#160;Web server</h3></div></div></div><p>
         Configure your web server according to the instructions in the
         appropriate section. (If it makes a difference in your choice,
         the Bugzilla Team recommends Apache.) To check whether your web server
@@ -229,14 +229,14 @@ SetEnv LD_LIBRARY_PATH /u01/app/oracle/product/10.2.0/lib/
 	is successful. Regardless of which web server
         you are using, however, ensure that sensitive information is
         not remotely available by properly applying the access controls in
-        <a class="xref" href="security-webserver.html#security-webserver-access" title="4.2.1. Disabling Remote Access to Bugzilla Configuration Files">Section 4.2.1, “Disabling Remote Access to Bugzilla Configuration Files”</a>. You can run
+        <a class="xref" href="security-webserver.html#security-webserver-access" title="4.2.1.&#160;Disabling Remote Access to Bugzilla Configuration Files">Section&#160;4.2.1, &#8220;Disabling Remote Access to Bugzilla Configuration Files&#8221;</a>. You can run
         <code class="filename">testserver.pl</code> to check if your web server serves
         Bugzilla files as expected.
-      </p><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="http-apache"></a>2.2.4.1. Bugzilla using Apache</h4></div></div></div><p>You have two options for running Bugzilla under Apache - 
-          <a class="link" href="configuration.html#http-apache-mod_cgi" title="2.2.4.1.1. Apache httpd™ with mod_cgi">mod_cgi</a> (the default) and
-          <a class="link" href="configuration.html#http-apache-mod_perl" title="2.2.4.1.2. Apache httpd™ with mod_perl">mod_perl</a> (new in Bugzilla
+      </p><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="http-apache"></a>2.2.4.1.&#160;Bugzilla using Apache</h4></div></div></div><p>You have two options for running Bugzilla under Apache - 
+          <a class="link" href="configuration.html#http-apache-mod_cgi" title="2.2.4.1.1.&#160;Apache httpd&#8482; with mod_cgi">mod_cgi</a> (the default) and
+          <a class="link" href="configuration.html#http-apache-mod_perl" title="2.2.4.1.2.&#160;Apache httpd&#8482; with mod_perl">mod_perl</a> (new in Bugzilla
           2.23)
-        </p><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="http-apache-mod_cgi"></a>2.2.4.1.1. Apache <span class="productname">httpd</span>™ with mod_cgi</h5></div></div></div><p>
+        </p><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="http-apache-mod_cgi"></a>2.2.4.1.1.&#160;Apache <span class="productname">httpd</span>&#8482; with mod_cgi</h5></div></div></div><p>
             To configure your Apache web server to work with Bugzilla while using
             mod_cgi, do the following:
             </p><div class="procedure"><ol class="procedure" type="1"><li class="step"><p>
@@ -278,7 +278,7 @@ AllowOverride Limit FileInfo Indexes Options
                 </p></td></tr></table></div><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
                     On Windows, you may have to also add the
                     <code class="computeroutput">ScriptInterpreterSource Registry-Strict</code>
-                    line, see <a class="link" href="os-specific.html#win32-http" title="2.5.1.3. Serving the web pages">Windows specific notes</a>.
+                    line, see <a class="link" href="os-specific.html#win32-http" title="2.5.1.3.&#160;Serving the web pages">Windows specific notes</a>.
                 </p></td></tr></table></div></li><li class="step"><p>
                 <code class="filename">checksetup.pl</code> can set tighter permissions
                 on Bugzilla's files and directories if it knows what group the
@@ -298,7 +298,7 @@ AllowOverride Limit FileInfo Indexes Options
                 Without this directive, Apache will not follow symbolic links
                 to places outside its own directory structure, and you will be
                 unable to run Bugzilla.
-                </p></li></ol></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="http-apache-mod_perl"></a>2.2.4.1.2. Apache <span class="productname">httpd</span>™ with mod_perl</h5></div></div></div><p>Some configuration is required to make Bugzilla work with Apache
+                </p></li></ol></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="http-apache-mod_perl"></a>2.2.4.1.2.&#160;Apache <span class="productname">httpd</span>&#8482; with mod_perl</h5></div></div></div><p>Some configuration is required to make Bugzilla work with Apache
             and mod_perl</p><div class="procedure"><ol class="procedure" type="1"><li class="step"><p>
                 Load <code class="filename">httpd.conf</code> in your editor.
                 In Fedora and Red Hat Linux, this file is found in
@@ -348,35 +348,35 @@ PerlConfigRequire /var/www/html/bugzilla/mod_perl.pl
                     It is recommended that you have one Bugzilla instance running under mod_perl
                     on your server. Bugzilla has not been tested with more than one instance running.
                 </p></li></ul></div><p>
-            </p></td></tr></table></div></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="http-iis"></a>2.2.4.2. Microsoft <span class="productname">Internet Information Services</span>™</h4></div></div></div><p>
+            </p></td></tr></table></div></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="http-iis"></a>2.2.4.2.&#160;Microsoft <span class="productname">Internet Information Services</span>&#8482;</h4></div></div></div><p>
           If you are running Bugzilla on Windows and choose to use
-          Microsoft's <span class="productname">Internet Information Services</span>™
-          or <span class="productname">Personal Web Server</span>™ you will need
+          Microsoft's <span class="productname">Internet Information Services</span>&#8482;
+          or <span class="productname">Personal Web Server</span>&#8482; you will need
           to perform a number of other configuration steps as explained below.
           You may also want to refer to the following Microsoft Knowledge
           Base articles: 
           <a class="ulink" href="http://support.microsoft.com/default.aspx?scid=kb;en-us;245225" target="_top">245225</a> 
-          <span class="quote">“<span class="quote">HOW TO: Configure and Test a PERL Script with IIS 4.0,
-          5.0, and 5.1</span>”</span> (for <span class="productname">Internet Information
-          Services</span>™) and 
+          <span class="quote">&#8220;<span class="quote">HOW TO: Configure and Test a PERL Script with IIS 4.0,
+          5.0, and 5.1</span>&#8221;</span> (for <span class="productname">Internet Information
+          Services</span>&#8482;) and 
           <a class="ulink" href="http://support.microsoft.com/default.aspx?scid=kb;en-us;231998" target="_top">231998</a>          
-          <span class="quote">“<span class="quote">HOW TO: FP2000: How to Use Perl with Microsoft Personal Web
-          Server on Windows 95/98</span>”</span> (for <span class="productname">Personal Web
-          Server</span>™).
+          <span class="quote">&#8220;<span class="quote">HOW TO: FP2000: How to Use Perl with Microsoft Personal Web
+          Server on Windows 95/98</span>&#8221;</span> (for <span class="productname">Personal Web
+          Server</span>&#8482;).
         </p><p>
           You will need to create a virtual directory for the Bugzilla
           install.  Put the Bugzilla files in a directory that is named
           something <span class="emphasis"><em>other</em></span> than what you want your
           end-users accessing.  That is, if you want your users to access
           your Bugzilla installation through 
-          <span class="quote">“<span class="quote">http://&lt;yourdomainname&gt;/Bugzilla</span>”</span>, then do
+          <span class="quote">&#8220;<span class="quote">http://&lt;yourdomainname&gt;/Bugzilla</span>&#8221;</span>, then do
           <span class="emphasis"><em>not</em></span> put your Bugzilla files in a directory
-          named <span class="quote">“<span class="quote">Bugzilla</span>”</span>.  Instead, place them in a different
+          named <span class="quote">&#8220;<span class="quote">Bugzilla</span>&#8221;</span>.  Instead, place them in a different
           location, and then use the IIS Administration tool to create a
           Virtual Directory named "Bugzilla" that acts as an alias for the
           actual location of the files.  When creating that virtual directory,
-          make sure you add the <span class="quote">“<span class="quote">Execute (such as ISAPI applications or
-          CGI)</span>”</span> access permission.
+          make sure you add the <span class="quote">&#8220;<span class="quote">Execute (such as ISAPI applications or
+          CGI)</span>&#8221;</span> access permission.
         </p><p>
           You will also need to tell IIS how to handle Bugzilla's
           .cgi files. Using the IIS Administration tool again, open up
@@ -391,7 +391,7 @@ PerlConfigRequire /var/www/html/bugzilla/mod_perl.pl
 c:\perl\bin\perl.exe -xc:\bugzilla -wT "%s" %s
         </pre><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
             The ActiveState install may have already created an entry for
-            .pl files that is limited to <span class="quote">“<span class="quote">GET,HEAD,POST</span>”</span>. If
+            .pl files that is limited to <span class="quote">&#8220;<span class="quote">GET,HEAD,POST</span>&#8221;</span>. If
             so, this mapping should be <span class="emphasis"><em>removed</em></span> as
             Bugzilla's .pl files are not designed to be run via a web server.
           </p></td></tr></table></div><p>
@@ -405,13 +405,13 @@ c:\perl\bin\perl.exe -xc:\bugzilla -wT "%s" %s
           Also, and this can't be stressed enough, make sure that files
           such as <code class="filename">localconfig</code> and your
           <code class="filename">data</code> directory are
-          secured as described in <a class="xref" href="security-webserver.html#security-webserver-access" title="4.2.1. Disabling Remote Access to Bugzilla Configuration Files">Section 4.2.1, “Disabling Remote Access to Bugzilla Configuration Files”</a>.
-        </p></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="install-config-bugzilla"></a>2.2.5. Bugzilla</h3></div></div></div><p>
+          secured as described in <a class="xref" href="security-webserver.html#security-webserver-access" title="4.2.1.&#160;Disabling Remote Access to Bugzilla Configuration Files">Section&#160;4.2.1, &#8220;Disabling Remote Access to Bugzilla Configuration Files&#8221;</a>.
+        </p></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="install-config-bugzilla"></a>2.2.5.&#160;Bugzilla</h3></div></div></div><p>
         Your Bugzilla should now be working. Access 
         <code class="filename">http://&lt;your-bugzilla-server&gt;/</code> - 
         you should see the Bugzilla
         front page. If not, consult the Troubleshooting section,
-        <a class="xref" href="troubleshooting.html" title="Appendix A. Troubleshooting">Appendix A, <i>Troubleshooting</i></a>.
+        <a class="xref" href="troubleshooting.html" title="Appendix&#160;A.&#160;Troubleshooting">Appendix&#160;A, <i>Troubleshooting</i></a>.
       </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
           The URL above may be incorrect if you installed Bugzilla into a 
           subdirectory or used a symbolic link from your web site root to 
@@ -420,7 +420,7 @@ c:\perl\bin\perl.exe -xc:\bugzilla -wT "%s" %s
         Log in with the administrator account you defined in the last 
         <code class="filename">checksetup.pl</code> run. You should go through 
         the Parameters page and see if there are any you wish to change.
-        They key parameters are documented in <a class="xref" href="parameters.html" title="3.1. Bugzilla Configuration">Section 3.1, “Bugzilla Configuration”</a>;
+        They key parameters are documented in <a class="xref" href="parameters.html" title="3.1.&#160;Bugzilla Configuration">Section&#160;3.1, &#8220;Bugzilla Configuration&#8221;</a>;
         you should certainly alter 
         <span class="command"><strong>maintainer</strong></span> and <span class="command"><strong>urlbase</strong></span>; 
         you may also want to alter 
@@ -428,5 +428,5 @@ c:\perl\bin\perl.exe -xc:\bugzilla -wT "%s" %s
       </p><p>
         Bugzilla has several optional features which require extra 
         configuration. You can read about those in
-        <a class="xref" href="extraconfig.html" title="2.3. Optional Additional Configuration">Section 2.3, “Optional Additional Configuration”</a>.
-      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="installation.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="installing-bugzilla.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="extraconfig.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">2.1. Installation </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> 2.3. Optional Additional Configuration</td></tr></table></div></body></html>
+        <a class="xref" href="extraconfig.html" title="2.3.&#160;Optional Additional Configuration">Section&#160;2.3, &#8220;Optional Additional Configuration&#8221;</a>.
+      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="installation.html">Prev</a>&#160;</td><td width="20%" align="center"><a accesskey="u" href="installing-bugzilla.html">Up</a></td><td width="40%" align="right">&#160;<a accesskey="n" href="extraconfig.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">2.1.&#160;Installation&#160;</td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top">&#160;2.3.&#160;Optional Additional Configuration</td></tr></table></div></body></html>

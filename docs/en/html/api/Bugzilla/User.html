@@ -677,9 +677,13 @@ name="CLASS_FUNCTIONS"
 <dd>
 <dl>
 <dt><a 
-><code  class="code">$fields</code> - A hashref with field names as keys and a hash as values. Each hash is of the form { &#39;type&#39; =&#62; &#39;single|multi&#39; }, which specifies whether the field can take a single login name only or several.
+><code  class="code">$fields</code> - A hashref with field names as keys and a hash as values. Each hash is of the form { &#39;type&#39; =&#62; &#39;single|multi&#39; }, which specifies whether the field can take a single login name only or several.</a></dt>
+
+<dd>
 <dt><a 
-><code  class="code">$data</code> (optional) - A hashref with field names as keys and field values as values. If undefined, <code  class="code">Bugzilla-&#62;input_params</code> is used.
+><code  class="code">$data</code> (optional) - A hashref with field names as keys and field values as values. If undefined, <code  class="code">Bugzilla-&#62;input_params</code> is used.</a></dt>
+
+<dd>
 <dt><a 
 ><code  class="code">$behavior</code> (optional) - If set to <code  class="code">MATCH_SKIP_CONFIRM</code>, no confirmation screen is displayed. In that case, the fields which don&#39;t match a unique user are left undefined. If not set, a confirmation screen is displayed if at least one field doesn&#39;t match any login name or match more than one.</a></dt>
 </dl>

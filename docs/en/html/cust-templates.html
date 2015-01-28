@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>6.3. Template Customization</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.6 Release"><link rel="up" href="customization.html" title="Chapter 6. Customizing Bugzilla"><link rel="prev" href="cust-skins.html" title="6.2. Custom Skins"><link rel="next" href="cust-change-permissions.html" title="6.4. Customizing Who Can Change What"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">6.3. Template Customization</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="cust-skins.html">Prev</a> </td><th width="60%" align="center">Chapter 6. Customizing Bugzilla</th><td width="20%" align="right"> <a accesskey="n" href="cust-change-permissions.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="cust-templates"></a>6.3. Template Customization</h2></div></div></div><p>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ANSI_X3.4-1968"><title>6.3.&#160;Template Customization</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.8 Release"><link rel="up" href="customization.html" title="Chapter&#160;6.&#160;Customizing Bugzilla"><link rel="prev" href="cust-skins.html" title="6.2.&#160;Custom Skins"><link rel="next" href="cust-change-permissions.html" title="6.4.&#160;Customizing Who Can Change What"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">6.3.&#160;Template Customization</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="cust-skins.html">Prev</a>&#160;</td><th width="60%" align="center">Chapter&#160;6.&#160;Customizing Bugzilla</th><td width="20%" align="right">&#160;<a accesskey="n" href="cust-change-permissions.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="cust-templates"></a>6.3.&#160;Template Customization</h2></div></div></div><p>
       Administrators can configure the look and feel of Bugzilla without
       having to edit Perl files or face the nightmare of massive merge
       conflicts when they upgrade to a newer version in the future.
@@ -7,8 +7,8 @@
       Templatization also makes localized versions of Bugzilla possible, 
       for the first time. It's possible to have Bugzilla's UI language 
       determined by the user's browser. More information is available in
-      <a class="xref" href="cust-templates.html#template-http-accept" title="6.3.6. Configuring Bugzilla to Detect the User's Language">Section 6.3.6, “Configuring Bugzilla to Detect the User's Language”</a>.
-    </p><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-directory"></a>6.3.1. Template Directory Structure</h3></div></div></div><p>
+      <a class="xref" href="cust-templates.html#template-http-accept" title="6.3.6.&#160;Configuring Bugzilla to Detect the User's Language">Section&#160;6.3.6, &#8220;Configuring Bugzilla to Detect the User's Language&#8221;</a>.
+    </p><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-directory"></a>6.3.1.&#160;Template Directory Structure</h3></div></div></div><p>
         The template directory structure starts with top level directory 
         named <code class="filename">template</code>, which contains a directory
         for each installed localization. The next level defines the
@@ -25,7 +25,7 @@
           <span class="emphasis"><em>Do not</em></span> directly edit the files in this
           directory, or all your changes will be lost the next time
           Template Toolkit recompiles the templates.
-        </p></td></tr></table></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-method"></a>6.3.2. Choosing a Customization Method</h3></div></div></div><p>
+        </p></td></tr></table></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-method"></a>6.3.2.&#160;Choosing a Customization Method</h3></div></div></div><p>
         If you want to edit Bugzilla's templates, the first decision
         you must make is how you want to go about doing so. There are two
         choices, and which you use depends mainly on the scope of your 
@@ -79,7 +79,7 @@
           <span class="command"><strong>./checksetup.pl</strong></span> after creating a new
           template in the <code class="filename">custom</code> directory. Failure
           to do so will raise an incomprehensible error message.
-        </p></td></tr></table></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-edit"></a>6.3.3. How To Edit Templates</h3></div></div></div><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+        </p></td></tr></table></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-edit"></a>6.3.3.&#160;How To Edit Templates</h3></div></div></div><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
           If you are making template changes that you intend on submitting back
           for inclusion in standard Bugzilla, you should read the relevant
           sections of the 
@@ -101,14 +101,14 @@
         characters in URLs).  If you forget, you may open up your installation
         to cross-site scripting attacks.
       </p><p>
-        Editing templates is a good way of doing a <span class="quote">“<span class="quote">poor man's custom
-        fields</span>”</span>.
+        Editing templates is a good way of doing a <span class="quote">&#8220;<span class="quote">poor man's custom
+        fields</span>&#8221;</span>.
         For example, if you don't use the Status Whiteboard, but want to have
-        a free-form text entry box for <span class="quote">“<span class="quote">Build Identifier</span>”</span>,
+        a free-form text entry box for <span class="quote">&#8220;<span class="quote">Build Identifier</span>&#8221;</span>,
         then you can just
         edit the templates to change the field labels. It's still be called
         status_whiteboard internally, but your users don't need to know that.
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-formats"></a>6.3.4. Template Formats and Types</h3></div></div></div><p>
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-formats"></a>6.3.4.&#160;Template Formats and Types</h3></div></div></div><p>
         Some CGI's have the ability to use more than one template. For example,
         <code class="filename">buglist.cgi</code> can output itself as RDF, or as two 
         formats of HTML (complex and simple). The mechanism that provides this 
@@ -122,7 +122,7 @@
         (such as simple or complex) in the URL.
       </p><p>
         To see if a CGI supports multiple output formats and types, grep the
-        CGI for <span class="quote">“<span class="quote">get_format</span>”</span>. If it's not present, adding
+        CGI for <span class="quote">&#8220;<span class="quote">get_format</span>&#8221;</span>. If it's not present, adding
         multiple format/type support isn't too hard - see how it's done in
         other CGIs, e.g. config.cgi.
       </p><p>
@@ -151,7 +151,7 @@
         Save the template as <code class="filename">&lt;stubname&gt;-&lt;formatname&gt;.&lt;contenttypetag&gt;.tmpl</code>. 
         Try out the template by calling the CGI as 
         <code class="filename">&lt;cginame&gt;.cgi?format=&lt;formatname&gt;&amp;ctype=&lt;type&gt;</code> .
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-specific"></a>6.3.5. Particular Templates</h3></div></div></div><p>
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-specific"></a>6.3.5.&#160;Particular Templates</h3></div></div></div><p>
         There are a few templates you may be particularly interested in
         customizing for your installation.
       </p><p>
@@ -166,7 +166,7 @@
         example add a stylesheet or META tag by editing the header.
       </p><p>
         <span class="command"><strong>global/banner.html.tmpl</strong></span>:
-        This contains the <span class="quote">“<span class="quote">banner</span>”</span>, the part of the header
+        This contains the <span class="quote">&#8220;<span class="quote">banner</span>&#8221;</span>, the part of the header
         that appears
         at the top of all Bugzilla pages.  The default banner is reasonably
         barren, so you'll probably want to customize this to give your
@@ -181,10 +181,10 @@
       </p><p>
         <span class="command"><strong>global/variables.none.tmpl</strong></span>:
         This defines a list of terms that may be changed in order to
-        <span class="quote">“<span class="quote">brand</span>”</span> the Bugzilla instance In this way, terms
-        like <span class="quote">“<span class="quote">bugs</span>”</span> can be replaced with <span class="quote">“<span class="quote">issues</span>”</span>
+        <span class="quote">&#8220;<span class="quote">brand</span>&#8221;</span> the Bugzilla instance In this way, terms
+        like <span class="quote">&#8220;<span class="quote">bugs</span>&#8221;</span> can be replaced with <span class="quote">&#8220;<span class="quote">issues</span>&#8221;</span>
         across the whole Bugzilla installation. The name
-        <span class="quote">“<span class="quote">Bugzilla</span>”</span> and other words can be customized as well.
+        <span class="quote">&#8220;<span class="quote">Bugzilla</span>&#8221;</span> and other words can be customized as well.
       </p><p>
         <span class="command"><strong>list/table.html.tmpl</strong></span>:
         This template controls the appearance of the bug lists created
@@ -259,9 +259,9 @@
         then something like
         </p><pre class="programlisting">BuildID: 20020303</pre><p>
         would appear in the initial comment.
-      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-http-accept"></a>6.3.6. Configuring Bugzilla to Detect the User's Language</h3></div></div></div><p>Bugzilla honours the user's Accept: HTTP header. You can install
+      </p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="template-http-accept"></a>6.3.6.&#160;Configuring Bugzilla to Detect the User's Language</h3></div></div></div><p>Bugzilla honours the user's Accept: HTTP header. You can install
       templates in other languages, and Bugzilla will pick the most appropriate
       according to a priority order defined by you. Many
       language templates can be obtained from <a class="ulink" href="http://www.bugzilla.org/download.html#localizations" target="_top">http://www.bugzilla.org/download.html#localizations</a>. Instructions
       for submitting new languages are also available from that location.
-      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="cust-skins.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="customization.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="cust-change-permissions.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">6.2. Custom Skins </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> 6.4. Customizing Who Can Change What</td></tr></table></div></body></html>
+      </p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="cust-skins.html">Prev</a>&#160;</td><td width="20%" align="center"><a accesskey="u" href="customization.html">Up</a></td><td width="40%" align="right">&#160;<a accesskey="n" href="cust-change-permissions.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">6.2.&#160;Custom Skins&#160;</td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top">&#160;6.4.&#160;Customizing Who Can Change What</td></tr></table></div></body></html>
