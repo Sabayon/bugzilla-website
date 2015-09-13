@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=ANSI_X3.4-1968"><title>2.2.&#160;Configuration</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.8 Release"><link rel="up" href="installing-bugzilla.html" title="Chapter&#160;2.&#160;Installing Bugzilla"><link rel="prev" href="installation.html" title="2.1.&#160;Installation"><link rel="next" href="extraconfig.html" title="2.3.&#160;Optional Additional Configuration"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">2.2.&#160;Configuration</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="installation.html">Prev</a>&#160;</td><th width="60%" align="center">Chapter&#160;2.&#160;Installing Bugzilla</th><td width="20%" align="right">&#160;<a accesskey="n" href="extraconfig.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="configuration"></a>2.2.&#160;Configuration</h2></div></div></div><div class="warning" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ANSI_X3.4-1968"><title>2.2.&#160;Configuration</title><link rel="stylesheet" type="text/css" href="../../style.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><meta name="keywords" content="Bugzilla, Guide, installation, FAQ, administration, integration, MySQL, Mozilla, webtools"><link rel="home" href="index.html" title="The Bugzilla Guide - 4.4.10 Release"><link rel="up" href="installing-bugzilla.html" title="Chapter&#160;2.&#160;Installing Bugzilla"><link rel="prev" href="installation.html" title="2.1.&#160;Installation"><link rel="next" href="extraconfig.html" title="2.3.&#160;Optional Additional Configuration"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">2.2.&#160;Configuration</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="installation.html">Prev</a>&#160;</td><th width="60%" align="center">Chapter&#160;2.&#160;Installing Bugzilla</th><td width="20%" align="right">&#160;<a accesskey="n" href="extraconfig.html">Next</a></td></tr></table><hr></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="configuration"></a>2.2.&#160;Configuration</h2></div></div></div><div class="warning" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
         Poorly-configured MySQL and Bugzilla installations have
         given attackers full access to systems in the past. Please take the
         security parts of these guidelines seriously, even for Bugzilla 
@@ -76,7 +76,7 @@
           configuration in the "[mysqld]" section, like this:</p><pre class="screen">[mysqld]
 # Allow packets up to 4MB
 max_allowed_packet=4M
-          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172780096"></a>2.2.2.2.2.&#160;Allow small words in full-text indexes</h5></div></div></div><p>By default, words must be at least four characters in length
+          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140527250564576"></a>2.2.2.2.2.&#160;Allow small words in full-text indexes</h5></div></div></div><p>By default, words must be at least four characters in length
           in order to be indexed by MySQL's full-text indexes. This causes
           a lot of Bugzilla specific words to be missed, including "cc",
           "ftp" and "uri".</p><p>MySQL can be configured to index those words by setting the
@@ -111,7 +111,7 @@ ft_min_word_len=2</pre><p>Rebuilding the indexes can be done based on documentat
        CREATE TEMPORARY TABLES, DROP, REFERENCES ON bugs.*
        TO bugs@localhost IDENTIFIED BY '<em class="replaceable"><code>$db_pass</code></em>';
 <code class="prompt">mysql&gt;</code> FLUSH PRIVILEGES;
-          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172763920"></a>2.2.2.2.4.&#160;Permit attachments table to grow beyond 4GB</h5></div></div></div><p>
+          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140527250548400"></a>2.2.2.2.4.&#160;Permit attachments table to grow beyond 4GB</h5></div></div></div><p>
             By default, MySQL will limit the size of a table to 4GB.
             This limit is present even if the underlying filesystem
             has no such limit.  To set a higher limit, follow these
@@ -132,7 +132,7 @@ ft_min_word_len=2</pre><p>Rebuilding the indexes can be done based on documentat
           </p><div class="note" style="margin-left: 1em; margin-right: 1em"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.gif"></td><th align="left"></th></tr><tr><td align="left" valign="top"><p>
               This does not affect Big Files, attachments that are stored directly
               on disk instead of in the database.
-            </p></td></tr></table></div></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="postgresql"></a>2.2.2.3.&#160;PostgreSQL</h4></div></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172754320"></a>2.2.2.3.1.&#160;Add a User to PostgreSQL</h5></div></div></div><p>You need to add a new user to PostgreSQL for the Bugzilla
+            </p></td></tr></table></div></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="postgresql"></a>2.2.2.3.&#160;PostgreSQL</h4></div></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140527250538800"></a>2.2.2.3.1.&#160;Add a User to PostgreSQL</h5></div></div></div><p>You need to add a new user to PostgreSQL for the Bugzilla
           application to use when accessing the database. The following instructions
           assume the defaults in <code class="filename">localconfig</code>; if you
           changed those, you need to modify the commands appropriately. You will
@@ -142,7 +142,7 @@ ft_min_word_len=2</pre><p>Rebuilding the indexes can be done based on documentat
           login as the root user, and then</p><pre class="screen"><code class="prompt">bash#</code> su - postgres</pre><p>As the postgres user, you then need to create a new user: </p><pre class="screen"><code class="prompt">bash$</code> createuser -U postgres -dRSP bugs</pre><p>When asked for a password, provide the password which will be set as
           <em class="replaceable"><code>$db_pass</code></em> in <code class="filename">localconfig</code>.
           The created user will not be a superuser (-S) and will not be able to create
-          new users (-R). He will only have the ability to create databases (-d).</p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172744768"></a>2.2.2.3.2.&#160;Configure PostgreSQL</h5></div></div></div><p>Now, you will need to edit <code class="filename">pg_hba.conf</code> which is
+          new users (-R). He will only have the ability to create databases (-d).</p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140527250529248"></a>2.2.2.3.2.&#160;Configure PostgreSQL</h5></div></div></div><p>Now, you will need to edit <code class="filename">pg_hba.conf</code> which is
           usually located in <code class="filename">/var/lib/pgsql/data/</code>. In this file,
           you will need to add a new line to it as follows:</p><p>
             <code class="computeroutput">host   all    bugs   127.0.0.1    255.255.255.255  md5</code>
@@ -154,7 +154,7 @@ ft_min_word_len=2</pre><p>Rebuilding the indexes can be done based on documentat
           restarted, you will need to edit <code class="filename">localconfig</code>, finding
           the <code class="literal">$db_driver</code> variable and setting it to
           <code class="literal">Pg</code> and changing the password in <code class="literal">$db_pass</code>
-          to the one you picked previously, while setting up the account.</p></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="oracle"></a>2.2.2.4.&#160;Oracle</h4></div></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172734544"></a>2.2.2.4.1.&#160;Create a New Tablespace</h5></div></div></div><p>
+          to the one you picked previously, while setting up the account.</p></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="oracle"></a>2.2.2.4.&#160;Oracle</h4></div></div></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140527250519024"></a>2.2.2.4.1.&#160;Create a New Tablespace</h5></div></div></div><p>
             You can use the existing tablespace or create a new one for Bugzilla.
             To create a new tablespace, run the following command:
           </p><pre class="programlisting">
@@ -168,7 +168,7 @@ AUTOEXTEND ON NEXT 30M MAXSIZE UNLIMITED
             <code class="filename">/u01/oradata/bugzilla.dbf</code>.
             The initial size of the database file is set in this example to 500 Mb,
             with an increment of 30 Mb everytime we reach the size limit of the file.
-          </p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172729872"></a>2.2.2.4.2.&#160;Add a User to Oracle</h5></div></div></div><p>
+          </p></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140527250514352"></a>2.2.2.4.2.&#160;Add a User to Oracle</h5></div></div></div><p>
             The user name and password must match what you set in
             <code class="filename">localconfig</code> (<code class="literal">$db_user</code>
             and <code class="literal">$db_pass</code>, respectively). Here, we assume that
@@ -186,7 +186,7 @@ GRANT RESOURCE TO bugs;
 -- GRANT/REVOKE SYSTEM PRIVILEGES
 GRANT UNLIMITED TABLESPACE TO bugs;
 GRANT EXECUTE ON CTXSYS.CTX_DDL TO bugs;
-          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140532172724736"></a>2.2.2.4.3.&#160;Configure the Web Server</h5></div></div></div><p>
+          </pre></div><div class="section"><div class="titlepage"><div><div><h5 class="title"><a name="idm140527250509216"></a>2.2.2.4.3.&#160;Configure the Web Server</h5></div></div></div><p>
             If you use Apache, append these lines to <code class="filename">httpd.conf</code>
             to set ORACLE_HOME and LD_LIBRARY_PATH. For instance:
           </p><pre class="programlisting">
@@ -203,7 +203,7 @@ SetEnv LD_LIBRARY_PATH /u01/app/oracle/product/10.2.0/lib/
           The database will be stored in <code class="filename">data/db/$db_name</code>,
           where <code class="literal">$db_name</code> is the database name defined
           in <code class="filename">localconfig</code>.
-        </p></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="idm140532172715360"></a>2.2.3.&#160;checksetup.pl</h3></div></div></div><p>
+        </p></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="idm140527250499840"></a>2.2.3.&#160;checksetup.pl</h3></div></div></div><p>
         Next, rerun <code class="filename">checksetup.pl</code>. It reconfirms
         that all the modules are present, and notices the altered 
         localconfig file, which it assumes you have edited to your
